@@ -18,17 +18,17 @@
     },
     {
       "type": "perceive",
-      "target": "user person",
+      "target": "user",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "user person",
+      "target": "user",
       "parameters": {}
     },
     {
       "type": "place",
-      "target": "user person",
+      "target": "user",
       "parameters": {}
     },
     {

@@ -3,7 +3,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
-# from transcribe.stt import run_stt, NEW_TEXT_EVENT
+from transcribe.stt import run_stt, NEW_TEXT_EVENT
 from transcribe.tts import run_tts
 from mistral_ai.llm import run_mistral_llm
 from execute.actions import execute_action_sequence
@@ -15,9 +15,9 @@ LLM_FILE = "src/mistral_ai/scripts/llm_script.txt"
 LLM_JSON_FILE = "src/mistral_ai/scripts/llm_script.json"
 import json
 
-# def stt_thread():
-#     # 后台运行，ESC 退出时整个程序也会结束
-#     run_stt()
+def stt_thread():
+    # 后台运行，ESC 退出时整个程序也会结束
+    run_stt()
 
 # def intention_dection_thread():
 #     intention_predict("yolov8x-oiv7.pt")
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         f.write("")
 
     # 1. 启动 STT 线程
-    # threading.Thread(target=stt_thread, daemon=True).start()
+    threading.Thread(target=stt_thread, daemon=True).start()
     # 2. 启动 intention dection 线程
     # threading.Thread(target=intention_dection_thread, daemon=True).start()
 
@@ -49,9 +49,9 @@ if __name__ == "__main__":
 
     while True:
 
-        # # 2. 等待新的录音完成
-        # NEW_TEXT_EVENT.wait()
-        # NEW_TEXT_EVENT.clear()
+        # 2. 等待新的录音完成
+        NEW_TEXT_EVENT.wait()
+        NEW_TEXT_EVENT.clear()
         # 3. 读取最新文本
         try:
             with open(TRANS_FILE, "r", encoding="utf-8") as f:

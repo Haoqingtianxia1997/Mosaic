@@ -1,9 +1,29 @@
 {
-  "if_find": true,
-  "response": "",
+  "if_find": false,
+  "response": "Sorry, I can't find a user in the image. The image contains various vegetables such as carrots, potatoes, cucumbers, onions, tomatoes, and eggplants.",
   "object": [
     {
-      "name": "cucumber",
+      "name": "carrots",
+      "label": ""
+    },
+    {
+      "name": "potatoes",
+      "label": ""
+    },
+    {
+      "name": "cucumbers",
+      "label": ""
+    },
+    {
+      "name": "onions",
+      "label": ""
+    },
+    {
+      "name": "tomatoes",
+      "label": ""
+    },
+    {
+      "name": "eggplants",
       "label": ""
     }
   ]

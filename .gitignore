@@ -5,4 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
-yolo_model/
+yolo11m.pt
+yolo11n.pt
+yolo12x.pt
+yolov8x-oiv7.pt
+
+FastSAM-x.pt
+sam_vit_h_4b8939.pth
