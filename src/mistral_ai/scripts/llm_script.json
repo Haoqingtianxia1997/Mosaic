@@ -1,34 +1,34 @@
 {
-  "response": "Of course, giving you the cucumber.",
+  "response": "Of course, Here is the chair",
   "actions": [
     {
       "type": "perceive",
-      "target": "cucumber",
+      "target": "chair",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "cucumber",
+      "target": "chair",
       "parameters": {}
     },
     {
       "type": "grasp",
-      "target": "cucumber",
+      "target": "chair",
       "parameters": {}
     },
     {
       "type": "perceive",
-      "target": "user",
+      "target": "user person",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "user",
+      "target": "user person",
       "parameters": {}
     },
     {
       "type": "place",
-      "target": "user",
+      "target": "user person",
       "parameters": {}
     },
     {

@@ -49,9 +49,9 @@ if __name__ == "__main__":
 
     while True:
 
-        # 2. 等待新的录音完成
-        NEW_TEXT_EVENT.wait()
-        NEW_TEXT_EVENT.clear()
+        # # 2. 等待新的录音完成
+        # NEW_TEXT_EVENT.wait()
+        # NEW_TEXT_EVENT.clear()
         # 3. 读取最新文本
         try:
             with open(TRANS_FILE, "r", encoding="utf-8") as f:
@@ -62,7 +62,9 @@ if __name__ == "__main__":
         if not text:
             continue
         # 4. 若文本没变就忽略
+
         if text == last_text:
+            
             continue
         last_text = text
         run_mistral_llm()

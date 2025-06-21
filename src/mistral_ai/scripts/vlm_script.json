@@ -1,6 +1,6 @@
 {
   "if_find": false,
-  "response": "Sorry, I can't find a user in the image. The image contains various vegetables such as carrots, potatoes, cucumbers, onions, tomatoes, and eggplants.",
+  "response": "Sorry, I can't find a chair in the image. The image contains vegetables such as carrots, potatoes, cucumbers, onions, tomatoes, and eggplants.",
   "object": [
     {
       "name": "carrots",
