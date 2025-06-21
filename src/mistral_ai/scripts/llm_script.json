@@ -1,0 +1,40 @@
+{
+  "response": "Of course, giving you the cucumber.",
+  "actions": [
+    {
+      "type": "perceive",
+      "target": "cucumber",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "cucumber",
+      "parameters": {}
+    },
+    {
+      "type": "grasp",
+      "target": "cucumber",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "place",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    }
+  ]
+}
