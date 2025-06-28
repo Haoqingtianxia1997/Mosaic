@@ -1,0 +1,40 @@
+{
+  "response": "Of course, giving you the cup.",
+  "actions": [
+    {
+      "type": "perceive",
+      "target": "cup",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "cup",
+      "parameters": {}
+    },
+    {
+      "type": "grasp",
+      "target": "cup",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "place",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    }
+  ]
+}

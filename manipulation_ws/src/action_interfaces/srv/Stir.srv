@@ -1,0 +1,10 @@
+float64 center_x
+float64 center_y
+float64 center_z
+float64 radius
+float64 start_angle_deg    # 可以指定从哪开始画圆
+float64 move_down_offset   # 插入深度，正数为向下
+float64 speed              # 搅拌速度
+float64 stir_time
+---
+bool success
