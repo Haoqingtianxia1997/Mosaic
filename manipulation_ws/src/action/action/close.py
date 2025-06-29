@@ -1,4 +1,4 @@
-import rclpy
+import rclpy, time
 from rclpy.action import ActionClient
 from franka_msgs.action import Grasp
 from rclpy.node import Node
@@ -17,7 +17,7 @@ class CloseService(Node):
 
         self.place = self.create_service(
             Trigger, 'close_service',
-            self.place_cb, callback_group=self.srv_group
+            self.close_cb, callback_group=self.srv_group
         )
         self.create_subscription(
             JointState, '/joint_states',
@@ -28,14 +28,17 @@ class CloseService(Node):
         self.current_js = JointState()
         self.current_grasp_width = 0.08
 
-    def place_cb(self, request, response):
-        self.send_grasp_goal(0.01, 0.1, 50.0, 0.04, 0.04)
-        while True:
-            if self.current_grasp_width < 0.05:
-                response.success = True
-                response.message = 'Gripper closed successfully'
-                self.current_grasp_width = 0.08  # Reset current grasp width
-                return response
+    def close_cb(self, request, response):
+        self.send_grasp_goal(0.01, 0.1, 50.0, 0.05, 0.05)
+        # while True:
+        #     if self.current_grasp_width < 0.05:
+        #         response.success = True
+        #         response.message = 'Gripper closed successfully'
+        #         self.current_grasp_width = 0.08  # Reset current grasp width
+        #         return response
+        time.sleep(2)  # Wait for the action to complete
+        response.success = True
+        return response
 
     def joint_state_cb(self, msg: JointState):
         self.current_js = msg

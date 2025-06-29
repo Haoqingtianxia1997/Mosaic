@@ -1,19 +1,19 @@
 {
-  "response": "Of course, giving you the cup.",
+  "response": "Sure, giving you the tomato, then stirring the soup for 10 seconds, and adding salt 3 times.",
   "actions": [
     {
       "type": "perceive",
-      "target": "cup",
+      "target": "tomato",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "cup",
+      "target": "tomato",
       "parameters": {}
     },
     {
-      "type": "grasp",
-      "target": "cup",
+      "type": "grasp_otherthings",
+      "target": "tomato",
       "parameters": {}
     },
     {
@@ -27,8 +27,82 @@
       "parameters": {}
     },
     {
-      "type": "place",
-      "target": "user person",
+      "type": "open",
+      "target": "user",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "grasp_otherthings",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "stir",
+      "target": "soup pot",
+      "parameters": {
+        "stir_time": 10
+      }
+    },
+    {
+      "type": "return_back",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "grasp_flavoring",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "add",
+      "target": "soup pot",
+      "parameters": {
+        "add_times": 3
+      }
+    },
+    {
+      "type": "return_back",
+      "target": "salt bottle",
       "parameters": {}
     },
     {

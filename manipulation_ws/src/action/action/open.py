@@ -1,4 +1,4 @@
-import rclpy
+import rclpy, time
 from rclpy.action import ActionClient
 from franka_msgs.action import Grasp
 from rclpy.node import Node
@@ -30,12 +30,15 @@ class OpenService(Node):
 
     def open_cb(self, request, response):
         self.send_grasp_goal(0.08, 0.1, 20.0, 0.01, 0.01)
-        while True:
-            if abs(self.current_grasp_width - 0.08) < 0.01:
-                response.success = True
-                response.message = 'Gripper placed successfully'
-                self.current_grasp_width = 0.08  # Reset current grasp width
-                return response
+        # while True:
+        #     if abs(self.current_grasp_width - 0.08) < 0.01:
+        #         response.success = True
+        #         response.message = 'Gripper placed successfully'
+        #         self.current_grasp_width = 0.08  # Reset current grasp width
+        #         return response
+        time.sleep(2)  # Wait for the action to complete
+        response.success = True
+        return response 
 
     def joint_state_cb(self, msg: JointState):
         self.current_js = msg

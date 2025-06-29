@@ -69,7 +69,7 @@ def main(args=None):
     gripper_control_node = GripperControlNode()
 
     # Send a 'move' goal
-    gripper_control_node.send_move_goal(0.08, 0.1)  # Open gripper to 8 cm with 0.1 m/s speed
+    gripper_control_node.send_move_goal(0.0, 0.1)  # Open gripper to 8 cm with 0.1 m/s speed
     
     # Send a 'grasp' goal (grip an object)
     gripper_control_node.send_grasp_goal(0.01, 0.1, 50.0, 0.04, 0.04)  # Close gripper to 1 cm with 20 N force

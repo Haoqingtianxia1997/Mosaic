@@ -78,7 +78,7 @@ ros2 service call /reset_service std_srvs/srv/Trigger
 stir:
 ```bash
 ros2 run action stir
-ros2 service call /stir_service action_interfaces/srv/Stir "{center_x: 0.5, center_y: -0.4, center_z: 0.4, radius: 0.08, start_angle_deg: 0.0, move_down_offset: 0.1, speed: 0.5, stir_time: 30}"
+ros2 service call /stir_service action_interfaces/srv/Stir "{center_x: 0.6, center_y: -0.3, center_z: 0.4, radius: 0.08, start_angle_deg: 0.0, move_down_offset: 0.1, speed: 0.5, stir_time: 30}"
 ```
 
 
@@ -93,15 +93,15 @@ grasp:
 ros2 run action grasp
 ros2 service call /grasp_service action_interfaces/srv/Grasp "{
   x_prep: 0.5,
-  y_prep: 0.0,
-  z_prep: 0.5,
+  y_prep: 0.6,
+  z_prep: 0.3,
   qx_prep: 1.0,
   qy_prep: 0.0, 
   qz_prep: 0.0,
   qw_prep: 0.0,
   x_grasp: 0.5,
-  y_grasp: 0.0,
-  z_grasp: 0.4,
+  y_grasp: 0.6,
+  z_grasp: 0.2,
   qx_grasp: 1.0,
   qy_grasp: 0.0,
   qz_grasp: 0.0,
@@ -129,3 +129,7 @@ ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{
   qw_place: 0.0
 }"
 ```
+
+launch:
+```bash
+ros2 launch action mosaic_launch
