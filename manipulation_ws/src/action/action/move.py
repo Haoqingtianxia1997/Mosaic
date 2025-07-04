@@ -92,6 +92,9 @@ class MoveService(Node):
         ok = ik_res and ik_res.error_code.val == 1
         if ok:
             js = ik_res.solution.joint_state
+            # compensate
+            js.position[6] += 0.785398
+            print(js.position, "=================")
             print(js.name, js.position)
             self.publish_traj(js.name, js.position, 3.0)
             self.get_logger().info('✅ IK success，轨迹已发送')

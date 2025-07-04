@@ -41,6 +41,14 @@ ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedl camera_model:=zed
 
 # image service node for left camera
 ros2 run action image_saver
+
+# calibration
+ros2 launch aruco_pose_estimation aruco_pose_estimation.launch.py
+
+python3 /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_toolbox/calibrator_node.py --data_path /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_data
+
+python3 /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_toolbox/calibration.py --data_path /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_data --calib_type EBCB
+
 ```
 
 
