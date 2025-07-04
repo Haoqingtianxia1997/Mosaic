@@ -21,7 +21,7 @@ class ImageSaver(Node):
         self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', self.make_depth_cb('l'), 10)
         self.create_subscription(Image, '/zedr/zed_node/depth/depth_registered', self.make_depth_cb('r'), 10)
 
-        self.output_dir = os.path.join(os.getcwd(), 'saved_images')
+        self.output_dir = os.path.join(os.getcwd(), '/home/mosaic/mosaic/manipulation_ws/saved_images')
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.create_timer(10.0, self.auto_save)
