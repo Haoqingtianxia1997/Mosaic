@@ -17,3 +17,4 @@ yolov8x-oiv7.pt
 
 FastSAM-x.pt
 sam_vit_h_4b8939.pth
+L2CSNet_gaze360.pkl
