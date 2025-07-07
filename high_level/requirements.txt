@@ -15,3 +15,11 @@ easyocr
 segment_anything
 sacremoses
 open3d
+
+matplotlib
+numpy
+pandas
+Pillow
+scipy
+# face_detection (从Git安装)
+git+https://github.com/elliottzheng/face-detection

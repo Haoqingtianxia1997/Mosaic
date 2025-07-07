@@ -5,32 +5,6 @@ ros2 launch franka_bringup gravity_compensation_example_controller.launch.py rob
 ros2 launch franka_moveit_config moveit_new.launch.py
 ```
 
-## move
-```bash
-ros2 topic pub --once /panda_arm_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "
-joint_names: ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7']
-points:
-- positions: [0.0, 0.0, 0.0, -1.57, 0.0, 1.57, 0.0]
-  time_from_start: {sec: 3, nanosec: 0}
-"
-
-ros2 run action move_service_default 0.4 0.3 0.15 1.0 0.0 0.0 0.0
-
-ros2 run action move_service_default 0.6 0.0 0.5 1.0 0.0 0.0 0.0
-```
-
-# gripper
-```bash
-ros2 action send_goal /panda_gripper/move franka_msgs/action/Move "{width: 0.08, speed: 0.1}"
-```
-
-```bash
-ros2 action send_goal /panda_gripper/move franka_msgs/action/Move "{width: 0.01, speed: 0.1}" 
-```
-
-```bash
-ros2 action send_goal /panda_gripper/grasp franka_msgs/action/Grasp "{width: 0.01, speed: 0.1, force: 20.0, epsilon: {inner: 0.01, outer: 0.01}}"
-```
 
 # vision
 ```bash
@@ -48,11 +22,52 @@ ros2 launch aruco_pose_estimation aruco_pose_estimation.launch.py
 python3 /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_toolbox/calibrator_node.py --data_path /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_data
 
 python3 /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_toolbox/calibration.py --data_path /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolbox/calibration_data --calib_type EBCB
-
 ```
 
 
-# finished
+## launch:
+```bash
+ros2 launch action mosaic_launch.py
+```
+
+## intention
+```bash
+python3 src/action/action/intention_detection.py
+```
+## move
+```bash
+ros2 topic pub --once /panda_arm_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "
+joint_names: ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7']
+points:
+- positions: [0.0, 0.0, 0.0, -1.57, 0.0, 1.57, 0.0]
+  time_from_start: {sec: 3, nanosec: 0}
+"
+
+ros2 run action move_service_default 0.4 0.3 0.15 1.0 0.0 0.0 0.0
+
+ros2 run action move_service_default 0.6 0.0 0.5 1.0 0.0 0.0 0.0
+```
+
+
+# gripper example
+```bash
+ros2 action send_goal /panda_gripper/move franka_msgs/action/Move "{width: 0.08, speed: 0.1}"
+```
+
+```bash
+ros2 action send_goal /panda_gripper/move franka_msgs/action/Move "{width: 0.01, speed: 0.1}" 
+```
+
+```bash
+ros2 action send_goal /panda_gripper/grasp franka_msgs/action/Grasp "{width: 0.01, speed: 0.1, force: 20.0, epsilon: {inner: 0.01, outer: 0.01}}"
+```
+
+
+
+
+
+
+## element action
 move_service:
 ```bash
 ros2 run action move
@@ -138,6 +153,9 @@ ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{
 }"
 ```
 
-launch:
+
+
+intention_detection:
 ```bash
-ros2 launch action mosaic_launch
+ros2 run action intention_detection
+```

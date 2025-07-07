@@ -34,6 +34,7 @@ setup(
             'close = action.close:main',
             'grasp = action.grasp:main',
             'return_back = action.return_back:main',
+            'intention_detection = action.intention_detection:main'
         ],
     },
 )

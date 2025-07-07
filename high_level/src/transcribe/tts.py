@@ -3,7 +3,12 @@ import tempfile
 import langdetect
 from gtts import gTTS
 
-from src.utils import get_last_text_line , get_full_text
+import sys
+import os
+SRC_PATH = os.path.abspath(os.path.join(__file__, "../../../"))
+if SRC_PATH not in sys.path:
+    sys.path.append(SRC_PATH)
+from utils import get_last_text_line , get_full_text
 
 def play_text_to_speech(text, language='en'):
     """

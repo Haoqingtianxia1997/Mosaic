@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-
+from launch.actions import ExecuteProcess
 def generate_launch_description():
     return LaunchDescription([
         Node(
@@ -63,4 +63,19 @@ def generate_launch_description():
             name='stir_node',
             output='screen',
         ),
+        Node(
+            package='action',
+            executable='intention_detection',
+            name='intention_detection_node',
+            output='screen',
+        ),
+
+        # ExecuteProcess(
+        #     cmd=[
+        #         '/home/mosaic/miniconda3/envs/mosaic/bin/python',
+        #         '/home/mosaic/mosaic/manipulation_ws/src/action/action/intention_detection.py'
+        #     ],
+        #     name='intention_detection_process',
+        #     output='screen'
+        # ),
     ])
