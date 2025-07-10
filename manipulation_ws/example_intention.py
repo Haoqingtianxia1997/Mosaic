@@ -19,13 +19,10 @@ from ultralytics import YOLO
 import sys
 import os
 
-SRC_PATH = os.path.abspath(os.path.join(__file__, "../../../"))
-if SRC_PATH not in sys.path:
-    sys.path.append(SRC_PATH)
-from intention.l2cs import select_device, Pipeline
+from src.intention.l2cs import select_device, Pipeline
 
 # 添加 high_level/src 到 sys.path
-HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../../../../high_level/src"))
+HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../high_level/src"))
 if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
 from pixel_world.pixel_and_world import left_cam, right_cam, pixels_to_world_left, pixels_to_world_right, world_to_pixels_left, world_to_pixels_right
@@ -35,41 +32,6 @@ from transcribe.stt import VoiceTranscriber
 
 
 CWD = pathlib.Path.cwd()
-
-gaze_ctx = dict(
-    arrow=None,
-    arrow_visible=False,
-    sphere=None,
-    origin_w=None,
-    vec_ema=None,
-    pts=deque(),
-    base=None,
-    last_output=None,
-)
-
-finger_ctx = dict(
-    arrow=None,
-    arrow_visible=False,
-    sphere=None,
-    sphere_ori=None,
-    sphere_tip=None,
-    origin_w=None,
-    vec_ema=None,
-    origin_ema=None,
-    pts=deque(),
-    base=None,
-    last_output=None,
-)
-
-fusion_ctx = dict(
-    arrow=None,
-    sphere=None,
-    vec_ema=None,
-    origin_ema=None,
-    pts=deque(),
-    base=None,
-    last_output=None,
-)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -189,7 +151,7 @@ def camera_params(cam_model):
     
     return intrinsics, extrinsics
 
-def load_all_pointclouds():
+def load_all_pointclouds(L_DEPTH_PATH, L_RGB_PATH, R_DEPTH_PATH, R_RGB_PATH):
     # ---------- Use camera parameters from pixel_and_world module ----------
     intr_left, extr_left = camera_params(left_cam)
     pcd_left, frame_left = load_point_cloud(
@@ -809,6 +771,41 @@ def process_intention_qa(
 def main(args=None):
     cudnn.enabled = True
     
+    gaze_ctx = dict(
+        arrow=None,
+        arrow_visible=False,
+        sphere=None,
+        origin_w=None,
+        vec_ema=None,
+        pts=deque(),
+        base=None,
+        last_output=None,
+    )
+
+    finger_ctx = dict(
+        arrow=None,
+        arrow_visible=False,
+        sphere=None,
+        sphere_ori=None,
+        sphere_tip=None,
+        origin_w=None,
+        vec_ema=None,
+        origin_ema=None,
+        pts=deque(),
+        base=None,
+        last_output=None,
+    )
+
+    fusion_ctx = dict(
+        arrow=None,
+        sphere=None,
+        vec_ema=None,
+        origin_ema=None,
+        pts=deque(),
+        base=None,
+        last_output=None,
+    )
+
     args = parse_args()
     cam = args.cam
     save_dir = args.save_dir
@@ -824,7 +821,7 @@ def main(args=None):
     r_detect   = r_img_orig.copy()
 
     # ====== 加载点云和坐标系 ======
-    pcd_right, frame_right, pcd_left_icp, frame_left_icp = load_all_pointclouds()
+    pcd_right, frame_right, pcd_left_icp, frame_left_icp = load_all_pointclouds(L_DEPTH_PATH, L_RGB_PATH, R_DEPTH_PATH, R_RGB_PATH)
 
     gaze_pipeline = Pipeline(
         weights=CWD / 'src' / 'intention' / 'models' / 'L2CSNet_gaze360.pkl',
