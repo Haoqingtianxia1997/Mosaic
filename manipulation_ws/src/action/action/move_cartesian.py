@@ -9,6 +9,8 @@ from moveit_msgs.msg import RobotState
 from moveit_msgs.srv import GetCartesianPath
 from action_interfaces.srv import Move
 from trajectory_msgs.msg import JointTrajectory
+from scipy.spatial.transform import Rotation as R
+import numpy as np
 
 def normalize_quat(qx, qy, qz, qw):
     n = math.sqrt(qx*qx + qy*qy + qz*qz + qw*qw)
@@ -63,6 +65,15 @@ class MoveCartesianService(Node):
         pose.position.y = req.y
         pose.position.z = req.z
         qx, qy, qz, qw = normalize_quat(req.qx, req.qy, req.qz, req.qw)
+
+        # compensate for the 45-degree offset
+        quat = np.array([qx, qy, qz, qw])
+        r = R.from_quat(quat)
+        roll, pitch, yaw = r.as_euler('xyz', degrees=False)
+        yaw += np.deg2rad(-45.0)  
+        r2 = R.from_euler('xyz', [roll, pitch, yaw], degrees=False)
+        qx, qy, qz, qw = r2.as_quat()
+
         pose.orientation.x = qx
         pose.orientation.y = qy
         pose.orientation.z = qz
