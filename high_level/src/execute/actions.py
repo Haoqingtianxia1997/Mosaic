@@ -159,7 +159,6 @@ def merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=F
         o3d.visualization.draw_geometries([pcd_merged], window_name='ICP合并后点云')
     return merged_points, reg.transformation
 
-
 def execute_action_sequence(actions):
     """
     串行执行动作序列，每一步等待其服务执行完且成功后才进行下一步。
@@ -314,6 +313,7 @@ def execute_action_sequence(actions):
 
 
                     # 计算中心点
+                    center_world_points = center_world_points[0]
                     print ("center_world_points:", center_world_points)
 
                     # 计算质心
@@ -326,7 +326,7 @@ def execute_action_sequence(actions):
                     print("z轴方向上的最高点：", target_max_z_point)
                     
                     # 计算 move_target_point
-                    move_target_point = target_center_point.copy()
+                    move_target_point = center_world_points.copy()
                     move_target_point[2] += 0.3  # 提升0.3米
 
                     print("移动目标点：", move_target_point)
