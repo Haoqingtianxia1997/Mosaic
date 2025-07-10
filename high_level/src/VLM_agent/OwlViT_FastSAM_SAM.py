@@ -211,11 +211,14 @@ class TextDrivenSegmenter:
                     mask = self._fastsam_seg(image_path, box)
 
                 bcen, mcen = self._centers(box, mask)
+                all_seg_points = self._all_seg_points(mask)  # 计算所有分割点
+                
                 all_boxes.append((box, prompt, conf))
                 all_masks.append(mask)
                 all_points.append({"target": prompt,
                                    "box_center_point": bcen,
-                                   "seg_center_point": mcen})
+                                   "seg_center_point": mcen,
+                                   "seg_points": all_seg_points})
 
         result = self._visual(draw_img, all_boxes, all_masks)
         return result, all_boxes, all_points
@@ -233,6 +236,12 @@ class TextDrivenSegmenter:
         cx, cy = (x1+x2)//2, (y1+y2)//2
         ys, xs = np.where(mask>0)
         return [cx,cy], [None,None] if len(xs)==0 else [int(xs.mean()),int(ys.mean())]
+
+    def _all_seg_points(self, mask):
+        ys, xs = np.where(mask > 0)
+        if len(xs) == 0:
+            return []
+        return np.array([(int(x), int(y)) for x, y in zip(xs, ys)], dtype=int)
 
     def _fastsam_seg(self, img_path, box):
         image = Image.open(img_path).convert("RGB")
@@ -285,6 +294,8 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
     target_prompt = points[0]["target"]
     box_center_point = points[0]["box_center_point"]
     seg_center_point = points[0]["seg_center_point"]
+    all_seg_points = points[0]["seg_points"]
+
     bbox = tuple(boxes[0][0])  # 获取第一个目标的边界框
     score = boxes[0][2]  # 获取第一个目标的置信度分数
 
@@ -293,7 +304,7 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
         torch.cuda.empty_cache()
     gc.collect() # 3 可选，但推荐
     
-    return target_prompt, box_center_point, seg_center_point, bbox, score   
+    return target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score   
 
 
 # ---------------- demo ----------------

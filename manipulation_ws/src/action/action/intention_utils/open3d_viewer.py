@@ -15,7 +15,7 @@ class PersistentOpen3DViewer:
     def __init__(self):
         self.vis = o3d.visualization.VisualizerWithKeyCallback()
         self.vis.create_window(window_name='ZED2 ICP PointCloud Viewer', width=960, height=720)
-        self.current_arrow = None
+        self.current_arrows = []
         self.current_intersect = None
         self.arrow_direction = None
         self.arrow_origin = None
@@ -93,8 +93,13 @@ class PersistentOpen3DViewer:
 
         return [pcd_right, pcd_left_icp, frame_right, frame_left_icp, world]
 
-    def update_arrow_async(self, direction, origin):
-        self.arrow_queue.put((direction, origin))
+    def update_arrow_async(self, directions, origins):
+        if isinstance(directions, list) and isinstance(origins, list):
+            self.arrow_queue.put((directions, origins))
+        else:
+            self.arrow_queue.put((directions, origins))
+
+
 
     def update_intersect_async(self, intersect_point):
         self.intersect_queue.put((intersect_point))
@@ -104,28 +109,34 @@ class PersistentOpen3DViewer:
         for g in geometries:
             self.vis.add_geometry(g)
 
-    def update_arrow(self, direction: np.ndarray, origin: np.ndarray):
-        self.arrow_direction = direction
-        self.arrow_origin = origin
-        self.arrow_needs_update = True
-
     def run_main_loop(self):
         self.initialize_scene()
         while True:
-            # update arrow
+            # update arrows
             while not self.arrow_queue.empty():
-                direction, origin = self.arrow_queue.get()
-                if self.current_arrow:
-                    self.vis.remove_geometry(self.current_arrow)
-                if direction is not None and origin is not None:
-                    self.current_arrow = self._create_arrow(direction, origin)
-                    if self.current_arrow is not None:
-                        self.vis.add_geometry(self.current_arrow)
-            
-            # update intersect
+                directions, origins = self.arrow_queue.get()
+                # 删除所有旧箭头
+                for arr in self.current_arrows:
+                    self.vis.remove_geometry(arr)
+                self.current_arrows = []
+
+                # 判断是否批量
+                if isinstance(directions, list) and isinstance(origins, list):
+                    for d, o in zip(directions, origins):
+                        arr = self._create_arrow(d, o)
+                        if arr is not None:
+                            self.vis.add_geometry(arr)
+                            self.current_arrows.append(arr)
+                else:
+                    arr = self._create_arrow(directions, origins)
+                    if arr is not None:
+                        self.vis.add_geometry(arr)
+                        self.current_arrows.append(arr)
+
+            # update intersect（不变）
             while not self.intersect_queue.empty():
                 pt = self.intersect_queue.get()
-                if self.current_intersect:
+                if hasattr(self, "current_intersect") and self.current_intersect:
                     self.vis.remove_geometry(self.current_intersect)
                     self.current_intersect = None
                 if pt is not None:
@@ -140,7 +151,8 @@ class PersistentOpen3DViewer:
             cv2.waitKey(1)
             time.sleep(0.03)
 
-    def _create_arrow(self, direction: np.ndarray, origin: np.ndarray):
+
+    def _create_arrow(self, direction, origin):
         if direction is None or origin is None:
             return None
         

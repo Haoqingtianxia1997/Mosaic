@@ -31,14 +31,15 @@ def run_mistral_vlm(user_prompt: str, image_path) -> Tuple[bool, str]:
         json.dump(full_json, jf, ensure_ascii=False, indent=2)
 
     if not response and not found:
-        play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
-        return False, None, None
+        # play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
+        response = "Sorry, I can't find that. Please try again."
+        return found, response , None, None
     elif not found:
-        run_tts(vlm_script)         
-        return False, None, None
+        # run_tts(vlm_script)         
+        return found, response ,  None, None
 
     # 从 object 列表里取第 1 个 label
     objects = full_json.get("object", [])
     first_name = objects[0].get("name", "") if objects else ""
     first_label = objects[0].get("label", "") if objects else ""
-    return True, first_name, first_label
+    return found, response, first_name, first_label

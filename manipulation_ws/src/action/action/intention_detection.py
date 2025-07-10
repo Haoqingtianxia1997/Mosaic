@@ -57,8 +57,8 @@ class HandDetectionWithPointCloudNode(Node):
         )
         self.mp_drawing = mp.solutions.drawing_utils
 
-        self.rgb_buffer = {'left': None, 'right': None}
-        self.depth_buffer = {'left': None, 'right': None}
+        self.rgb_buffer = {'left': None, 'right': None, 'front': None}
+        self.depth_buffer = {'left': None, 'right': None, 'front': None}
         self.lock = Lock()
         
         time.sleep(5)
@@ -70,6 +70,10 @@ class HandDetectionWithPointCloudNode(Node):
         self.right_camera_active = right_rgb in available_topics 
 
         # TODO: subscription 3
+        self.create_subscription(Image, '/gaze_camera/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'front', 'rgb'), 10)
+        self.create_subscription(Image, '/gaze_camera/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'front', 'depth'), 10)
+
+
         self.create_subscription(Image, '/zedl/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'left', 'rgb'), 10)
         self.create_subscription(Image, '/zedr/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
         self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'left', 'depth'), 10)
@@ -83,6 +87,10 @@ class HandDetectionWithPointCloudNode(Node):
 
         self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.903701253331141, 0.439249176547482, 0.598645500102408]), quaternion = np.array([-0.404974467935380, -0.808551385290863, 0.425767747250020, 0.031018753461827]))
         self.intrinsics_r = (1059.9764404296875, 1059.9764404296875, 963.07568359375, 522.3530883789062)
+
+        # TODO: front camera
+        self.T_wc_f = None
+        self.intrinsics_f = None
 
         # finger detection
         self.finger_pts = deque()    # 存交点与时间戳
@@ -126,15 +134,42 @@ class HandDetectionWithPointCloudNode(Node):
                     depth_msg_r = self.depth_buffer['right']
                     rgb_msg_l = self.rgb_buffer['left']
                     depth_msg_l = self.depth_buffer['left']
+                    rgb_msg_front = self.rgb_buffer['front']
+                    depth_msg_front = self.depth_buffer['front']
 
                     if rgb_msg_l is not None and depth_msg_l is not None and rgb_msg_r is not None and depth_msg_r is not None:
 
                         direction_l, origin_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
                         direction_r, origin_r = self.intention.get_hand_pose(rgb_msg_r, depth_msg_r, self.T_wc_r, self.intrinsics_r)
+                        if rgb_msg_front is not None and depth_msg_front is not None:
+                            gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_front, depth_msg_front, self.T_wc_f, self.intrinsics_f)
+                        else:
+                            gaze_direction, gaze_origin = None, None
+
+                        all_detection=[]
+                        all_origin=[]
+                
                         if direction_l is not None and origin_l is not None and direction_r is not None and origin_r is not None :
                             print("Detection only with both cameras. ")
                             direction = (direction_l + direction_r) / 2
                             origin = (origin_l + origin_r) / 2
+
+                            if gaze_direction is not None and gaze_origin is not None:
+                                direction = (direction + gaze_direction) / 2
+                                origin = (origin + gaze_origin) / 2
+
+                                all_detection.append(direction)
+                                all_origin.append(origin)
+                                all_detection.append(gaze_direction)
+                                all_origin.append(gaze_origin)
+                            else:
+                                direction = direction
+                                origin = origin
+
+                                all_detection.append(direction)
+                                all_origin.append(origin)
+
+
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
                                 direction = direction / np.linalg.norm(direction)
                                 hand_detected = True
@@ -146,8 +181,12 @@ class HandDetectionWithPointCloudNode(Node):
                                 finger_direction_ema, 
                                 finger_origin_ema, 
                                 intersect) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['fusion_gesture_yolo_r.png', 'fusion_gesture_yolo_l.png'], camera_side = ['right', 'left'])        
+                                
+                                all_detection.append(finger_direction_ema)
+                                all_origin.append(finger_origin_ema)
+
                                 # draw arrow
-                                self.viewer.update_arrow_async(finger_direction_ema, finger_origin_ema)
+                                self.viewer.update_arrow_async(all_detection, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
@@ -157,6 +196,23 @@ class HandDetectionWithPointCloudNode(Node):
                             print("Detection only with left camera. ")
                             direction = direction_l
                             origin = origin_l
+
+                            if gaze_direction is not None and gaze_origin is not None:
+                                direction = (direction + gaze_direction) / 2
+                                origin = (origin + gaze_origin) / 2
+
+                                all_detection.append(direction)
+                                all_origin.append(origin)
+                                all_detection.append(gaze_direction)
+                                all_origin.append(gaze_origin)
+                            else:
+                                direction = direction
+                                origin = origin
+
+                                all_detection.append(direction)
+                                all_origin.append(origin)
+
+
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
                                 direction = direction / np.linalg.norm(direction)
                                 hand_detected = True
@@ -169,8 +225,11 @@ class HandDetectionWithPointCloudNode(Node):
                                 finger_origin_ema, 
                                 intersect) = self.intention.process_detection(direction, origin, rgb_msg_l, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_l.png', camera_side = 'left')
                                 
+                                all_detection.append(finger_direction_ema)
+                                all_origin.append(finger_origin_ema)
+
                                 # draw arrow
-                                self.viewer.update_arrow_async(finger_direction_ema, finger_origin_ema)
+                                self.viewer.update_arrow_async(all_detection, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
@@ -180,6 +239,22 @@ class HandDetectionWithPointCloudNode(Node):
                             print("Detection only with right camera. ")
                             direction = direction_r
                             origin = origin_r
+
+                            if gaze_direction is not None and gaze_origin is not None:
+                                direction = (direction + gaze_direction) / 2
+                                origin = (origin + gaze_origin) / 2
+
+                                all_detection.append(direction)
+                                all_origin.append(origin)
+                                all_detection.append(gaze_direction)
+                                all_origin.append(gaze_origin)
+                            else:
+                                direction = direction
+                                origin = origin
+
+                                all_detection.append(direction)
+                                all_origin.append(origin)
+
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
                                 direction = direction / np.linalg.norm(direction)
                                 hand_detected = True
@@ -192,14 +267,50 @@ class HandDetectionWithPointCloudNode(Node):
                                 finger_origin_ema, 
                                 intersect) = self.intention.process_detection(direction, origin, rgb_msg_r, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_r.png', camera_side = 'right')
                                 
+                                all_detection.append(finger_direction_ema)
+                                all_origin.append(finger_origin_ema)
+
                                 # draw arrow
-                                self.viewer.update_arrow_async(finger_direction_ema, finger_origin_ema)
+                                self.viewer.update_arrow_async(all_detection, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
                                     self.viewer.update_intersect_async(None)
                         
                         else:
+
+                            if gaze_direction is not None and gaze_origin is not None:
+                                
+                                direction = gaze_direction
+                                origin = gaze_origin
+
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    intersect) = self.intention.process_detection(direction, origin, rgb_msg_r, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_r.png', camera_side = 'right')
+                                    
+                                    all_detection.append(finger_direction_ema)
+                                    all_origin.append(finger_origin_ema)
+
+                                    # draw arrow
+                                    self.viewer.update_arrow_async(all_detection, all_origin)
+                                    if self.intention.in_valid_area(intersect):
+                                        self.viewer.update_intersect_async(intersect)
+                                    else:
+                                        self.viewer.update_intersect_async(None)
+                            else:
+                                all_detection.clear()
+                                all_origin.clear()
+
+                            
+
                             self.finger_pts.clear()
                             self.finger_base = None
                             self.finger_last_output = None
@@ -211,7 +322,38 @@ class HandDetectionWithPointCloudNode(Node):
 
                     # finger detection
                     if rgb_msg is not None and depth_msg is not None:
-                        direction, origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
+                        finger_direction, finger_origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
+                        gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
+                        
+                        all_detection=[]
+                        all_origin=[]
+
+                        if finger_direction is not None and finger_origin is not None and gaze_direction is not None and gaze_origin is not None:
+                            direction = (finger_direction + gaze_direction) / 2
+                            origin = (finger_origin + gaze_origin) / 2
+
+                            all_detection.append(finger_direction)
+                            all_origin.append(finger_origin)
+                            all_detection.append(gaze_direction)
+                            all_origin.append(gaze_origin)
+
+                        elif finger_direction is not None and finger_origin is not None:
+                            direction = finger_direction
+                            origin = finger_origin
+                            all_detection.append(finger_direction)
+                            all_origin.append(finger_origin)
+
+                        elif gaze_direction is not None and gaze_origin is not None:
+                            direction = gaze_direction
+                            origin = gaze_origin
+                            all_detection.append(gaze_direction)
+                            all_origin.append(gaze_origin)
+                        else:
+                            direction = None
+                            origin = None
+                            all_detection.clear()
+                            all_origin.clear()
+
                         if direction is not None and origin is not None:
                             print("Detection only with right camera. ")
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
@@ -226,12 +368,16 @@ class HandDetectionWithPointCloudNode(Node):
                                 finger_origin_ema, 
                                 intersect) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'right_gesture_yolo.png', camera_side = 'right')
                                 
+                                all_detection.append(finger_direction_ema)
+                                all_origin.append(finger_origin_ema)
+
                                 # draw arrow
-                                self.viewer.update_arrow_async(finger_direction_ema, finger_origin_ema)
+                                self.viewer.update_arrow_async(all_detection, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
                                     self.viewer.update_intersect_async(None)
+                        
 
                     else:
                         self.finger_pts.clear()
@@ -239,13 +385,50 @@ class HandDetectionWithPointCloudNode(Node):
                         self.finger_last_output = None
                         self.finger_stable_pos = None                   
 
+
                 elif self.left_camera_active:
                     rgb_msg = self.rgb_buffer['left']
                     depth_msg = self.depth_buffer['left']
+                    rgb_msg_front = self.rgb_buffer['front']
+                    depth_msg_front = self.depth_buffer['front']
 
                     if rgb_msg is not None and depth_msg is not None:
                         # print("lo")
-                        direction, origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_l, self.intrinsics_l)
+                        finger_direction, finger_origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_l, self.intrinsics_l)
+                        if rgb_msg_front is not None and depth_msg_front is not None:
+                            gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_front, depth_msg_front, self.T_wc_f, self.intrinsics_f)
+                        else:
+                            gaze_direction, gaze_origin = None, None
+                        
+                        all_detection=[]
+                        all_origin=[]
+
+                        if finger_direction is not None and finger_origin is not None and gaze_direction is not None and gaze_origin is not None:
+                            direction = (finger_direction + gaze_direction) / 2
+                            origin = (finger_origin + gaze_origin) / 2
+
+                            all_detection.append(finger_direction)
+                            all_origin.append(finger_origin)
+                            all_detection.append(gaze_direction)
+                            all_origin.append(gaze_origin)
+
+                        elif finger_direction is not None and finger_origin is not None:
+                            direction = finger_direction
+                            origin = finger_origin
+                            all_detection.append(finger_direction)
+                            all_origin.append(finger_origin)
+
+                        elif gaze_direction is not None and gaze_origin is not None:
+                            direction = gaze_direction
+                            origin = gaze_origin
+                            all_detection.append(gaze_direction)
+                            all_origin.append(gaze_origin)
+                        else:
+                            direction = None
+                            origin = None
+                            all_detection.clear()
+                            all_origin.clear()
+
                         if direction is not None and origin is not None:
                             print("Detection only with left camera. ")
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
@@ -260,8 +443,11 @@ class HandDetectionWithPointCloudNode(Node):
                                 finger_origin_ema, 
                                 intersect) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'left_gesture_yolo.png', camera_side = 'left')
                                 
+                                all_detection.append(finger_direction_ema)
+                                all_origin.append(finger_origin_ema)
+
                                 # draw arrow
-                                self.viewer.update_arrow_async(finger_direction_ema, finger_origin_ema)
+                                self.viewer.update_arrow_async(all_detection, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:

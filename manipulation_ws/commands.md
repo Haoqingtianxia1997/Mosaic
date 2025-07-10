@@ -68,6 +68,13 @@ ros2 action send_goal /panda_gripper/grasp franka_msgs/action/Grasp "{width: 0.0
 
 
 ## element action
+forward_kinematic:
+```bash
+ros2 run action forward_kinematic
+ros2 service call /fk_service action_interfaces/srv/Fk "{}"
+
+```
+
 move_service:
 ```bash
 ros2 run action move

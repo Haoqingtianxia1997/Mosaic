@@ -8,13 +8,13 @@ def VLM_agent(user_prompt: str, image_path) -> list:
     启动 VLM Agent，处理视觉任务。
     """  
     print("🟢 Starting VLM Agent...")
-    if_find , target_label, target_text = run_mistral_vlm(user_prompt, image_path)  # 调用 VLM 模型处理视觉任务
+    if_find ,response, target_label, target_text = run_mistral_vlm(user_prompt, image_path)  # 调用 VLM 模型处理视觉任务
     
     if not if_find:
         print("❌ No target found at the moment.")
-        return False, None, None
+        return if_find, response, None, None, None
     
-    target_prompt, box_center_point, seg_center_point, bbox, score = find_object_central_pixel(target_label, target_text, image_path, is_sam = True, if_translate = False)  # 调用函数处理图像中的目标检测
+    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, target_text, image_path, is_sam = True, if_translate = False)  # 调用函数处理图像中的目标检测
     print(f"🔍 Detected target: {target_label}")
     print(f"📍 Target prompt: {target_prompt}")
     print(f"📏 Bounding box: {bbox}")
@@ -24,4 +24,4 @@ def VLM_agent(user_prompt: str, image_path) -> list:
 
     print("✅ VLM Agent completed.")
 
-    return True, box_center_point, seg_center_point
+    return if_find, response,  box_center_point, seg_center_point, all_seg_points

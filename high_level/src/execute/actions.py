@@ -1,6 +1,10 @@
 import subprocess
+import subprocess
+import re
+import shlex
 import json
 import time
+import os
 import yaml
 import numpy as np
 import cv2
@@ -9,6 +13,7 @@ import numpy as np
 import traceback
 from src.VLM_agent.agent import VLM_agent  
 from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_right, world_to_pixels_left, world_to_pixels_right
+from src.transcribe.tts import run_tts, play_text_to_speech
 
 def call_ros2_service(service_name, service_type, args_dict):
     # 把字典转成一行的 YAML 字符串
@@ -25,7 +30,6 @@ def call_ros2_service(service_name, service_type, args_dict):
         result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
         print("✅ Service call returned:")
         print(result)
-        print(result)
         if "success=True" in result:
             return True
         else:
@@ -36,6 +40,44 @@ def call_ros2_service(service_name, service_type, args_dict):
         print(e.output)
         return False
 
+def call_fk_service():
+    """
+    通过 shell 调用 `ros2 service call /fk_service action_interfaces/srv/Fk "{}"`
+    返回 (x, y, z) 浮点数元组
+    """
+    cmd = 'ros2 service call /fk_service action_interfaces/srv/Fk "{}"'
+    # 用 shlex.split 避免引号问题
+    result = subprocess.run(
+        shlex.split(cmd),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(f"ros2 命令失败: {result.stderr}")
+
+    # 在输出里找 x=..., y=..., z=...
+    # 兼容下面两种格式：
+    #   action_interfaces.srv.Fk_Response(x=0.39, y=0.29, z=0.30)
+    #   x: 0.39
+    pattern = r'[xyz]\s*=\s*([-+]?\d+\.?\d*(?:[eE][-+]?\d+)?)'
+    matches = re.findall(pattern, result.stdout)
+    if len(matches) >= 3:
+        x, y, z = map(float, matches[:3])
+        return x, y, z
+    else:
+        # 第二种 YAML 风格
+        yaml_pat = r'^\s*[xyz]:\s*([-+]?\d+\.?\d*(?:[eE][-+]?\d+)?)\s*$'
+        found = {}
+        for line in result.stdout.splitlines():
+            m = re.match(yaml_pat, line)
+            if m:
+                key = line.strip().split(':')[0]
+                found[key] = float(m.group(1))
+        if {'x', 'y', 'z'} <= found.keys():
+            return found['x'], found['y'], found['z']
+        raise ValueError("未能从输出中解析到 x y z")
 
 def get_cam_world_points(
     target,
@@ -52,28 +94,38 @@ def get_cam_world_points(
     agent_image_path: 若要单独指定传给VLM_agent的图片，可以用，否则为rgb_path
     """
     img_path = agent_image_path if agent_image_path else rgb_path
-    success, box_center_point, seg_center_point = VLM_agent(target, image_path=img_path)
-    if not success:
+    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, image_path=img_path)
+    if not if_find:
         print(f"❌ Failed to perceive target: {target}")
-        return None, False
+        return if_find, response, None, None
     
-    pixel_points = [seg_center_point] if seg_center_point is not None else [box_center_point]
-    print(f"Perceived pixel points ({img_path}): {pixel_points}")
+    center_pixel_point = [seg_center_point] if seg_center_point is not None else [box_center_point]
+    print(f"Perceived pixel points ({img_path}): {center_pixel_point}")
+    all_pixel_points = all_seg_points if all_seg_points is not None else []
+    print(f"All pixel points ({img_path}): {all_pixel_points}")
+
     depth_img = np.load(depth_path)
     rgb_img = cv2.cvtColor(cv2.imread(rgb_path), cv2.COLOR_BGR2RGB)
-    pixel_points = np.array(pixel_points, dtype=int)
-    u = pixel_points[:, 0]
-    v = pixel_points[:, 1]
-    depths = depth_img[v, u]
-    target_point = pixel_points.tolist()
-    world_points, _ = pixels_to_world_func(target_point, depths, rgb_img=rgb_img)
-    if len(world_points) == 1:
-        world_points = tuple(world_points[0])
-    else:
-        world_points = [tuple(point) for point in world_points]
-    
-    return world_points , success
+    result = []
 
+    for points in [center_pixel_point, all_seg_points]:
+        if isinstance(points, tuple):
+            points = [points]
+        elif isinstance(points, list) and isinstance(points[0], int):
+            # 兼容像 [x, y] 这种格式
+            points = [tuple(points)]
+        
+        pixel_points = np.array(points, dtype=int)
+        u = pixel_points[:, 0]
+        v = pixel_points[:, 1]
+        depths = depth_img[v, u]
+        target_point = pixel_points.tolist()
+        world_points, _ = pixels_to_world_func(target_point, depths, rgb_img=rgb_img)
+        result.append(world_points)
+    
+    center_world_points, all_world_points = result
+  
+    return if_find, response, center_world_points, all_world_points
 
 def merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=False):
     """
@@ -112,7 +164,22 @@ def execute_action_sequence(actions):
     """
     串行执行动作序列，每一步等待其服务执行完且成功后才进行下一步。
     """
-    
+  
+    # photo and depth image paths
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+        
+    IMAGE_FOLDER_PATH = os.path.abspath(os.path.join(
+        CURRENT_DIR, "../../../manipulation_ws/saved_images"
+    ))
+
+    l_img_path = os.path.join(IMAGE_FOLDER_PATH, "l_rgb.png")
+    l_depth_path = os.path.join(IMAGE_FOLDER_PATH, "l_depth.npy")
+    r_img_path = os.path.join(IMAGE_FOLDER_PATH, "r_rgb.png")
+    r_depth_path = os.path.join(IMAGE_FOLDER_PATH, "r_depth.npy")
+
+    # point clouds
+    all_points_arr = None # all points in world coordinates
+
     #declare parameters for each action type
     move_target_point = None # perceived target point
     world_points_l = None # world points in left camera
@@ -134,8 +201,16 @@ def execute_action_sequence(actions):
     # state flags
     grasped_thing = ""
     
-    
+    success = True  # 用于跟踪每个动作的成功状态
+
+
     for i, action in enumerate(actions):
+
+        # 检查服务是否成功
+        if not success:
+            print(f"⛔ Aborting action sequence due to failure at step {i+1}.")
+            break
+
         try:
             print(f"\n▶️ Executing action {i+1}/{len(actions)}: {action}")
             act_type = action["type"]
@@ -157,6 +232,7 @@ def execute_action_sequence(actions):
             print(f"🔧 Add times: {add_times}")
             
             if act_type == "perceive":
+                success = False  # 重置成功状态
                 if target ==  grasped_thing:
                     success = True
                     print(f"✅ Target '{target}' already grasped, skipping perception.")
@@ -180,75 +256,128 @@ def execute_action_sequence(actions):
                     continue
                         
                 else:  
-                    # print(f"Perceiving target: {target}")
+                    print(f"Perceiving target: {target}")
                     
-                    # world_points_r , _ = get_cam_world_points(
-                    # target,
-                    # rgb_path="images/r_rgb.png",
-                    # depth_path="images/r_depth.npy",
-                    # pixels_to_world_func = pixels_to_world_right,
-                    # )
+                    if_find_r, response_r, center_world_points_r, all_world_points_r = get_cam_world_points(
+                    target,
+                    rgb_path= r_img_path,
+                    depth_path= r_depth_path,
+                    pixels_to_world_func = pixels_to_world_right,
+                    )
 
-                    # # 左相机
-                    # world_points_l , _  = get_cam_world_points(
-                    #     target,
-                    #     rgb_path="images/l_rgb.png",
-                    #     depth_path="images/l_depth.npy",
-                    #     pixels_to_world_func = pixels_to_world_left,
-                    # )
+                    # if_find_r, response_r, center_world_points_r, all_world_points_r = None, None, None, None
+                    
+           
+                    if_find_l, response_l, center_world_points_l, all_world_points_l = get_cam_world_points(
+                        target,
+                        rgb_path= l_img_path,
+                        depth_path= l_depth_path,
+                        pixels_to_world_func = pixels_to_world_left,
+                    )
 
-                    # if world_points_r is not None and world_points_l is not None:
-                    #     print(f"World point in right camera: {world_points_r}, in left camera: {world_points_l}")                
-                    #     # 合并点云举例
-                    #     all_points = list(world_points_r) + list(world_points_l)
-                    #     success = True
+                    # if_find_l, response_l, center_world_points_l, all_world_points_l = None, None, None, None
+
+
+                    if all_world_points_r is not None and all_world_points_l is not None:
+                        print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")                
+                        # 合并点云举例
+                        all_points = list(all_world_points_r) + list(all_world_points_l)
+                        center_world_points = (center_world_points_l + center_world_points_r)/2
+                        success = True
                         
-                    # elif world_points_r is not None and world_points_l is None:
-                    #     print(f"World point in right camera: {world_points_r}, in left camera: None")
-                    #     all_points = list(world_points_r)
-                    #     success = True
+                    elif all_world_points_r is not None and all_world_points_l is None:
+                        print(f"World point in right camera: {all_world_points_r}, in left camera: None")
+                        all_points = list(all_world_points_r)
+                        center_world_points = center_world_points_r
+                        success = True
                         
-                    # elif world_points_r is None and world_points_l is not None:
-                    #     print(f"World point in right camera: None, in left camera: {world_points_l}")
-                    #     all_points = list(world_points_l)
-                    #     success = True
-                    # else:
-                    #     print("❌ Failed to perceive target points in both cameras.")
-                    #     success = False
-                    #     continue
+                    elif all_world_points_r is None and all_world_points_l is not None:
+                        print(f"World point in right camera: None, in left camera: {all_world_points_l}")
+                        all_points = list(all_world_points_l)
+                        center_world_points = center_world_points_l
+                        success = True
+                    else:
+                        print("❌ Failed to perceive target points in both cameras.")
+                        play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
+
+                        success = False
+                        continue
                     
                 
-                    # # 计算质心
-                    # all_points_arr = np.array(all_points)
-                    # target_center_point = all_points_arr.mean(axis=0)
-                    # print("质心：", target_center_point)
+                    # 计算质心
+                    all_points_arr = np.array(all_points)
                     
-                    # # 计算z轴方向上的最高点
-                    # max_z_index = np.argmax(all_points_arr[:,2])
-                    # target_max_z_point = all_points_arr[max_z_index]
-                    # print("z轴方向上的最高点：", target_max_z_point)
+                    all_points_arr = all_points_arr[~np.isnan(all_points_arr).any(axis=1)]
+                    if len(all_points_arr) == 0:
+                        print("❌ All points are invalid (contain NaNs)")
+                        success = False
+
+
+                    # 计算中心点
+                    print ("center_world_points:", center_world_points)
+
+                    # 计算质心
+                    target_center_point = all_points_arr.mean(axis=0)
+                    print("质心：", target_center_point)
                     
-                    # # 计算 move_target_point
-                    # move_target_point = target_max_z_point.copy()
-                    # move_target_point[2] += 0.1
+                    # 计算z轴方向上的最高点
+                    max_z_index = np.argmax(all_points_arr[:,2])
+                    target_max_z_point = all_points_arr[max_z_index]
+                    print("z轴方向上的最高点：", target_max_z_point)
                     
-                    # move_params["move_x"] = move_target_point[0]
-                    # move_params["move_y"] = move_target_point[1]
-                    # move_params["move_z"] = move_target_point[2]
-                    # move_params["move_qx"] = 1.0
-                    # move_params["move_qy"] = 0.0
-                    # move_params["move_qz"] = 0.0
-                    # move_params["move_qw"] = 0.0
+                    # 计算 move_target_point
+                    move_target_point = target_center_point.copy()
+                    move_target_point[2] += 0.3  # 提升0.3米
+
+                    print("移动目标点：", move_target_point)
+
+                    move_params["move_x"] = float(move_target_point[0])
+                    move_params["move_y"] = float(move_target_point[1])
+                    move_params["move_z"] = float(move_target_point[2])
+                    move_params["move_qx"] = 1.0
+                    move_params["move_qy"] = 0.0
+                    move_params["move_qz"] = 0.0
+                    move_params["move_qw"] = 0.0
                     
-                    move_params = {"move_x" : 0.5, "move_y" : 0.6, "move_z" : 0.4, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
-                    success = True
+                    # move_params = {"move_x" : 0.5, "move_y" : 0.6, "move_z" : 0.4, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
+                    # success = True
                 
             elif act_type == "move":
+                success = False  # 重置成功状态
                 if target is  grasped_thing:
-                    continue            
-                print("execute move action, moving to target point:", move_target_point)
-                # time.sleep(5)
-                # success = True
+                    continue  
+                current_position = [0.0, 0.0, 0.0]  # 初始化当前位姿
+
+                current_position[0], current_position[1], current_position[2] = call_fk_service()
+                print(f"Current position: {current_position}")
+
+                if current_position[2] < 0.3:   
+                    try:
+                        if any(v is None for v in move_params.values()):
+                            raise ValueError("Missing move parameters.")
+                        success = call_ros2_service(
+                            "/move_cartesian_service",
+                            "action_interfaces/srv/Move",
+                            {
+                                "x": float(current_position[0]),
+                                "y": float(current_position[1]),
+                                "z": float(current_position[2] + 0.3),  # 提升0.3米
+                                "qx": 1.0,
+                                "qy": 0.0,
+                                "qz": 0.0,
+                                "qw": 0.0,
+                            }
+                        )
+                    except ValueError as e:
+                        print(e)
+                    # time.sleep(3)  # 等待服务调用完成
+                    while True:
+                        if success:
+                            print("✅ List action executed successfully.")
+                            break
+                        else:
+                            print("❌ List action failed, retrying...")
+
                 try:
                     if any(v is None for v in move_params.values()):
                         raise ValueError("Missing move parameters.")
@@ -267,7 +396,7 @@ def execute_action_sequence(actions):
                     )
                 except ValueError as e:
                     print(e)
-                time.sleep(3)  # 等待服务调用完成
+                # time.sleep(3)  # 等待服务调用完成
                 while True:
                     if success:
                         print("✅ Move action executed successfully.")
@@ -276,7 +405,7 @@ def execute_action_sequence(actions):
                         print("❌ Move action failed, retrying...")
 
             elif act_type == "grasp_flavoring":
-                
+                success = False  # 重置成功状态
                 if target is  grasped_thing:
                     continue 
                 
@@ -337,8 +466,8 @@ def execute_action_sequence(actions):
                     else:
                         print("❌ Grasp flavoring action failed, retrying...")
 
-
             elif act_type == "grasp_otherthings":
+                success = False  # 重置成功状态
                 if target is  grasped_thing:
                     continue 
                 print("execute grasp action")
@@ -404,6 +533,7 @@ def execute_action_sequence(actions):
                         print("❌ Grasp other things action failed, retrying...")
                             
             elif act_type == "stir":
+                success = False  # 重置成功状态
                 print("execute stir action")
                 # time.sleep(5)
                 # success = True
@@ -431,6 +561,7 @@ def execute_action_sequence(actions):
                         print("❌ Stir action failed, retrying...")     
                 
             elif act_type == "reset":
+                success = False  # 重置成功状态
                 print("execute reset action")
                 # time.sleep(5)
                 # success = True
@@ -445,6 +576,7 @@ def execute_action_sequence(actions):
                         print("❌ Reset action failed, retrying...")
 
             elif act_type == "add":
+                success = False  # 重置成功状态
                 print("execute add action")
                 # time.sleep(5)
                 # success = True
@@ -466,6 +598,7 @@ def execute_action_sequence(actions):
                         print("❌ Add action failed, retrying...")
                 
             elif act_type == "return_back":
+                success = False  # 重置成功状态
                 print("execute back_move action, moving back to original point")
                 # time.sleep(5)
                 # success = True
@@ -528,6 +661,7 @@ def execute_action_sequence(actions):
                         print("❌ Return back action failed, retrying...")
                         
             elif act_type == "open":
+                success = False  # 重置成功状态
                 print("execute open action")
                 success = call_ros2_service("/open_service", "std_srvs/srv/Trigger", {})  
                 time.sleep(3)  # 等待服务调用完成
@@ -539,6 +673,7 @@ def execute_action_sequence(actions):
                         print("❌ Open action failed, retrying...")
 
             elif act_type == "close":
+                success = False  # 重置成功状态
                 print("execute close action")
                 success = call_ros2_service("/close_service", "std_srvs/srv/Trigger", {})
                 time.sleep(3)  # 等待服务调用完成
@@ -552,11 +687,6 @@ def execute_action_sequence(actions):
             else:
                 print(f"⚠️ Unknown action type: {act_type}")
                 success = False
-
-            # 检查服务是否成功
-            if not success:
-                print(f"⛔ Aborting action sequence due to failure at step {i+1}.")
-                break
 
             time.sleep(0.5)  # 可选延迟
         

@@ -54,6 +54,9 @@ class Intention():
 
         self.ema = {}
         self.ema_alpha = 0.3
+        self.first_gaze = True
+        self.pitch = None
+        self.yaw = None
 
         # stable point pos
         self.SLIDING_WINDOW_SEC = 2
@@ -125,7 +128,7 @@ class Intention():
         # print(f"origin:{origin}, direction: {direction}")
         return direction, origin
 
-    def get_gaze_direction(self, rgb_msg, T_wc, cam_intrinsics, depth_msg=None):
+    def get_gaze_direction(self, rgb_msg, depth_msg, T_wc, cam_intrinsics):
 
         img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -166,10 +169,25 @@ class Intention():
             return None, None
         pitch = results.pitch[0]
         yaw = results.yaw[0]
+
+        if np.isnan(pitch) or np.isnan(yaw):
+            self.first_gaze = True
+            self.pitch = None
+            self.yaw = None
+
+        else:
+            if self.first_gaze:
+                self.first_gaze = False
+                self.pitch = pitch
+                self.yaw = yaw
+            else:
+                self.pitch = self.ema_alpha * pitch + (1 - self.ema_alpha) * self.pitch
+                self.yaw=  self.ema_alpha * yaw + (1 - self.ema_alpha) * self.yaw
+            
         # 欧拉角→相机系单位向量
-        gx = -np.cos(pitch) * np.sin(yaw)
-        gy = -np.sin(pitch)
-        gz = -np.cos(pitch) * np.cos(yaw)
+        gx = -np.cos(self.pitch) * np.sin(self.yaw)
+        gy = -np.sin(self.pitch)
+        gz = -np.cos(self.pitch) * np.cos(self.yaw)
         gaze_vec_c = np.array([gx, gy, gz])
 
         # step5: 转到世界系
@@ -177,6 +195,7 @@ class Intention():
         t_wc = T_wc[:3, 3]
         gaze_vec_w = R_wc @ gaze_vec_c
         gaze_origin_w = R_wc @ cam_origin_c + t_wc
+
         return gaze_vec_w, gaze_origin_w
     
     def line_plane_intersect(self, origin, direction, z_plane=0.0):

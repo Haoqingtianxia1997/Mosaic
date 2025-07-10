@@ -63,10 +63,11 @@ def generate_launch_description():
             name='stir_node',
             output='screen',
         ),
+
         Node(
             package='action',
-            executable='intention_detection',
-            name='intention_detection_node',
+            executable='forward_kinematic',
+            name='forward_kinematic',
             output='screen',
         ),
 
