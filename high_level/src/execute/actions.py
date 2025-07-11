@@ -14,6 +14,31 @@ import traceback
 from src.VLM_agent.agent import VLM_agent  
 from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_right, world_to_pixels_left, world_to_pixels_right
 from src.transcribe.tts import run_tts, play_text_to_speech
+import open3d as o3d
+import numpy as np
+
+def sphere_at(point, color, radius=0.02):
+    s = o3d.geometry.TriangleMesh.create_sphere(radius)
+    s.paint_uniform_color(color)
+    s.translate(point)
+    return s
+
+def open3d_show(all_points_arr, all_colors_arr, target_center_point, target_max_z_point, center_world_points):
+    import open3d as o3d
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_points_arr)
+    if all_colors_arr.max() > 1.1:   # 如果颜色是0~255
+        all_colors_arr = all_colors_arr / 255.0
+    pcd.colors = o3d.utility.Vector3dVector(all_colors_arr)
+
+    vis_geoms = [pcd]
+    vis_geoms.append(sphere_at(target_center_point, color=[1,0,0], radius=0.012))
+    vis_geoms.append(sphere_at(target_max_z_point, color=[0,0,1], radius=0.01))
+    vis_geoms.append(sphere_at(center_world_points, color=[0,1,0], radius=0.01))
+    vis_geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=[0,0,0]))  # 坐标系
+    o3d.visualization.draw_geometries(vis_geoms)
+
+
 
 def call_ros2_service(service_name, service_type, args_dict):
     # 把字典转成一行的 YAML 字符串
@@ -84,6 +109,7 @@ def get_cam_world_points(
     rgb_path,
     depth_path,
     pixels_to_world_func,
+    name,
     agent_image_path=None,
 ):
     """
@@ -94,10 +120,10 @@ def get_cam_world_points(
     agent_image_path: 若要单独指定传给VLM_agent的图片，可以用，否则为rgb_path
     """
     img_path = agent_image_path if agent_image_path else rgb_path
-    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, image_path=img_path)
+    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name)
     if not if_find:
         print(f"❌ Failed to perceive target: {target}")
-        return if_find, response, None, None
+        return if_find, response, None, None, None
     
     center_pixel_point = [seg_center_point] if seg_center_point is not None else [box_center_point]
     print(f"Perceived pixel points ({img_path}): {center_pixel_point}")
@@ -120,12 +146,12 @@ def get_cam_world_points(
         v = pixel_points[:, 1]
         depths = depth_img[v, u]
         target_point = pixel_points.tolist()
-        world_points, _ = pixels_to_world_func(target_point, depths, rgb_img=rgb_img)
+        world_points, color = pixels_to_world_func(target_point, depths, rgb_img=rgb_img)
         result.append(world_points)
     
     center_world_points, all_world_points = result
   
-    return if_find, response, center_world_points, all_world_points
+    return if_find, response, center_world_points, all_world_points, color
 
 def merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=False):
     """
@@ -207,28 +233,32 @@ def execute_action_sequence(actions):
 
         # 检查服务是否成功
         if not success:
-            print(f"⛔ Aborting action sequence due to failure at step {i+1}.")
+            print(f"⛔ Aborting action sequence due to failure at step {i}.")
             break
 
         try:
             print(f"\n▶️ Executing action {i+1}/{len(actions)}: {action}")
             act_type = action["type"]
+
             if action["target"] is not None:
                 target = action["target"]
                 print(f"🔍 Target: {target}")
             params = action.get("parameters", {})
+
             if "stir_time" in params:
                 if params["stir_time"] is not None:
                     stir_time = params["stir_time"]
+                    print(f"🔧 Parameters: {params}")
                 else:
                     stir_time =  stir_time
-            print(f"🔧 Parameters: {params}")
+            
             if "add_times" in params:
                 if params["add_times"] is not None:
                     add_times = params["add_times"]
+                    print(f"🔧 Add times: {add_times}")
                 else:
                     add_times = add_times
-            print(f"🔧 Add times: {add_times}")
+            
             
             if act_type == "perceive":
                 success = False  # 重置成功状态
@@ -257,42 +287,47 @@ def execute_action_sequence(actions):
                 else:  
                     print(f"Perceiving target: {target}")
                     
-                    if_find_r, response_r, center_world_points_r, all_world_points_r = get_cam_world_points(
+                    if_find_r, response_r, center_world_points_r, all_world_points_r ,color_r = get_cam_world_points(
                     target,
                     rgb_path= r_img_path,
                     depth_path= r_depth_path,
                     pixels_to_world_func = pixels_to_world_right,
+                    name= "right"
                     )
 
-                    # if_find_r, response_r, center_world_points_r, all_world_points_r = None, None, None, None
+                    # if_find_r, response_r, center_world_points_r, all_world_points_r, color_r = None, None, None, None, None
                     
            
-                    if_find_l, response_l, center_world_points_l, all_world_points_l = get_cam_world_points(
+                    if_find_l, response_l, center_world_points_l, all_world_points_l, color_l  = get_cam_world_points(
                         target,
                         rgb_path= l_img_path,
                         depth_path= l_depth_path,
                         pixels_to_world_func = pixels_to_world_left,
+                        name= "left"
                     )
 
-                    # if_find_l, response_l, center_world_points_l, all_world_points_l = None, None, None, None
+                    # if_find_l, response_l, center_world_points_l, all_world_points_l, color_l = None, None, None, None,None
 
 
                     if all_world_points_r is not None and all_world_points_l is not None:
                         print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")                
                         # 合并点云举例
                         all_points = list(all_world_points_r) + list(all_world_points_l)
+                        all_colors = list(color_r) + list(color_l)
                         center_world_points = (center_world_points_l + center_world_points_r)/2
                         success = True
                         
                     elif all_world_points_r is not None and all_world_points_l is None:
                         print(f"World point in right camera: {all_world_points_r}, in left camera: None")
                         all_points = list(all_world_points_r)
+                        all_colors = list(color_r)
                         center_world_points = center_world_points_r
                         success = True
                         
                     elif all_world_points_r is None and all_world_points_l is not None:
                         print(f"World point in right camera: None, in left camera: {all_world_points_l}")
                         all_points = list(all_world_points_l)
+                        all_colors = list(color_l)
                         center_world_points = center_world_points_l
                         success = True
                     else:
@@ -305,11 +340,16 @@ def execute_action_sequence(actions):
                 
                     # 计算质心
                     all_points_arr = np.array(all_points)
+                    all_colors_arr = np.array(all_colors)
                     
-                    all_points_arr = all_points_arr[~np.isnan(all_points_arr).any(axis=1)]
+                    
+                    mask_valid = ~np.isnan(all_points_arr).any(axis=1)
+                    all_points_arr = all_points_arr[mask_valid]
+                    all_colors_arr = all_colors_arr[mask_valid]
                     if len(all_points_arr) == 0:
                         print("❌ All points are invalid (contain NaNs)")
                         success = False
+                    
 
 
                     # 计算中心点
@@ -339,6 +379,7 @@ def execute_action_sequence(actions):
                     move_params["move_qz"] = 0.0
                     move_params["move_qw"] = 0.0
                     
+                    open3d_show(all_points_arr, all_colors_arr, target_center_point, target_max_z_point, center_world_points)
                     # move_params = {"move_x" : 0.5, "move_y" : 0.6, "move_z" : 0.4, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
                     # success = True
                 

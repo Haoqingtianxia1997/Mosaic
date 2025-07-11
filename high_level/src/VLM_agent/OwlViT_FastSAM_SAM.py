@@ -283,10 +283,14 @@ class TextDrivenSegmenter:
                 overlay = Image.alpha_composite(overlay, Image.fromarray(rgba))
         return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
-def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False):
+def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left"):
     seg = TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
     img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate)
-    img.save("result.jpg")
+    if name == "left":
+        img.save("images/result_l.jpg")
+    elif name == "right":
+        img.save("images/result_r.jpg")
+
     for (b,l,s),pt in zip(boxes, points):
         print(f"{l} @ {b}  conf={s:.2f}")
         print("   centers:", pt)  
