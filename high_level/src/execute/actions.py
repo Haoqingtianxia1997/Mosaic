@@ -16,6 +16,116 @@ from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_worl
 from src.transcribe.tts import run_tts, play_text_to_speech
 import open3d as o3d
 import numpy as np
+from scipy.spatial import cKDTree
+
+def translation_only_icp(source, target, max_iter=20, tolerance=1e-6):
+    """
+    source: (N,3) 源点云
+    target: (M,3) 目标点云
+    返回: 源点云变换后的点、平移向量T
+    """
+    src = np.asarray(source).copy()
+    tgt = np.asarray(target).copy()
+
+    prev_error = float('inf')
+    T_total = np.zeros(3)
+
+    for i in range(max_iter):
+        # 1. 最近邻配对
+        tree = cKDTree(tgt)
+        dist, idx = tree.query(src)
+        tgt_corr = tgt[idx]
+
+        # 2. 计算平移量（即配对点平均偏移）
+        delta_t = tgt_corr.mean(axis=0) - src.mean(axis=0)
+        src += delta_t
+        T_total += delta_t
+
+        # 3. 收敛判断
+        mean_error = np.mean(np.linalg.norm(src - tgt_corr, axis=1))
+        if abs(prev_error - mean_error) < tolerance:
+            break
+        prev_error = mean_error
+
+    return src, T_total
+
+def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius=0.02):
+    """
+    对输入点云和颜色进行体素下采样+半径滤波
+    返回处理后的 open3d 点云对象
+    """
+    import open3d as o3d
+    import numpy as np
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(np.asarray(points))
+    if colors is not None:
+        col = np.asarray(colors)
+        if col.max() > 1.1:
+            col = col / 255.0
+        pcd.colors = o3d.utility.Vector3dVector(col)
+    # 体素下采样
+    pcd = pcd.voxel_down_sample(voxel_size)
+    # 半径滤波
+    pcd, _ = pcd.remove_radius_outlier(nb_points=nb_points, radius=radius)
+    return pcd
+
+def filter_and_merge_icp_translation_only(
+        points_l, colors_l, points_r, colors_r, 
+        voxel_size=0.005, nb_points=10, radius=0.02):
+
+    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, nb_points, radius)
+    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, nb_points, radius)
+
+    arr_l = np.asarray(pcd_l.points)
+    arr_r = np.asarray(pcd_r.points)
+
+    # 3. 手写ICP-只平移
+    aligned_l, T = translation_only_icp(arr_l, arr_r)
+
+    # 4. 合并点云
+    all_points_arr = np.vstack([aligned_l, arr_r])
+    if pcd_l.has_colors() and pcd_r.has_colors():
+        all_colors_arr = np.vstack([np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)])
+    else:
+        all_colors_arr = np.ones_like(all_points_arr)
+
+    return all_points_arr, all_colors_arr, T
+
+def filter_and_merge_icp(
+        points_l, colors_l, points_r, colors_r, 
+        voxel_size=0.005, nb_points=10, radius=0.02, 
+        icp_max_corr=0.03, icp_threshold=1.0):
+    """
+    :param points_l, colors_l: 左点云与颜色 (Nx3)
+    :param points_r, colors_r: 右点云与颜色 (Mx3)
+    :return: all_points_arr, all_colors_arr, transformation (左对准右)
+    """
+
+    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, nb_points, radius)
+    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, nb_points, radius)
+
+    # 4. ICP 配准（左对齐到右）
+    reg = o3d.pipelines.registration.registration_icp(
+        pcd_l, pcd_r, icp_max_corr,
+        np.eye(4),  # 初始变换
+        o3d.pipelines.registration.TransformationEstimationPointToPoint()
+    )
+    T = reg.transformation
+    # 变换左点云
+    pcd_l.transform(T)
+
+    # 5. 合并
+    all_points_arr = np.vstack([
+        np.asarray(pcd_l.points), np.asarray(pcd_r.points)
+    ])
+    if pcd_l.has_colors() and pcd_r.has_colors():
+        all_colors_arr = np.vstack([
+            np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)
+        ])
+    else:
+        all_colors_arr = np.ones_like(all_points_arr)  # 若没颜色则全白
+
+    return all_points_arr, all_colors_arr, T  # T可选
 
 def sphere_at(point, color, radius=0.02):
     s = o3d.geometry.TriangleMesh.create_sphere(radius)
@@ -32,13 +142,11 @@ def open3d_show(all_points_arr, all_colors_arr, target_center_point, target_max_
     pcd.colors = o3d.utility.Vector3dVector(all_colors_arr)
 
     vis_geoms = [pcd]
-    vis_geoms.append(sphere_at(target_center_point, color=[1,0,0], radius=0.012))
-    vis_geoms.append(sphere_at(target_max_z_point, color=[0,0,1], radius=0.01))
-    vis_geoms.append(sphere_at(center_world_points, color=[0,1,0], radius=0.01))
+    vis_geoms.append(sphere_at(target_center_point, color=[1,0,0], radius=0.012))# 红色球体表示质心
+    vis_geoms.append(sphere_at(target_max_z_point, color=[0,0,1], radius=0.01))# 蓝色球体表示z轴最高点
+    vis_geoms.append(sphere_at(center_world_points, color=[0,1,0], radius=0.01))# 绿色球体表示移动目标点
     vis_geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=[0,0,0]))  # 坐标系
     o3d.visualization.draw_geometries(vis_geoms)
-
-
 
 def call_ros2_service(service_name, service_type, args_dict):
     # 把字典转成一行的 YAML 字符串
@@ -207,10 +315,12 @@ def execute_action_sequence(actions):
 
     #declare parameters for each action type
     move_target_point = None # perceived target point
-    world_points_l = None # world points in left camera
-    world_points_r = None # world points in right camera
     target_max_z_point = None # z轴方向上的最高点
     target_center_point = None # 质心点
+    center_world_points = None # perceived image target point in world coordinates
+    all_points_arr = None # all points in world coordinates
+    all_colors_arr = None # all colors in world coordinates
+
     target = None # current target, used to update the target in each action
     
     move_params = {"move_x" : None, "move_y" : None, "move_z" : None, "move_qx" : None, "move_qy" : None, "move_qz" : None, "move_qw" : None}
@@ -310,15 +420,28 @@ def execute_action_sequence(actions):
 
 
                     if all_world_points_r is not None and all_world_points_l is not None:
-                        print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")                
-                        # 合并点云举例
-                        all_points = list(all_world_points_r) + list(all_world_points_l)
-                        all_colors = list(color_r) + list(color_l)
+                        print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}") 
+
+                        # 如果两边都有点云，使用ICP配准合并 
+                        all_points, all_colors, T = filter_and_merge_icp_translation_only(
+                            all_world_points_l, color_l, all_world_points_r, color_r
+                        )           
+
+                        # # 合并点云举例
+                        # all_points = list(all_world_points_r) + list(all_world_points_l)
+                        # all_colors = list(color_r) + list(color_l)
+
                         center_world_points = (center_world_points_l + center_world_points_r)/2
                         success = True
                         
                     elif all_world_points_r is not None and all_world_points_l is None:
                         print(f"World point in right camera: {all_world_points_r}, in left camera: None")
+                        
+                        # 如果只有右边有点云，直接使用右边的点云
+                        pcd_r = preprocess_pointcloud(all_world_points_r, color_r, voxel_size=0.005, nb_points=10, radius=0.02)
+                        all_world_points_r = np.asarray(pcd_r.points)
+                        color_r = np.asarray(pcd_r.colors)
+
                         all_points = list(all_world_points_r)
                         all_colors = list(color_r)
                         center_world_points = center_world_points_r
@@ -326,6 +449,12 @@ def execute_action_sequence(actions):
                         
                     elif all_world_points_r is None and all_world_points_l is not None:
                         print(f"World point in right camera: None, in left camera: {all_world_points_l}")
+
+                        # 如果只有左边有点云，直接使用左边的点云    
+                        pcd_l = preprocess_pointcloud(all_world_points_l, color_l, voxel_size=0.005, nb_points=10, radius=0.02)
+                        all_world_points_l = np.asarray(pcd_l.points)
+                        color_l = np.asarray(pcd_l.colors)
+
                         all_points = list(all_world_points_l)
                         all_colors = list(color_l)
                         center_world_points = center_world_points_l
@@ -451,27 +580,23 @@ def execute_action_sequence(actions):
                     continue 
                 
                 print("execute grasp action")
-                # time.sleep(5)
-                # success = True
+ 
                 
-                
-                ##TODO##  
-                # if world_points_r is not None or world_points_l is not None:
-                #     merged_points, trans = merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=True)
-                # elif world_points_r is not None and world_points_l is None:
-                #     merged_points = world_points_r
-                # elif world_points_r is None and world_points_l is not None:
-                #     merged_points = world_points_l
-                # else:
-                #     print("❌ Failed to perceive target points in both cameras.")
-                #     # maybe other method to determine the grasp strategy
-                # now we have world_points of target , which is a list of tuples, each tuple is a point in world coordinates
-                # put the value into gf_params by grasp strategy with points cloud or something else
                 if target != "spoon": 
                     grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
                                 "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
+                else:
+                    pass
+                    ##TODO##  
+                    # if all_points_arr is None:
+                    #     print("❌ Failed to perceive target points in both cameras.")
+                    #     maybe other method to determine the grasp strategy
+                    # else:
+                    #     ................
+                    #     now we have world_points of target (all_points_arr) , which is a array , each element is a point in world coordinates
+                    #     put the value into gf_params by grasp strategy with points cloud or something else
                 
-                
+
                 try:
                     # 检查所有值
                     if any(v is None for v in grasp_params.values()):
@@ -512,29 +637,22 @@ def execute_action_sequence(actions):
                 if target is  grasped_thing:
                     continue 
                 print("execute grasp action")
-                # time.sleep(5)
-                # success = True
+
                 
-                
-                ##TODO## 
-                
-                # if world_points_r is not None or world_points_l is not None:
-                #     merged_points, trans = merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=True)
-                # elif world_points_r is not None and world_points_l is None:
-                #     merged_points = world_points_r
-                # elif world_points_r is None and world_points_l is not None:
-                #     merged_points = world_points_l
-                # else:
-                #     print("❌ Failed to perceive target points in both cameras.")
-                #     # maybe other method to determine the grasp strategy
-                    
-                # now we have world_points of target , which is a list of tuples, each tuple is a point in world coordinates 
                 # put the value into go_params by grasp strategy with points cloud or something else
                 if target != "spoon": 
                     grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
                                 "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
-                
-                
+                else:
+                    pass
+                    ##TODO##  
+                    # if all_points_arr is None:
+                    #     print("❌ Failed to perceive target points in both cameras.")
+                    #     maybe other method to determine the grasp strategy
+                    # else:
+                    #     ................
+                    #     now we have world_points of target (all_points_arr) , which is a array , each element is a point in world coordinates
+                    #     put the value into gf_params by grasp strategy with points cloud or something else              
                 
                 try:
                     # 检查所有 go_params 的值

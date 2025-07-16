@@ -283,8 +283,18 @@ class TextDrivenSegmenter:
                 overlay = Image.alpha_composite(overlay, Image.fromarray(rgba))
         return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
+_SEG_INSTANCE = None
+
+def get_segmenter():
+    global _SEG_INSTANCE
+    if _SEG_INSTANCE is None:
+        _SEG_INSTANCE = TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
+    return _SEG_INSTANCE
+
+
+
 def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left"):
-    seg = TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
+    seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
     img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate)
     if name == "left":
         img.save("images/result_l.jpg")
@@ -303,8 +313,8 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
     bbox = tuple(boxes[0][0])  # 获取第一个目标的边界框
     score = boxes[0][2]  # 获取第一个目标的置信度分数
 
-    del seg, img, boxes, points # 1⃣ 去引用
-    if torch.cuda.is_available(): # 2⃣ 清 CUDA 缓存
+    # del seg, img, boxes, points # 1去引用
+    if torch.cuda.is_available(): # 2清 CUDA 缓存
         torch.cuda.empty_cache()
     gc.collect() # 3 可选，但推荐
     
