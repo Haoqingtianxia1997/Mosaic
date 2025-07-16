@@ -1,22 +1,58 @@
 import subprocess
-import subprocess
 import re
 import shlex
 import json
 import time
 import os
+from networkx import center
 import yaml
 import numpy as np
 import cv2
 import open3d as o3d
-import numpy as np
 import traceback
+from scipy.spatial import cKDTree
 from src.VLM_agent.agent import VLM_agent  
 from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_right, world_to_pixels_left, world_to_pixels_right
 from src.transcribe.tts import run_tts, play_text_to_speech
-import open3d as o3d
-import numpy as np
-from scipy.spatial import cKDTree
+from src.grasp.bounding_box import compute_obb
+from src.grasp.grasp_generation import GraspGeneration
+
+def visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center):
+    """
+    可视化点云、OBB边界框和中心点
+    """
+    import open3d as o3d
+    
+    # 创建OBB边界框的点云
+    pcd_vis = o3d.geometry.PointCloud()
+    pcd_vis.points = o3d.utility.Vector3dVector(all_points_arr)
+    if all_colors_arr.max() > 1.1:
+        all_colors_arr = all_colors_arr / 255.0
+    pcd_vis.colors = o3d.utility.Vector3dVector(all_colors_arr)
+    
+    # 创建OBB边界框的线框
+    lines = [
+        [0, 1], [1, 2], [2, 3], [3, 0],  # 底面
+        [4, 5], [5, 6], [6, 7], [7, 4],  # 顶面
+        [0, 4], [1, 5], [2, 6], [3, 7]   # 垂直边
+    ]
+    colors = [[1, 0, 0] for _ in range(len(lines))]  # 红色边框
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(obb_corners)
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+
+    # 创建中心点球体
+    center_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+    center_sphere.paint_uniform_color([0, 1, 0])  # 绿色
+    center_sphere.translate(center) 
+
+    # 创建坐标系
+    coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0,0,0])   
+    vis_geometries = [pcd_vis, line_set, center_sphere, coord_frame]
+    o3d.visualization.draw_geometries(vis_geometries,
+                                    window_name='Point Cloud with OBB and Center',
+                                    width=800, height=600)  
 
 def translation_only_icp(source, target, max_iter=20, tolerance=1e-6):
     """
@@ -78,7 +114,7 @@ def filter_and_merge_icp_translation_only(
 
     arr_l = np.asarray(pcd_l.points)
     arr_r = np.asarray(pcd_r.points)
-
+    
     # 3. 手写ICP-只平移
     aligned_l, T = translation_only_icp(arr_l, arr_r)
 
@@ -338,7 +374,6 @@ def execute_action_sequence(actions):
     
     success = True  # 用于跟踪每个动作的成功状态
 
-
     for i, action in enumerate(actions):
 
         # 检查服务是否成功
@@ -377,19 +412,19 @@ def execute_action_sequence(actions):
                     print(f"✅ Target '{target}' already grasped, skipping perception.")
                     continue            
                 elif target == "user person":
-                    move_params = {"move_x" : 0.775, "move_y" : 0.081, "move_z" : 0.185, "move_qx" : -0.706, "move_qy" : 0.708, "move_qz" : 0.002, "move_qw" : 0.008}
+                    move_params = {"move_x" : 0.718029693832728, "move_y" : -0.07702313108387482, "move_z" : 0.23, "move_qx" : 0.707, "move_qy" : -0.707, "move_qz" : 0.0, "move_qw" : 0.0}
                     success = True
                     print("✅ Perceived user person, moving to target point.")
                     continue
                 elif target == "spoon":
-                    move_params = {"move_x" : 0.406, "move_y" : -0.313, "move_z" : 0.4, "move_qx" : 0.999, "move_qy" : 0.023, "move_qz" : 0.026, "move_qw" : 0.001}
-                    grasp_params = {"x_prep": 0.406, "y_prep": -0.313, "z_prep": 0.25, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
-                            "x_grasp": 0.406, "y_grasp": -0.313, "z_grasp": 0.2, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
+                    move_params = {"move_x" : 0.406, "move_y" : -0.313, "move_z" : 0.6, "move_qx" : 0.999, "move_qy" : 0.023, "move_qz" : 0.026, "move_qw" : 0.001}
+                    grasp_params = {"x_prep": 0.406, "y_prep": -0.313, "z_prep": 0.57, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
+                            "x_grasp": 0.406, "y_grasp": -0.313, "z_grasp": 0.42, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
                     success = True
                     print("✅ Perceived spoon, moving to target point.")
                     continue
                 elif target == "soup pot":
-                    move_params = {"move_x" : 0.6, "move_y" : -0.3, "move_z" : 0.4, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
+                    move_params = {"move_x" : 0.6, "move_y" : -0.3, "move_z" : 0.62, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
                     success = True
                     print("✅ Perceived soup pot, moving to target point.")
                     continue
@@ -420,7 +455,16 @@ def execute_action_sequence(actions):
 
 
                     if all_world_points_r is not None and all_world_points_l is not None:
-                        print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}") 
+                         
+                        mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
+                        all_world_points_r = all_world_points_r[mask_valid]
+                        color_r = color_r[mask_valid]
+
+                        print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")
+
+                        mask_valid = ~np.isnan(all_world_points_l).any(axis=1)
+                        all_world_points_l = all_world_points_l[mask_valid]
+                        color_l = color_l[mask_valid]
 
                         # 如果两边都有点云，使用ICP配准合并 
                         all_points, all_colors, T = filter_and_merge_icp_translation_only(
@@ -435,6 +479,11 @@ def execute_action_sequence(actions):
                         success = True
                         
                     elif all_world_points_r is not None and all_world_points_l is None:
+
+                        mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
+                        all_world_points_r = all_world_points_r[mask_valid]
+                        color_r = color_r[mask_valid]
+
                         print(f"World point in right camera: {all_world_points_r}, in left camera: None")
                         
                         # 如果只有右边有点云，直接使用右边的点云
@@ -448,6 +497,11 @@ def execute_action_sequence(actions):
                         success = True
                         
                     elif all_world_points_r is None and all_world_points_l is not None:
+                        
+                        mask_valid = ~np.isnan(all_world_points_l).any(axis=1)
+                        all_world_points_l = all_world_points_l[mask_valid]
+                        color_l = color_l[mask_valid]
+
                         print(f"World point in right camera: None, in left camera: {all_world_points_l}")
 
                         # 如果只有左边有点云，直接使用左边的点云    
@@ -582,19 +636,37 @@ def execute_action_sequence(actions):
                 print("execute grasp action")
  
                 
-                if target != "spoon": 
+                if target == "spoon": 
                     grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
                                 "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
                 else:
-                    pass
-                    ##TODO##  
-                    # if all_points_arr is None:
-                    #     print("❌ Failed to perceive target points in both cameras.")
-                    #     maybe other method to determine the grasp strategy
-                    # else:
-                    #     ................
-                    #     now we have world_points of target (all_points_arr) , which is a array , each element is a point in world coordinates
-                    #     put the value into gf_params by grasp strategy with points cloud or something else
+ 
+                    if all_points_arr is None:
+                        print("❌ Failed to perceive target points in both cameras.")
+
+                    else:
+
+                        obb_corners, rotation_matrix, center = compute_obb(all_points_arr)
+
+                        visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center)
+
+                        grasp_generator = GraspGeneration(center, rotation_matrix)
+                        pose1_pos, pose1_orn, pose2_pos, pose2_orn = grasp_generator.final_compute_poses(all_points_arr, all_colors_arr, visualize=True, grasp_type='flavoring')    
+                        print("Pose 1 - Position:", pose1_pos, "Orientation:", pose1_orn)
+                        print("Pose 2 - Position:", pose2_pos, "Orientation:", pose2_orn)
+                        
+                        if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
+                            print("❌ Failed to compute grasp poses from OBB.")
+                            success = False
+                            continue
+
+                        grasp_params = {
+                            "x_prep": float(pose1_pos[0]), "y_prep": float(pose1_pos[1]), "z_prep": float(pose1_pos[2]),
+                            "qx_prep": float(pose1_orn[0]), "qy_prep": float(pose1_orn[1]), "qz_prep": float(pose1_orn[2]), "qw_prep": float(pose1_orn[3]),
+                            "x_grasp": float(pose2_pos[0]), "y_grasp": float(pose2_pos[1]), "z_grasp": float(pose2_pos[2]),
+                            "qx_grasp": float(pose2_orn[0]), "qy_grasp": float(pose2_orn[1]), "qz_grasp": float(pose2_orn[2]), "qw_grasp": float(pose2_orn[3])
+                        }
+                        print("Grasp parameters computed from OBB:", grasp_params) 
                 
 
                 try:
@@ -623,14 +695,13 @@ def execute_action_sequence(actions):
                     )
                 except ValueError as e:
                     print(e)
-                time.sleep(3)  # 等待服务调用完成   
                 while True:
                     if success:
                         print("✅ Grasp flavoring action executed successfully.")
                         grasped_thing = target
                         break
-                    else:
-                        print("❌ Grasp flavoring action failed, retrying...")
+                    # else:
+                    #     print("❌ Grasp flavoring action failed, retrying...")
 
             elif act_type == "grasp_otherthings":
                 success = False  # 重置成功状态
@@ -640,19 +711,38 @@ def execute_action_sequence(actions):
 
                 
                 # put the value into go_params by grasp strategy with points cloud or something else
-                if target != "spoon": 
+                if target == "spoon": 
                     grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
                                 "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
                 else:
-                    pass
-                    ##TODO##  
-                    # if all_points_arr is None:
-                    #     print("❌ Failed to perceive target points in both cameras.")
+                    if all_points_arr is None:
+                        print("❌ Failed to perceive target points in both cameras.")
                     #     maybe other method to determine the grasp strategy
-                    # else:
+                    else:
                     #     ................
                     #     now we have world_points of target (all_points_arr) , which is a array , each element is a point in world coordinates
-                    #     put the value into gf_params by grasp strategy with points cloud or something else              
+                    #     put the value into gf_params by grasp strategy with points cloud or something else   
+                        obb_corners, rotation_matrix, center = compute_obb(all_points_arr)
+
+                        visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center)
+
+                        grasp_generator = GraspGeneration(center, rotation_matrix)
+                        pose1_pos, pose1_orn, pose2_pos, pose2_orn = grasp_generator.final_compute_poses(all_points_arr, all_colors_arr, visualize=True, grasp_type='otherthings')    
+                        # print("Pose 1 - Position:", pose1_pos, "Orientation:", pose1_orn)
+                        # print("Pose 2 - Position:", pose2_pos, "Orientation:", pose2_orn)
+                        
+                        if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
+                            print("❌ Failed to compute grasp poses from OBB.")
+                            success = False
+                            continue
+
+                        grasp_params = {
+                            "x_prep": float(pose1_pos[0]), "y_prep": float(pose1_pos[1]), "z_prep": float(pose1_pos[2]),
+                            "qx_prep": float(pose1_orn[0]), "qy_prep": float(pose1_orn[1]), "qz_prep": float(pose1_orn[2]), "qw_prep": float(pose1_orn[3]),
+                            "x_grasp": float(pose2_pos[0]), "y_grasp": float(pose2_pos[1]), "z_grasp": float(pose2_pos[2]),
+                            "qx_grasp": float(pose2_orn[0]), "qy_grasp": float(pose2_orn[1]), "qz_grasp": float(pose2_orn[2]), "qw_grasp": float(pose2_orn[3])
+                        }
+                        print("Grasp parameters computed from OBB:", grasp_params)      
                 
                 try:
                     # 检查所有 go_params 的值
@@ -682,14 +772,14 @@ def execute_action_sequence(actions):
                     print(e)
                     
                     
-                time.sleep(3)  # 等待服务调用完成
+                # time.sleep(3)  # 等待服务调用完成
                 while True:
                     if success:
                         print("✅ Grasp other things action executed successfully.")
                         grasped_thing = target
                         break
-                    else:
-                        print("❌ Grasp other things action failed, retrying...")
+                    # else:
+                    #     print("❌ Grasp other things action failed, retrying...")
                             
             elif act_type == "stir":
                 success = False  # 重置成功状态
