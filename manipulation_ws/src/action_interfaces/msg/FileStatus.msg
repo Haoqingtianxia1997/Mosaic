@@ -1,0 +1,2 @@
+bool changed
+string content

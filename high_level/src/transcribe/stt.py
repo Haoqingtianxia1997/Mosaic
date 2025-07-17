@@ -170,7 +170,7 @@ class VoiceTranscriber:
             text = result["text"].strip()
             print(f"\n📝 Result: {text}")
         
-            OUTPUT_PATH = "src/transcribe/transcription.txt"
+            OUTPUT_PATH = "src/transcribe/speech.txt"
             with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
                 f.write(text)
 

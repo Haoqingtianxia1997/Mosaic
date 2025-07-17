@@ -411,9 +411,12 @@ class Intention():
                     all_labels.extend(labels)
 
                 all_labels = list(set(all_labels))
-                # tts and stt
-                self.ask_label_tts(all_labels)
-        
+                # # tts and stt
+                # self.ask_label_tts(all_labels)
+                label_output = all_labels
+            else:
+                label_output = []
+
         else:
             if stable is not None:
                 if camera_side == "right":
@@ -438,9 +441,11 @@ class Intention():
                 labels = self.detect_and_draw_yolo(
                     img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name)
                 )
-
-                # tts and stt
-                self.ask_label_tts(labels)
+                label_output = labels
+                # # tts and stt
+                # self.ask_label_tts(labels)
+            else:
+                label_output = []
         
-        return stable, last_output, finger_pts, finger_base, finger_direction_ema, finger_origin_ema, intersect
+        return stable, last_output, finger_pts, finger_base, finger_direction_ema, finger_origin_ema, intersect, label_output
 

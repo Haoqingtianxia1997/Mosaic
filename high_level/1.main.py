@@ -8,6 +8,7 @@ from transcribe.tts import run_tts
 from mistral_ai.llm import run_mistral_llm
 from execute.actions import execute_action_sequence
 from mistral_ai.vlm import run_mistral_vlm
+SPEECH_FILE = "src/transcribe/speech.txt"
 TRANS_FILE = "src/transcribe/transcription.txt"
 VLM_FILE = "src/mistral_ai/scripts/vlm_script.txt"
 VLM_JSON_FILE = "src/mistral_ai/scripts/vlm_script.json"
@@ -27,6 +28,8 @@ def stt_thread():
 
 if __name__ == "__main__":
     # 清空 transcription.txt 内容
+    with open(SPEECH_FILE, "w", encoding="utf-8") as f:
+        f.write("")
     with open(TRANS_FILE, "w", encoding="utf-8") as f:
         f.write("")
     with open(VLM_FILE, "w", encoding="utf-8") as f:

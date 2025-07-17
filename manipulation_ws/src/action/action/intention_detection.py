@@ -12,6 +12,7 @@ from collections import deque
 import os
 from intention_utils.intention import Intention
 from intention_utils.open3d_viewer import PersistentOpen3DViewer
+from action_interfaces.msg import Labels
 
 
 def create_Twc_from_quaternion(translation: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
@@ -68,6 +69,8 @@ class HandDetectionWithPointCloudNode(Node):
         right_rgb = '/zedr/zed_node/rgb/image_rect_color'
         self.left_camera_active = left_rgb in available_topics 
         self.right_camera_active = right_rgb in available_topics 
+
+        self.label_pub = self.create_publisher(Labels, 'label_output', 10)
 
         # TODO: subscription 3
         self.create_subscription(Image, '/gaze_camera/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'front', 'rgb'), 10)
@@ -146,28 +149,24 @@ class HandDetectionWithPointCloudNode(Node):
                         else:
                             gaze_direction, gaze_origin = None, None
 
-                        all_detection=[]
+                        all_direction=[]
                         all_origin=[]
                 
                         if direction_l is not None and origin_l is not None and direction_r is not None and origin_r is not None :
                             print("Detection only with both cameras. ")
-                            direction = (direction_l + direction_r) / 2
-                            origin = (origin_l + origin_r) / 2
+                            finger_direction = (direction_l + direction_r) / 2
+                            finger_origin = (origin_l + origin_r) / 2
 
                             if gaze_direction is not None and gaze_origin is not None:
-                                direction = (direction + gaze_direction) / 2
-                                origin = (origin + gaze_origin) / 2
 
-                                all_detection.append(direction)
-                                all_origin.append(origin)
-                                all_detection.append(gaze_direction)
+                                all_direction.append(finger_direction)
+                                all_origin.append(finger_origin)
+                                all_direction.append(gaze_direction)
                                 all_origin.append(gaze_origin)
                             else:
-                                direction = direction
-                                origin = origin
 
-                                all_detection.append(direction)
-                                all_origin.append(origin)
+                                all_direction.append(finger_direction)
+                                all_origin.append(finger_origin)
 
 
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
@@ -180,13 +179,19 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.finger_base, 
                                 finger_direction_ema, 
                                 finger_origin_ema, 
-                                intersect) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['fusion_gesture_yolo_r.png', 'fusion_gesture_yolo_l.png'], camera_side = ['right', 'left'])        
+                                intersect, 
+                                finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['fusion_gesture_yolo_r.png', 'fusion_gesture_yolo_l.png'], camera_side = ['right', 'left'])        
                                 
-                                all_detection.append(finger_direction_ema)
+                                # publish label output
+                                label_msg = Labels()
+                                label_msg.gesture_labels = finger_label_output
+                                self.label_pub.publish(label_msg)
+
+                                all_direction.append(finger_direction_ema)
                                 all_origin.append(finger_origin_ema)
 
                                 # draw arrow
-                                self.viewer.update_arrow_async(all_detection, all_origin)
+                                self.viewer.update_arrow_async(all_direction, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
@@ -201,15 +206,15 @@ class HandDetectionWithPointCloudNode(Node):
                                 direction = (direction + gaze_direction) / 2
                                 origin = (origin + gaze_origin) / 2
 
-                                all_detection.append(direction)
+                                all_direction.append(direction)
                                 all_origin.append(origin)
-                                all_detection.append(gaze_direction)
+                                all_direction.append(gaze_direction)
                                 all_origin.append(gaze_origin)
                             else:
                                 direction = direction
                                 origin = origin
 
-                                all_detection.append(direction)
+                                all_direction.append(direction)
                                 all_origin.append(origin)
 
 
@@ -223,13 +228,14 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.finger_base, 
                                 finger_direction_ema, 
                                 finger_origin_ema, 
-                                intersect) = self.intention.process_detection(direction, origin, rgb_msg_l, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_l.png', camera_side = 'left')
+                                intersect, 
+                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg_l, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_l.png', camera_side = 'left')
                                 
-                                all_detection.append(finger_direction_ema)
+                                all_direction.append(finger_direction_ema)
                                 all_origin.append(finger_origin_ema)
 
                                 # draw arrow
-                                self.viewer.update_arrow_async(all_detection, all_origin)
+                                self.viewer.update_arrow_async(all_direction, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
@@ -244,15 +250,15 @@ class HandDetectionWithPointCloudNode(Node):
                                 direction = (direction + gaze_direction) / 2
                                 origin = (origin + gaze_origin) / 2
 
-                                all_detection.append(direction)
+                                all_direction.append(direction)
                                 all_origin.append(origin)
-                                all_detection.append(gaze_direction)
+                                all_direction.append(gaze_direction)
                                 all_origin.append(gaze_origin)
                             else:
                                 direction = direction
                                 origin = origin
 
-                                all_detection.append(direction)
+                                all_direction.append(direction)
                                 all_origin.append(origin)
 
                             if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
@@ -265,13 +271,14 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.finger_base, 
                                 finger_direction_ema, 
                                 finger_origin_ema, 
-                                intersect) = self.intention.process_detection(direction, origin, rgb_msg_r, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_r.png', camera_side = 'right')
+                                intersect, 
+                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg_r, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_r.png', camera_side = 'right')
                                 
-                                all_detection.append(finger_direction_ema)
+                                all_direction.append(finger_direction_ema)
                                 all_origin.append(finger_origin_ema)
 
                                 # draw arrow
-                                self.viewer.update_arrow_async(all_detection, all_origin)
+                                self.viewer.update_arrow_async(all_direction, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
@@ -294,19 +301,20 @@ class HandDetectionWithPointCloudNode(Node):
                                     self.finger_base, 
                                     finger_direction_ema, 
                                     finger_origin_ema, 
-                                    intersect) = self.intention.process_detection(direction, origin, rgb_msg_r, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_r.png', camera_side = 'right')
+                                    intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg_r, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'fusion_gesture_yolo_r.png', camera_side = 'right')
                                     
-                                    all_detection.append(finger_direction_ema)
+                                    all_direction.append(finger_direction_ema)
                                     all_origin.append(finger_origin_ema)
 
                                     # draw arrow
-                                    self.viewer.update_arrow_async(all_detection, all_origin)
+                                    self.viewer.update_arrow_async(all_direction, all_origin)
                                     if self.intention.in_valid_area(intersect):
                                         self.viewer.update_intersect_async(intersect)
                                     else:
                                         self.viewer.update_intersect_async(None)
                             else:
-                                all_detection.clear()
+                                all_direction.clear()
                                 all_origin.clear()
 
                             
@@ -325,33 +333,33 @@ class HandDetectionWithPointCloudNode(Node):
                         finger_direction, finger_origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
                         gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
                         
-                        all_detection=[]
+                        all_direction=[]
                         all_origin=[]
 
                         if finger_direction is not None and finger_origin is not None and gaze_direction is not None and gaze_origin is not None:
                             direction = (finger_direction + gaze_direction) / 2
                             origin = (finger_origin + gaze_origin) / 2
 
-                            all_detection.append(finger_direction)
+                            all_direction.append(finger_direction)
                             all_origin.append(finger_origin)
-                            all_detection.append(gaze_direction)
+                            all_direction.append(gaze_direction)
                             all_origin.append(gaze_origin)
 
                         elif finger_direction is not None and finger_origin is not None:
                             direction = finger_direction
                             origin = finger_origin
-                            all_detection.append(finger_direction)
+                            all_direction.append(finger_direction)
                             all_origin.append(finger_origin)
 
                         elif gaze_direction is not None and gaze_origin is not None:
                             direction = gaze_direction
                             origin = gaze_origin
-                            all_detection.append(gaze_direction)
+                            all_direction.append(gaze_direction)
                             all_origin.append(gaze_origin)
                         else:
                             direction = None
                             origin = None
-                            all_detection.clear()
+                            all_direction.clear()
                             all_origin.clear()
 
                         if direction is not None and origin is not None:
@@ -366,13 +374,14 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.finger_base, 
                                 finger_direction_ema, 
                                 finger_origin_ema, 
-                                intersect) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'right_gesture_yolo.png', camera_side = 'right')
+                                intersect, 
+                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'right_gesture_yolo.png', camera_side = 'right')
                                 
-                                all_detection.append(finger_direction_ema)
+                                all_direction.append(finger_direction_ema)
                                 all_origin.append(finger_origin_ema)
 
                                 # draw arrow
-                                self.viewer.update_arrow_async(all_detection, all_origin)
+                                self.viewer.update_arrow_async(all_direction, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:
@@ -400,33 +409,33 @@ class HandDetectionWithPointCloudNode(Node):
                         else:
                             gaze_direction, gaze_origin = None, None
                         
-                        all_detection=[]
+                        all_direction=[]
                         all_origin=[]
 
                         if finger_direction is not None and finger_origin is not None and gaze_direction is not None and gaze_origin is not None:
                             direction = (finger_direction + gaze_direction) / 2
                             origin = (finger_origin + gaze_origin) / 2
 
-                            all_detection.append(finger_direction)
+                            all_direction.append(finger_direction)
                             all_origin.append(finger_origin)
-                            all_detection.append(gaze_direction)
+                            all_direction.append(gaze_direction)
                             all_origin.append(gaze_origin)
 
                         elif finger_direction is not None and finger_origin is not None:
                             direction = finger_direction
                             origin = finger_origin
-                            all_detection.append(finger_direction)
+                            all_direction.append(finger_direction)
                             all_origin.append(finger_origin)
 
                         elif gaze_direction is not None and gaze_origin is not None:
                             direction = gaze_direction
                             origin = gaze_origin
-                            all_detection.append(gaze_direction)
+                            all_direction.append(gaze_direction)
                             all_origin.append(gaze_origin)
                         else:
                             direction = None
                             origin = None
-                            all_detection.clear()
+                            all_direction.clear()
                             all_origin.clear()
 
                         if direction is not None and origin is not None:
@@ -441,13 +450,14 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.finger_base, 
                                 finger_direction_ema, 
                                 finger_origin_ema, 
-                                intersect) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'left_gesture_yolo.png', camera_side = 'left')
+                                intersect, 
+                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'left_gesture_yolo.png', camera_side = 'left')
                                 
-                                all_detection.append(finger_direction_ema)
+                                all_direction.append(finger_direction_ema)
                                 all_origin.append(finger_origin_ema)
 
                                 # draw arrow
-                                self.viewer.update_arrow_async(all_detection, all_origin)
+                                self.viewer.update_arrow_async(all_direction, all_origin)
                                 if self.intention.in_valid_area(intersect):
                                     self.viewer.update_intersect_async(intersect)
                                 else:

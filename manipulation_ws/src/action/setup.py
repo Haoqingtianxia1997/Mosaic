@@ -35,7 +35,8 @@ setup(
             'grasp = action.grasp:main',
             'return_back = action.return_back:main',
             'intention_detection = action.intention_detection:main',
-            'forward_kinematic = action.forward_kinematic:main'
+            'forward_kinematic = action.forward_kinematic:main',
+            'read_file = action.read_file:main',
         ],
     },
 )
