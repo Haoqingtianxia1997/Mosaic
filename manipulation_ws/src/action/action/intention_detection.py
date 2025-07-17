@@ -133,6 +133,8 @@ class HandDetectionWithPointCloudNode(Node):
             with self.lock:
                 hand_detected = False
                 gaze_detected = False
+                self.label_msg = Labels()
+
                 if self.left_camera_active and self.right_camera_active:
                     rgb_msg_r = self.rgb_buffer['right']
                     depth_msg_r = self.depth_buffer['right']
@@ -158,27 +160,30 @@ class HandDetectionWithPointCloudNode(Node):
                             print("Detection only with both cameras. ")
                             finger_direction = (finger_direction_l + finger_direction_r) / 2
                             finger_origin = (finger_origin_l + finger_origin_r) / 2
+                            
+                            if not np.isnan(finger_direction).any() and not np.isnan(finger_origin).any():
+                                all_direction.append(finger_direction)
+                                all_origin.append(finger_origin)
 
-                            direction, origin = finger_direction, finger_origin
-                            all_direction.append(direction)
-                            all_origin.append(origin)
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
+                                direction, origin = finger_direction, finger_origin 
                                 
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['gesture_yolo_r.png', 'gesture_yolo_l.png'], camera_side = ['right', 'left'])        
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['gesture_yolo_r.png', 'gesture_yolo_l.png'], camera_side = ['right', 'left'])        
 
-                                self.label_msg.gesture_labels = finger_label_output
+                                    self.label_msg.gesture_labels = finger_label_output
                           
 
-                            if gaze_direction is not None and gaze_origin is not None:
+                            if gaze_direction is not None and gaze_origin is not None and not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
                                 all_direction.append(gaze_direction)
                                 all_origin.append(gaze_origin)
                                 direction, origin = gaze_direction, gaze_origin
@@ -218,25 +223,28 @@ class HandDetectionWithPointCloudNode(Node):
                             finger_origin = finger_origin_l
 
                             direction, origin = finger_direction, finger_origin
-                            all_direction.append(direction)
-                            all_origin.append(origin)
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
-                                
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['gesture_yolo_r.png', 'gesture_yolo_l.png'], camera_side = ['right', 'left'])        
 
-                                self.label_msg.gesture_labels = finger_label_output
+                            if not np.isnan(direction).any() and not np.isnan(origin).any():
+                                all_direction.append(direction)
+                                all_origin.append(origin)
+
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['gesture_yolo_r.png', 'gesture_yolo_l.png'], camera_side = ['right', 'left'])        
+
+                                    self.label_msg.gesture_labels = finger_label_output
                                
 
-                            if gaze_direction is not None and gaze_origin is not None:
+                            if gaze_direction is not None and gaze_origin is not None and not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
                                 all_direction.append(gaze_direction)
                                 all_origin.append(gaze_origin)
                                 direction, origin = gaze_direction, gaze_origin
@@ -276,25 +284,27 @@ class HandDetectionWithPointCloudNode(Node):
                             finger_origin = finger_origin_r
 
                             direction, origin = finger_direction, finger_origin
-                            all_direction.append(direction)
-                            all_origin.append(origin)
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
-                                
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['gesture_yolo_r.png', 'gesture_yolo_l.png'], camera_side = ['right', 'left'])        
+                            if not np.isnan(direction).any() and not np.isnan(origin).any():
+                                all_direction.append(direction)
+                                all_origin.append(origin)
 
-                                self.label_msg.gesture_labels = finger_label_output
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, [rgb_msg_r, rgb_msg_l], self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = ['gesture_yolo_r.png', 'gesture_yolo_l.png'], camera_side = ['right', 'left'])        
+
+                                    self.label_msg.gesture_labels = finger_label_output
                            
 
-                            if gaze_direction is not None and gaze_origin is not None:
+                            if gaze_direction is not None and gaze_origin is not None and not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
                                 all_direction.append(gaze_direction)
                                 all_origin.append(gaze_origin)
                                 direction, origin = gaze_direction, gaze_origin
@@ -330,7 +340,7 @@ class HandDetectionWithPointCloudNode(Node):
                         
                         else:
 
-                            if gaze_direction is not None and gaze_origin is not None:
+                            if gaze_direction is not None and gaze_origin is not None and not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
 
                                 if np.linalg.norm(gaze_direction) > 1e-6 and not np.isnan(gaze_direction).any():
                                     gaze_direction = gaze_direction / np.linalg.norm(gaze_direction)
@@ -362,6 +372,8 @@ class HandDetectionWithPointCloudNode(Node):
                                 all_direction.clear()
                                 all_origin.clear()
 
+                                self.label_pub.publish(self.label_msg)
+
                         
                             self.finger_pts.clear()
                             self.finger_base = None
@@ -381,6 +393,7 @@ class HandDetectionWithPointCloudNode(Node):
 
                     # finger detection
                     if rgb_msg is not None and depth_msg is not None:
+
                         finger_direction, finger_origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
                         gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
                         
@@ -389,43 +402,45 @@ class HandDetectionWithPointCloudNode(Node):
                         # all_intersect=[]
 
                         if finger_direction is not None and finger_origin is not None and gaze_direction is not None and gaze_origin is not None:
-                            
-                            all_direction.append(finger_direction)
-                            all_origin.append(finger_origin)    
-                            direction, origin = finger_direction, finger_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
-                                
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_r.png', camera_side = 'right')        
+                            if not np.isnan(finger_direction).any() and not np.isnan(finger_origin).any():
+                                all_direction.append(finger_direction)
+                                all_origin.append(finger_origin)
 
-                                self.label_msg.gesture_labels = finger_label_output
+                                direction, origin = finger_direction, finger_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_r.png', camera_side = 'right')        
+
+                                    self.label_msg.gesture_labels = finger_label_output
                           
+                            if not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
+                                all_direction.append(gaze_direction)
+                                all_origin.append(gaze_origin)
 
-                            all_direction.append(gaze_direction)
-                            all_origin.append(gaze_origin)
-                            direction, origin = gaze_direction, gaze_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                gaze_detected = True
-                                
-                                (self.gaze_stable_pos, 
-                                self.gaze_last_output, 
-                                self.gaze_pts, 
-                                self.gaze_base, 
-                                gaze_direction_ema, 
-                                gaze_origin_ema, 
-                                gaze_intersect, 
-                                gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_r.png', camera_side = 'right')        
+                                direction, origin = gaze_direction, gaze_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    gaze_detected = True
+                                    
+                                    (self.gaze_stable_pos, 
+                                    self.gaze_last_output, 
+                                    self.gaze_pts, 
+                                    self.gaze_base, 
+                                    gaze_direction_ema, 
+                                    gaze_origin_ema, 
+                                    gaze_intersect, 
+                                    gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_r.png', camera_side = 'right')        
 
-                                self.label_msg.gaze_labels = gaze_label_output
+                                    self.label_msg.gaze_labels = gaze_label_output
                       
 
                             self.label_pub.publish(self.label_msg)
@@ -446,26 +461,22 @@ class HandDetectionWithPointCloudNode(Node):
                             if not np.isnan(finger_direction).any() and not np.isnan(finger_origin).any():
                                 all_direction.append(finger_direction)
                                 all_origin.append(finger_origin)
-                            else:
-                                continue
-                                
-                            print("--------------------",all_direction, all_origin)
                             
-                            direction, origin = finger_direction, finger_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
-                                
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_r.png', camera_side = 'right')        
+                                direction, origin = finger_direction, finger_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_r.png', camera_side = 'right')        
 
-                                self.label_msg.gesture_labels = finger_label_output
+                                    self.label_msg.gesture_labels = finger_label_output
                       
 
                             self.label_pub.publish(self.label_msg)
@@ -478,23 +489,25 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.viewer.update_intersect_async(None)
 
                         elif gaze_direction is not None and gaze_origin is not None:
-                            all_direction.append(gaze_direction)
-                            all_origin.append(gaze_origin)
-                            direction, origin = gaze_direction, gaze_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                gaze_detected = True
-                                
-                                (self.gaze_stable_pos, 
-                                self.gaze_last_output, 
-                                self.gaze_pts, 
-                                self.gaze_base, 
-                                gaze_direction_ema, 
-                                gaze_origin_ema, 
-                                gaze_intersect, 
-                                gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_r.png', camera_side = 'right')        
+                            if not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
+                                all_direction.append(gaze_direction)
+                                all_origin.append(gaze_origin)
 
-                                self.label_msg.gaze_labels = gaze_label_output
+                                direction, origin = gaze_direction, gaze_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    gaze_detected = True
+                                    
+                                    (self.gaze_stable_pos, 
+                                    self.gaze_last_output, 
+                                    self.gaze_pts, 
+                                    self.gaze_base, 
+                                    gaze_direction_ema, 
+                                    gaze_origin_ema, 
+                                    gaze_intersect, 
+                                    gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_r.png', camera_side = 'right')        
+
+                                    self.label_msg.gaze_labels = gaze_label_output
                       
 
                             self.label_pub.publish(self.label_msg)
@@ -545,43 +558,45 @@ class HandDetectionWithPointCloudNode(Node):
                         # all_intersect=[]
 
                         if finger_direction is not None and finger_origin is not None and gaze_direction is not None and gaze_origin is not None:
-                            
-                            all_direction.append(finger_direction)
-                            all_origin.append(finger_origin)    
-                            direction, origin = finger_direction, finger_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
-                                
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_l.png', camera_side = 'left')        
+                            if not np.isnan(finger_direction).any() and not np.isnan(finger_origin).any():
+                                all_direction.append(finger_direction)
+                                all_origin.append(finger_origin)
 
-                                self.label_msg.gesture_labels = finger_label_output
+                                direction, origin = finger_direction, finger_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_l.png', camera_side = 'left')        
+
+                                    self.label_msg.gesture_labels = finger_label_output
                           
+                            if not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
+                                all_direction.append(gaze_direction)
+                                all_origin.append(gaze_origin)
 
-                            all_direction.append(gaze_direction)
-                            all_origin.append(gaze_origin)
-                            direction, origin = gaze_direction, gaze_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                gaze_detected = True
-                                
-                                (self.gaze_stable_pos, 
-                                self.gaze_last_output, 
-                                self.gaze_pts, 
-                                self.gaze_base, 
-                                gaze_direction_ema, 
-                                gaze_origin_ema, 
-                                gaze_intersect, 
-                                gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_l.png', camera_side = 'left')        
+                                direction, origin = gaze_direction, gaze_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    gaze_detected = True
+                                    
+                                    (self.gaze_stable_pos, 
+                                    self.gaze_last_output, 
+                                    self.gaze_pts, 
+                                    self.gaze_base, 
+                                    gaze_direction_ema, 
+                                    gaze_origin_ema, 
+                                    gaze_intersect, 
+                                    gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_l.png', camera_side = 'left')        
 
-                                self.label_msg.gaze_labels = gaze_label_output
+                                    self.label_msg.gaze_labels = gaze_label_output
                       
 
                             self.label_pub.publish(self.label_msg)
@@ -599,24 +614,25 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.viewer.update_intersect_async(None)
 
                         elif finger_direction is not None and finger_origin is not None:
+                            if not np.isnan(finger_direction).any() and not np.isnan(finger_origin).any():
+                                all_direction.append(finger_direction)
+                                all_origin.append(finger_origin)
 
-                            all_direction.append(finger_direction)
-                            all_origin.append(finger_origin)    
-                            direction, origin = finger_direction, finger_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                hand_detected = True
-                                
-                                (self.finger_stable_pos, 
-                                self.finger_last_output, 
-                                self.finger_pts, 
-                                self.finger_base, 
-                                finger_direction_ema, 
-                                finger_origin_ema, 
-                                finger_intersect, 
-                                finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_l.png', camera_side = 'left')        
+                                direction, origin = finger_direction, finger_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    hand_detected = True
+                                    
+                                    (self.finger_stable_pos, 
+                                    self.finger_last_output, 
+                                    self.finger_pts, 
+                                    self.finger_base, 
+                                    finger_direction_ema, 
+                                    finger_origin_ema, 
+                                    finger_intersect, 
+                                    finger_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.finger_pts, direction_name = "finger_direction", origin_name = "finger_origin", image_name = 'gesture_yolo_l.png', camera_side = 'left')        
 
-                                self.label_msg.gesture_labels = finger_label_output
+                                    self.label_msg.gesture_labels = finger_label_output
                       
 
                             self.label_pub.publish(self.label_msg)
@@ -629,23 +645,25 @@ class HandDetectionWithPointCloudNode(Node):
                                 self.viewer.update_intersect_async(None)
 
                         elif gaze_direction is not None and gaze_origin is not None:
-                            all_direction.append(gaze_direction)
-                            all_origin.append(gaze_origin)
-                            direction, origin = gaze_direction, gaze_origin
-                            if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
-                                direction = direction / np.linalg.norm(direction)
-                                gaze_detected = True
-                                
-                                (self.gaze_stable_pos, 
-                                self.gaze_last_output, 
-                                self.gaze_pts, 
-                                self.gaze_base, 
-                                gaze_direction_ema, 
-                                gaze_origin_ema, 
-                                gaze_intersect, 
-                                gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_l.png', camera_side = 'left')        
+                            if not np.isnan(gaze_direction).any() and not np.isnan(gaze_origin).any():
+                                all_direction.append(gaze_direction)
+                                all_origin.append(gaze_origin)
 
-                                self.label_msg.gaze_labels = gaze_label_output
+                                direction, origin = gaze_direction, gaze_origin
+                                if np.linalg.norm(direction) > 1e-6 and not np.isnan(direction).any():
+                                    direction = direction / np.linalg.norm(direction)
+                                    gaze_detected = True
+                                    
+                                    (self.gaze_stable_pos, 
+                                    self.gaze_last_output, 
+                                    self.gaze_pts, 
+                                    self.gaze_base, 
+                                    gaze_direction_ema, 
+                                    gaze_origin_ema, 
+                                    gaze_intersect, 
+                                    gaze_label_output) = self.intention.process_detection(direction, origin, rgb_msg, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = 'gaze_yolo_l.png', camera_side = 'left')        
+
+                                    self.label_msg.gaze_labels = gaze_label_output
                       
 
                             self.label_pub.publish(self.label_msg)
