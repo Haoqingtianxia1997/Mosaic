@@ -700,8 +700,8 @@ def execute_action_sequence(actions):
                         print("✅ Grasp flavoring action executed successfully.")
                         grasped_thing = target
                         break
-                    # else:
-                    #     print("❌ Grasp flavoring action failed, retrying...")
+                    else:
+                        print("❌ Grasp flavoring action failed, retrying...")
 
             elif act_type == "grasp_otherthings":
                 success = False  # 重置成功状态
@@ -778,8 +778,8 @@ def execute_action_sequence(actions):
                         print("✅ Grasp other things action executed successfully.")
                         grasped_thing = target
                         break
-                    # else:
-                    #     print("❌ Grasp other things action failed, retrying...")
+                    else:
+                        print("❌ Grasp other things action failed, retrying...")
                             
             elif act_type == "stir":
                 success = False  # 重置成功状态

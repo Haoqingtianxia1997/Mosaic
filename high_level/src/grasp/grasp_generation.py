@@ -164,7 +164,9 @@ class GraspGeneration:
             grasp_y_axis = short_axis
 
             grasp_z_axis = long_axis
+
             world_x = np.array([1.0, 0.0, 0.0])
+
             if np.dot(grasp_z_axis, world_x) < 0:
                 grasp_z_axis = -grasp_z_axis
             
@@ -172,8 +174,8 @@ class GraspGeneration:
             if np.dot(np.cross(grasp_x_axis, grasp_y_axis), grasp_z_axis) < 0:
                 grasp_y_axis = -grasp_y_axis
 
-            # 生成 [-67°, -22°] 范围内的随机角度（单位：弧度）
-            theta_deg = np.random.uniform(-67, -22)
+            # 生成 [-80°, -45°] 范围内的随机角度（单位：弧度）
+            theta_deg = np.random.uniform(-80, -45)
             theta_rad = np.radians(theta_deg)
 
             # 绕 grasp_y_axis 的旋转矩阵（Rodrigues 公式）
@@ -197,12 +199,21 @@ class GraspGeneration:
             # # build the rotation matrix
             # R = np.column_stack((grasp_x_axis, grasp_y_axis, grasp_z_axis))
 
-            grasp_center = grasp_center - 0.1 * grasp_z_axis
+            grasp_center = grasp_center - 0.2 * grasp_z_axis
             # # save the rotation matrix for visualization
             # grasp_directions.append(R)
-            
+           
+            to_center = center_point - grasp_center
+            to_center /= np.linalg.norm(to_center)
+
+            if np.dot(grasp_z_axis, to_center) < 0:
+                grasp_z_axis = -grasp_z_axis
+                grasp_y_axis = -grasp_y_axis 
+
+            R = np.column_stack((grasp_x_axis, grasp_y_axis, grasp_z_axis))
+
             # add the grasp pose to the result list
-            grasp_poses_list.append((R_tilt, grasp_center))
+            grasp_poses_list.append((R, grasp_center))
         
 
             
@@ -531,17 +542,17 @@ class GraspGeneration:
             alpha=0.08
         )
         
-        # # Prepare list of meshes for visualization
-        # vis_meshes = [obj_triangle_mesh]
+        # Prepare list of meshes for visualization
+        vis_meshes = [obj_triangle_mesh]
         
-        # # Add all grasp meshes to list
-        # for grasp_mesh in all_grasp_meshes:
-        #     vis_meshes.extend(grasp_mesh)
+        # Add all grasp meshes to list
+        for grasp_mesh in all_grasp_meshes:
+            vis_meshes.extend(grasp_mesh)
             
-        # # Call visualization function
-        # visualize_3d_objs(vis_meshes)
-        # # Evaluate grasping quality
-        # print("\nEvaluating grasping quality...")
+        # Call visualization function
+        visualize_3d_objs(vis_meshes)
+        # Evaluate grasping quality
+        print("\nEvaluating grasping quality...")
         
         best_grasp = None
         best_grasp_mesh = None
