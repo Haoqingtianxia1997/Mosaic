@@ -134,7 +134,9 @@ class HandDetectionWithPointCloudNode(Node):
                 hand_detected = False
                 gaze_detected = False
                 self.label_msg = Labels()
-
+                gaze_intersect = None
+                finger_intersect = None
+                
                 if self.left_camera_active and self.right_camera_active:
                     rgb_msg_r = self.rgb_buffer['right']
                     depth_msg_r = self.depth_buffer['right']

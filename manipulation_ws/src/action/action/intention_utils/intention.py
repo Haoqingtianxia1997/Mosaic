@@ -256,8 +256,6 @@ class Intention():
                 mean_pos = np.mean([pt for pt, _ in last_N], axis=0)
                 stable = mean_pos
                 last_output = mean_pos.copy()
-                # 清空队列用于下次稳定检测（可选）
-                pts_deque.clear()
                 base = None
             else:
                 # 维护基准点和离群检测
@@ -265,7 +263,6 @@ class Intention():
                     base = pts_deque[0][0].copy()
                     outlier_cnt = sum(np.linalg.norm(pt - base) > outlier_thresh for pt, _ in pts_deque)
                     if outlier_cnt >= outlier_count:
-                        pts_deque.clear()
                         base = None
             # 清理过期点
             while pts_deque and now - pts_deque[0][1] > window_sec:
