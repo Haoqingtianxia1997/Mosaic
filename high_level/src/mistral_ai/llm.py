@@ -20,6 +20,8 @@ def run_mistral_llm(client):
         assistant_prompt=assistant_prompt
     )
 
+    subtasks = re.sub(r':\s*None', ': ""', str(subtasks))
+
     # 新的安全提取方式
     response, json_blocks = safe_extract_json_and_response_for_llm(str(subtasks))
 
@@ -57,6 +59,8 @@ def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_se
         time.sleep(wait_sec)
     else:
         raise RuntimeError("LLM一直没返回内容，超出最大重试次数")
+    
+    subtasks = re.sub(r':\s*None', ': ""', str(subtasks))
 
     # 新的安全提取方式
     response, content, json_blocks = safe_extract_json_and_response_for_intention_llm(str(subtasks))

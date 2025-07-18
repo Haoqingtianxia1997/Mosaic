@@ -59,7 +59,7 @@ class Intention():
         self.yaw = None
 
         # stable point pos
-        self.SLIDING_WINDOW_SEC = 2
+        self.SLIDING_WINDOW_SEC = 3.0
         self.OUTLIER_THRESHOLD = 0.1
         self.OUTLIER_COUNT = 5
         self.AVG_LAST_N = 5

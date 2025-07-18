@@ -9,7 +9,7 @@ class ReadFile(Node):
         self.file_path = '../high_level/src/transcribe/speech.txt'
         self.last_content = ''
         self.last_change_time = 0.0
-        self.duration_true = 3.0 
+        self.duration_true = 0.1 
         self.publisher = self.create_publisher(FileStatus, 'file_status', 10)
         timer_period = 0.2 
         self.timer = self.create_timer(timer_period, self.timer_callback)

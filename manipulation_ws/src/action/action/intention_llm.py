@@ -118,7 +118,7 @@ class IntentionLLM(Node):
             self.get_logger().warning("Labels not received yet, cannot process intention.")
 
         else:
-            if self.speech_changed == True:
+            if self.speech_changed == True and self.new_file_content is not None and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None:
                 cmd_str = self.new_file_content if self.new_file_content else "None"
                 gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
                 gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
@@ -137,28 +137,37 @@ class IntentionLLM(Node):
                     with open(self.file_path, 'w', encoding='utf-8') as f:
                         f.write(response)
 
+                self.latest_gesture_labels, self.latest_gaze_labels, self.new_file_content = None, None, None
             else:
-                self.all_labels = list(set(self.latest_gesture_labels + self.latest_gaze_labels))
-                if len(self.all_labels) > 0:
-                    cmd = ask_label_tts(self.all_labels, self.transcriber)
-                    cmd_str = cmd if cmd else "None"
-                    gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
-                    gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
+                response, content, json_blocks = "", "", ""
+                output = None   
+            # elif self.latest_gaze_labels is not None and self.latest_gesture_labels is not None :
+            #     self.all_labels = list(set(self.latest_gesture_labels + self.latest_gaze_labels))
+            #     if len(self.all_labels) > 0:
+            #         cmd = ask_label_tts(self.all_labels, self.transcriber)
+            #         cmd_str = cmd if cmd else "None"
+            #         gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
+            #         gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
 
-                    output = (
-                        f"I have a speech command: '{cmd_str}', "
-                        f"gesture label: '{gesture_str}' and "
-                        f"gaze label: '{gaze_str}'."
-                    )
-                    response, content, json_blocks = run_mistral_llm_direct(
-                        output,
-                        self.client,
-                    )
+            #         output = (
+            #             f"I have a speech command: '{cmd_str}', "
+            #             f"gesture label: '{gesture_str}' and "
+            #             f"gaze label: '{gaze_str}'."
+            #         )
+            #         response, content, json_blocks = run_mistral_llm_direct(
+            #             output,
+            #             self.client,
+            #         )
 
-                    if response != "":
-                        with open(self.file_path, 'w', encoding='utf-8') as f:
-                          f.write(response)
-
+            #         if response != "":
+            #             with open(self.file_path, 'w', encoding='utf-8') as f:
+            #               f.write(response)
+            #         self.latest_gesture_labels, self.latest_gaze_labels, cmd_str = None, None, None
+            #     else:
+            #         response = None
+            #         content = None
+            #         json_blocks = None
+            #         output = None
             print(f"=====: {response}, Content: {content}, json blocks: {json_blocks}")
             print(f"📝 Intention Output: {output}")
             
