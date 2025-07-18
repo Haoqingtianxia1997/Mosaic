@@ -20,7 +20,7 @@ system_prompt = """
                     "if_find": true,
                     "response": "",
                     "object": [
-                        {"name": "apple", "label": ""},
+                        {"name": "apple", "label": ""}
                     ]
                 }
 
@@ -29,7 +29,7 @@ system_prompt = """
                     "if_find": false,
                     "response": "Sorry, I can't find it..., maybe it's not here !",
                     "object": [
-                        {"name": "elephant", "label": ""},
+                        {"name": "elephant", "label": ""}
                     ]
                 }
 
@@ -37,7 +37,7 @@ system_prompt = """
                 {   "if_find": true,
                 "response": "",
                 "object": [
-                    {"name": "salt bottle", "label": "grobes MeerSalz"},
+                    {"name": "salt bottle", "label": "grobes MeerSalz"}
                 ]
                 }
 
@@ -73,7 +73,7 @@ assistant_prompt = """
                 "object": [
                     {"name": "cucumber", 
                      "label": ""
-                    },
+                    }
                 ]
             }
 
@@ -83,7 +83,7 @@ assistant_prompt = """
                 "object": [
                     {"name": "elephant", 
                      "label": ""
-                    },
+                    }
                 ]
             }
 
@@ -92,7 +92,7 @@ assistant_prompt = """
                 "object": [
                     {"name": "salt bottle", 
                     "label": "grobes MeerSalz"
-                    },
+                    }
                 ]
             }
 
@@ -102,7 +102,7 @@ assistant_prompt = """
                     {
                     "name": "pepper bottle",
                     "label": "Schwarzer Pfeffer ganz"
-                    },
+                    }
             ]
             }
 """

@@ -36,8 +36,11 @@ ros2 launch action mosaic_launch.py
 #intention_detection:
 python3 src/action/action/intention_detection.py
 
-#Debug intention_detection :
+#Debug intention_detection:
 ros2 topic pub /label_output action_interfaces/msg/Labels "{gaze_labels: [], gesture_labels: []}"
+
+#Debug read_file:
+ros2 topic pub /file_status action_interfaces/msg/FileStatus "{changed: true, content: 'hello world'}"
 
 #intention_llm:
 python3 src/action/action/intention_llm.py

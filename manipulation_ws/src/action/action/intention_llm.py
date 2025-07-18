@@ -112,7 +112,6 @@ class IntentionLLM(Node):
 
         else:
             if self.speech_changed == True:
-                #TODO#
                 cmd_str = self.new_file_content if self.new_file_content else "None"
                 gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
                 gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
@@ -122,24 +121,30 @@ class IntentionLLM(Node):
                     f"gesture label: {gesture_str} and "
                     f"gaze label: {gaze_str}."
                 )
-
-            else:
-                self.all_labels = list(set(self.latest_gesture_labels + self.latest_gaze_labels))
-                cmd = ask_label_tts(self.all_labels, self.transcriber)
-                cmd_str = cmd if cmd else "None"
-                gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
-                gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
-
-                output = (
-                    f"I have a speech command: '{cmd_str}', "
-                    f"gesture label: '{gesture_str}' and "
-                    f"gaze label: '{gaze_str}'."
-                )
-                response, json_blocks = run_mistral_llm_direct(
+                response, content, json_blocks = run_mistral_llm_direct(
                     output,
                     self.client,
                 )
-                print(f"🤖 LLM Response: {response}, json blocks: {json_blocks}")
+
+            else:
+                self.all_labels = list(set(self.latest_gesture_labels + self.latest_gaze_labels))
+                if len(self.all_labels) > 0:
+                    cmd = ask_label_tts(self.all_labels, self.transcriber)
+                    cmd_str = cmd if cmd else "None"
+                    gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
+                    gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
+
+                    output = (
+                        f"I have a speech command: '{cmd_str}', "
+                        f"gesture label: '{gesture_str}' and "
+                        f"gaze label: '{gaze_str}'."
+                    )
+                    response, content, json_blocks = run_mistral_llm_direct(
+                        output,
+                        self.client,
+                    )
+
+            print(f"=====: {response}, Content: {content}, json blocks: {json_blocks}")
             print(f"📝 Intention Output: {output}")
             
 

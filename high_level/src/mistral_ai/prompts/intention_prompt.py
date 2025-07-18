@@ -20,15 +20,23 @@ JSON FORMAT
   "content": [
     {
       "action_type": "<action type>",
-      "target": "<object or location>",
-    },
+      "target": "<object or location>"
+    }
   ]
 }
 
 -----------------------------------------------------------------------
 GENERAL RULES
-• When multiple itermms
+* generated target must follow the requirements of the first target from user's voice command. For example, if the voice command asks for something to eat, 
+the target should be a food item.
+• When multiple items meet the requirement, choose the one that you think is the most possible.
+* If certain words in the voice command seem to be typos, and in the meantime similar label(s) exist in gesture label or gaze label, 
+then correct the voice command to match the gesture label or gaze label.
+* When gaze label and gesture label don't contain any labels that resemble the first target in the voice command or alphabetically similar to the first target in 
+the voice command, do NOT change the output of voice command!!!!
+* You need to understand my true intention based on the given voice command, gesture label, and gaze label, and generate an accurate response.
 • Output **only** valid JSON — no markdown, no explanations, no commentary.
+
 """
 
 # ---------------------------------------------------------------------
@@ -94,7 +102,7 @@ intention_assistant_prompt = '''
   "response": "What's your favorite recipe?",
   "content": [
     {"action_type": None,
-      "target": None,}
+      "target": None}
   ]
 }
 
@@ -102,7 +110,7 @@ intention_assistant_prompt = '''
   "response": "What's your favorite recipe?",
   "content": [
     {"action_type": None,
-      "target": None,}
+      "target": None}
   ]
 }
 
@@ -110,7 +118,7 @@ intention_assistant_prompt = '''
   "response": "What's your favorite recipe?",
   "content": [
     {"action_type": None,
-      "target": None,}
+      "target": None}
   ]
 }
 
@@ -123,7 +131,7 @@ intention_assistant_prompt = '''
   "response": "Can you hand me the cop?",
   "content": [
     { "action_type": "hand", 
-    "target": "cop", },
+    "target": "cop"}
   ]
 }
 
@@ -131,7 +139,7 @@ intention_assistant_prompt = '''
   "response": "Can you hand me the cup?",
   "content": [
     { "action_type": "hand", 
-    "target": "cup", },
+    "target": "cup"}
   ]
 }
 
@@ -139,7 +147,7 @@ intention_assistant_prompt = '''
   "response": "Can you hand me the salt?",
   "content": [
     { "action_type": "hand", 
-    "target": "salt", },
+    "target": "salt"}
   ]
 }
 
@@ -147,7 +155,7 @@ intention_assistant_prompt = '''
   "response": "Can you hand me the salt?",
   "content": [
     { "action_type": "hand", 
-    "target": "salt", },
+    "target": "salt"}
   ]
 }
 
@@ -155,7 +163,7 @@ intention_assistant_prompt = '''
   "response": "Can you hand me the cup?",
   "content": [
     { "action_type": "hand", 
-    "target": "cup", },
+    "target": "cup"}
   ]
 }
 
@@ -168,7 +176,7 @@ intention_assistant_prompt = '''
   "response": "Please give me the peper bottle on the table.",
   "content": [
     { "action_type": "give",
-        "target": "pepper bottle", },
+        "target": "pepper bottle"}
   ]
 }
 
@@ -176,7 +184,7 @@ intention_assistant_prompt = '''
   "response": "Please give me the pepper bottle on the table.",
   "content": [
     { "action_type": "give",
-        "target": "pepper bottle", },
+        "target": "pepper bottle"}
   ]
 }
 
@@ -184,7 +192,7 @@ intention_assistant_prompt = '''
   "response": "Please give me the pepper bottle on the table.",
   "content": [
     { "action_type": "give",
-        "target": "pepper bottle", },
+        "target": "pepper bottle"}
   ]
 }
 
@@ -192,7 +200,7 @@ intention_assistant_prompt = '''
   "response": "Please give me the pepper bottle on the table.",
   "content": [
     { "action_type": "give",
-        "target": "pepper bottle", },
+        "target": "pepper bottle"}
   ]
 }
 
@@ -200,7 +208,7 @@ intention_assistant_prompt = '''
   "response": "Please give me the pepper bottle on the table.",
   "content": [
     { "action_type": "give",
-        "target": "pepper bottle", },
+        "target": "pepper bottle"}
   ]
 }
 
@@ -218,7 +226,7 @@ intention_assistant_prompt = '''
   "response": "Please add salt to the soup pot twice.",
   "content": [
     { "action_type": "add",
-      "target": "salt",}
+      "target": "salt"}
   ]
 }
 
@@ -226,7 +234,7 @@ intention_assistant_prompt = '''
   "response": "Please add salt to the soup pot twice.",
   "content": [
     { "action_type": "add",
-      "target": "salt",}
+      "target": "salt"}
   ]
 }
 
@@ -234,7 +242,7 @@ intention_assistant_prompt = '''
   "response": "Please add salt to the soup pot twice.",
   "content": [
     { "action_type": "add",
-      "target": "salt",}
+      "target": "salt"}
   ]
 }
 
@@ -242,7 +250,7 @@ intention_assistant_prompt = '''
   "response": "Please add salt to the soup pot twice.",
   "content": [
     { "action_type": "add",
-      "target": "salt",}
+      "target": "salt"}
   ]
 }
 
@@ -250,7 +258,7 @@ intention_assistant_prompt = '''
   "response": "Please add salt to the soup pot twice.",
   "content": [
     { "action_type": "add",
-      "target": "salt",}
+      "target": "salt"}
   ]
 }
 
@@ -264,7 +272,7 @@ intention_assistant_prompt = '''
   "response": "Use the spool to stir the soup pot for 10 seconds.",
   "content": [
     { "action_type": "use",
-      "target": "spoon",}
+      "target": "spoon"}
   ]
 }
 
@@ -272,7 +280,7 @@ intention_assistant_prompt = '''
   "response": "Use the spoon to stir the soup pot for 10 seconds.",
   "content": [
     { "action_type": "use",
-      "target": "spoon",}
+      "target": "spoon"}
   ]
 }
 
@@ -280,7 +288,7 @@ intention_assistant_prompt = '''
   "response": "Use the spoon to stir the soup pot for 10 seconds.",
   "content": [
     { "action_type": "use",
-      "target": "spoon",}
+      "target": "spoon"}
   ]
 }
 
@@ -288,7 +296,7 @@ intention_assistant_prompt = '''
   "response": "Use the spoon to stir the soup pot for 10 seconds.",
   "content": [
     { "action_type": "use",
-      "target": "spoon",}
+      "target": "spoon"}
   ]
 }
 
@@ -296,7 +304,7 @@ intention_assistant_prompt = '''
   "response": "Use the spoon to stir the soup pot for 10 seconds.",
   "content": [
     { "action_type": "use",
-      "target": "spoon",}
+      "target": "spoon"}
   ]
 }
 
@@ -313,7 +321,7 @@ intention_assistant_prompt = '''
   "response": "Can you help me use spoon to stir the soup pot for 10 minutes and then give me the apple?",
   "content": [
     { "action_type": "use",
-      "target": "spoon", }
+      "target": "spoon"}
   ]
 }
 
@@ -321,7 +329,7 @@ intention_assistant_prompt = '''
   "response": "Can you help me use spoon to stir the soup pot for 10 minutes and then give me the apple?",
   "content": [
     { "action_type": "use",
-      "target": "spoon", }
+      "target": "spoon"}
   ]
 }
 
@@ -329,7 +337,7 @@ intention_assistant_prompt = '''
   "response": "Can you help me use spool to stir the soup pot for 10 minutes and then give me the apple?",
   "content": [
     { "action_type": "use",
-      "target": "spool", }
+      "target": "spool"}
   ]
 }
 
@@ -337,7 +345,7 @@ intention_assistant_prompt = '''
   "response": "Can you help me use spoon to stir the soup pot for 10 minutes and then give me the apple?",
   "content": [
     { "action_type": "use",
-      "target": "spoon", }
+      "target": "spoon"}
   ]
 }
 
@@ -345,7 +353,7 @@ intention_assistant_prompt = '''
   "response": "Can you help me use spoon to stir the soup pot for 10 minutes and then give me the apple?",
   "content": [
     { "action_type": "use",
-      "target": "spoon", }
+      "target": "spoon"}
   ]
 }
 
@@ -361,7 +369,7 @@ intention_assistant_prompt = '''
   "response": "Can you tell me how to make burger? And please give me the salt bottle.",
   "content": [
     { "action_type": "give",
-      "target": "salt bottle", }
+      "target": "salt bottle"}
   ]
 }
 
@@ -369,7 +377,7 @@ intention_assistant_prompt = '''
   "response": "Can you tell me how to make burger? And please give me the salt bottle.",
   "content": [
     { "action_type": "give",
-      "target": "salt bottle", }
+      "target": "salt bottle"}
   ]
 }
 
@@ -377,7 +385,7 @@ intention_assistant_prompt = '''
   "response": "Can you tell me how to make burger? And please give me the salt bottle.",
   "content": [
     { "action_type": "give",
-      "target": "salt bottle", }
+      "target": "salt bottle"}
   ]
 }
 
@@ -385,7 +393,7 @@ intention_assistant_prompt = '''
   "response": "Can you tell me how to make burger? And please give me the pepper bottle.",
   "content": [
     { "action_type": "give",
-      "target": "pepper bottle", }
+      "target": "pepper bottle"}
   ]
 }
 
@@ -393,7 +401,7 @@ intention_assistant_prompt = '''
   "response": "Can you tell me how to make burger? And please give me the curry bottle.",
   "content": [
     { "action_type": "give",
-      "target": "curry bottle", }
+      "target": "curry bottle"}
   ]
 }
 
@@ -407,7 +415,7 @@ intention_assistant_prompt = '''
   "response": "I'm hungry. Give me something to eat.",
   "content": [
     { "action_type": "give",
-      "target": "something", }
+      "target": "something"}
   ]
 }
 
@@ -415,7 +423,7 @@ intention_assistant_prompt = '''
   "response": "I'm hungry. Give me the apple.",
   "content": [
     { "action_type": "give",
-      "target": "apple", }
+      "target": "apple"}
   ]
 }
 
@@ -423,7 +431,7 @@ intention_assistant_prompt = '''
   "response": "I'm hungry. Give me the pork.",
   "content": [
     { "action_type": "give",
-      "target": "pork", }
+      "target": "pork"}
   ]
 }
 
@@ -431,7 +439,7 @@ intention_assistant_prompt = '''
   "response": "I'm hungry. Give me some meat.",
   "content": [
     { "action_type": "give",
-      "target": "meat", }
+      "target": "meat"}
   ]
 }
 
@@ -439,7 +447,7 @@ intention_assistant_prompt = '''
   "response": "I want to cut something. Please give me the knife.",
   "content": [
     { "action_type": "give",
-      "target": "knife", }
+      "target": "knife"}
   ]
 }
 
@@ -447,14 +455,14 @@ intention_assistant_prompt = '''
   "response": "I'm hungry. Give me the apple.",
   "content": [
     { "action_type": "give",
-      "target": "apple", }
+      "target": "apple"}
   ]
 }
 
 {  "response": "I want to cut something. Please give me the knife.",
   "content": [
     { "action_type": "give",
-      "target": "knife", }
+      "target": "knife"}
   ]
 }
 '''.strip()

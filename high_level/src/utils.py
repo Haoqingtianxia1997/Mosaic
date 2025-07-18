@@ -56,7 +56,24 @@ def safe_extract_json_and_response_for_llm(text: str) -> tuple[str, list[dict]]:
     except Exception as e:
         print(f"[safe_extract_json_and_response] JSON 解析失败: {e}")
         return "", []
-    
+
+def safe_extract_json_and_response_for_intention_llm(text: str) -> tuple[str, list[dict]]:
+    """
+    提取完整 JSON（含 response 和 actions），返回 response 字符串和动作列表。
+    尽量从模型输出中提取第一个合法 JSON 块。
+    """
+    try:
+        # 清理 markdown 包裹
+        text = re.sub(r"```json|```", "", text).strip()
+
+        # 尝试整体解析
+        parsed = json.loads(text)
+        response = parsed.get("response", "")
+        content = parsed.get("content", [])
+        return response, content, [parsed]  # 保持 extract_json 接口兼容
+    except Exception as e:
+        print(f"[safe_extract_json_and_response] JSON 解析失败: {e}")
+        return "", [], []
 
 def safe_extract_json_and_response_for_vlm(data: Any) -> Tuple[bool, str, Dict]:
     """
