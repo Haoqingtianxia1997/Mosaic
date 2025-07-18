@@ -37,6 +37,7 @@ setup(
             'intention_detection = action.intention_detection:main',
             'forward_kinematic = action.forward_kinematic:main',
             'read_file = action.read_file:main',
+            'intention_llm = action.intention_llm:main',
         ],
     },
 )

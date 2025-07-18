@@ -249,12 +249,14 @@ def call_fk_service():
         raise ValueError("未能从输出中解析到 x y z")
 
 def get_cam_world_points(
+    client,
     target,
     rgb_path,
     depth_path,
     pixels_to_world_func,
     name,
     agent_image_path=None,
+    
 ):
     """
     target: 感知目标
@@ -264,7 +266,7 @@ def get_cam_world_points(
     agent_image_path: 若要单独指定传给VLM_agent的图片，可以用，否则为rgb_path
     """
     img_path = agent_image_path if agent_image_path else rgb_path
-    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name)
+    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name, client)
     if not if_find:
         print(f"❌ Failed to perceive target: {target}")
         return if_find, response, None, None, None
@@ -329,7 +331,7 @@ def merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=F
         o3d.visualization.draw_geometries([pcd_merged], window_name='ICP合并后点云')
     return merged_points, reg.transformation
 
-def execute_action_sequence(actions):
+def execute_action_sequence(actions, vlm_client):
     """
     串行执行动作序列，每一步等待其服务执行完且成功后才进行下一步。
     """
@@ -433,22 +435,26 @@ def execute_action_sequence(actions):
                     print(f"Perceiving target: {target}")
                     
                     if_find_r, response_r, center_world_points_r, all_world_points_r ,color_r = get_cam_world_points(
+                    vlm_client,
                     target,
                     rgb_path= r_img_path,
                     depth_path= r_depth_path,
                     pixels_to_world_func = pixels_to_world_right,
-                    name= "right"
+                    name= "right",
+                    
                     )
 
                     # if_find_r, response_r, center_world_points_r, all_world_points_r, color_r = None, None, None, None, None
                     
            
                     if_find_l, response_l, center_world_points_l, all_world_points_l, color_l  = get_cam_world_points(
+                        vlm_client,
                         target,
                         rgb_path= l_img_path,
                         depth_path= l_depth_path,
                         pixels_to_world_func = pixels_to_world_left,
-                        name= "left"
+                        name= "left",
+                        
                     )
 
                     # if_find_l, response_l, center_world_points_l, all_world_points_l, color_l = None, None, None, None,None

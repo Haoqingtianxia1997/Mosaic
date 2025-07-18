@@ -32,7 +32,18 @@ ros2 launch action mosaic_launch.py
 
 ## intention
 ```bash
+
+#intention_detection:
 python3 src/action/action/intention_detection.py
+
+#Debug intention_detection :
+ros2 topic pub /label_output action_interfaces/msg/Labels "{gaze_labels: [], gesture_labels: []}"
+
+#intention_llm:
+python3 src/action/action/intention_llm.py
+
+
+
 ```
 ## move
 ```bash

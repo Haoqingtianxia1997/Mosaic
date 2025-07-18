@@ -8,6 +8,8 @@ from transcribe.tts import run_tts
 from mistral_ai.llm import run_mistral_llm
 from execute.actions import execute_action_sequence
 from mistral_ai.vlm import run_mistral_vlm
+from src.mistral_ai.mistral import Mistralmodel
+
 SPEECH_FILE = "src/transcribe/speech.txt"
 TRANS_FILE = "src/transcribe/transcription.txt"
 VLM_FILE = "src/mistral_ai/scripts/vlm_script.txt"
@@ -50,6 +52,10 @@ if __name__ == "__main__":
     last_text = ""
     print("🟢 STT thread started. Waiting for new speech...")
 
+    # 3. 启动 Mistral 模型
+    llm_client = Mistralmodel()
+    vlm_client = Mistralmodel()
+
     while True:
 
         # # 2. 等待新的录音完成
@@ -67,11 +73,15 @@ if __name__ == "__main__":
         # 4. 若文本没变就忽略
 
         if text == last_text:
-            
             continue
+        
         last_text = text
-        run_mistral_llm()
+        if_success = run_mistral_llm(llm_client)
         run_tts(LLM_FILE)
+
+        if not if_success:
+            print("❌ Planning LLM processing failed. Please try again.")
+            continue
 
         # 5. 读取 JSON 动作列表并执行
         try:
@@ -80,7 +90,7 @@ if __name__ == "__main__":
                 actions = llm_data.get("actions", [])
                 if actions:
                     print(f"🦾 Executing {len(actions)} actions...")
-                    execute_action_sequence(actions)
+                    execute_action_sequence(actions, vlm_client)
                 else:
                     print("ℹ️ No actions to execute.")
         except Exception as e:

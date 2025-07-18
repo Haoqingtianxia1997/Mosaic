@@ -9,9 +9,9 @@ from src.utils import safe_extract_json_and_response_for_vlm
 
 
 
-def run_mistral_vlm(user_prompt: str, image_path) -> Tuple[bool, str]:
+def run_mistral_vlm(user_prompt: str, image_path, client) -> Tuple[bool, str]:
     """Run Mistral Vision Language Model (VLM) for image analysis"""
-    client = Mistralmodel()
+    # client = Mistralmodel()
     local_image =image_path #input("📂 input local image path: ").strip()
     vlm_script = "./src/mistral_ai/scripts/vlm_script.txt"
     vision_resp = client.chat_with_vision(user_prompt, local_image, system_prompt=system_prompt, example=example, assistant_prompt=assistant_prompt)
