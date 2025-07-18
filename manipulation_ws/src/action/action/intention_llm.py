@@ -1,3 +1,4 @@
+from matplotlib import text
 import rclpy
 from rclpy.node import Node
 from action_interfaces.msg import FileStatus
@@ -75,6 +76,12 @@ class IntentionLLM(Node):
         self.transcriber = VoiceTranscriber()
         self.client = Mistralmodel()
 
+        CUR_DIR = os.path.dirname(os.path.abspath(__file__))
+        self.file_path = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../high_level/src/transcribe/transcription.txt')
+        )
+
+
         self.file_status_sub = self.create_subscription(
             FileStatus,
             'file_status',
@@ -126,6 +133,10 @@ class IntentionLLM(Node):
                     self.client,
                 )
 
+                if response != "":
+                    with open(self.file_path, 'w', encoding='utf-8') as f:
+                        f.write(response)
+
             else:
                 self.all_labels = list(set(self.latest_gesture_labels + self.latest_gaze_labels))
                 if len(self.all_labels) > 0:
@@ -143,6 +154,10 @@ class IntentionLLM(Node):
                         output,
                         self.client,
                     )
+
+                    if response != "":
+                        with open(self.file_path, 'w', encoding='utf-8') as f:
+                          f.write(response)
 
             print(f"=====: {response}, Content: {content}, json blocks: {json_blocks}")
             print(f"📝 Intention Output: {output}")

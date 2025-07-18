@@ -27,14 +27,23 @@ JSON FORMAT
 
 -----------------------------------------------------------------------
 GENERAL RULES
+* response, action_type and target should ALWAYS be strings, for example: "" or "apple". 
+* When you don't understand the user's voice command, response MUST be "".
+* response is NOT an answer to the user's question, but a more comprehensive command output based on the user's voice command, gesture labels, and gaze labels. 
 * generated target must follow the requirements of the first target from user's voice command. For example, if the voice command asks for something to eat, 
 the target should be a food item.
 • When multiple items meet the requirement, choose the one that you think is the most possible.
 * If certain words in the voice command seem to be typos, and in the meantime similar label(s) exist in gesture label or gaze label, 
 then correct the voice command to match the gesture label or gaze label.
-* When gaze label and gesture label don't contain any labels that resemble the first target in the voice command or alphabetically similar to the first target in 
-the voice command, do NOT change the output of voice command!!!!
+* When gaze label and gesture label don't contain any labels that resemble the first target in the voice command or alphabetically similar to the first 
+target in the voice command, do NOT change the output of voice command!!!!
+* The above rules must be followed strictly and simultaneously.PLEASE REFER TO THE EXAMPLES BELOW SERIOUSLY!
 * You need to understand my true intention based on the given voice command, gesture label, and gaze label, and generate an accurate response.
+* When my voice command is clear, don't change my voice command structure and wording, just correct the typos if necessary. 
+* When my voice command is abstract or unclear, you can generate a more specific response based on the gesture label and gaze label.
+* If no labels are available in gaze label or gesture label, response should repeat the voice command and extract the first target from the voice 
+command and action_type(if available)
+
 • Output **only** valid JSON — no markdown, no explanations, no commentary.
 
 """
