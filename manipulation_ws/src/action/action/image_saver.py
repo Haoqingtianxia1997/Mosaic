@@ -24,7 +24,7 @@ class ImageSaver(Node):
         self.output_dir = os.path.join(os.getcwd(), '/home/mosaic/mosaic/manipulation_ws/saved_images')
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.create_timer(2, self.auto_save)
+        self.create_timer(10, self.auto_save)
         self.get_logger().info("ImageAutoSaver started: will save every 2 seconds (overwrite).")
 
     def make_rgb_cb(self, cam):
