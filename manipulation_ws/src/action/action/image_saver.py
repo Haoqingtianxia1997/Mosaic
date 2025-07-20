@@ -25,7 +25,7 @@ class ImageSaver(Node):
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.create_timer(10, self.auto_save)
-        self.get_logger().info("ImageAutoSaver started: will save every 2 seconds (overwrite).")
+        self.get_logger().info("ImageAutoSaver started: will save every 10 seconds (overwrite).")
 
     def make_rgb_cb(self, cam):
         def cb(msg):
