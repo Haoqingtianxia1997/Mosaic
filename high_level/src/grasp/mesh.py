@@ -75,12 +75,12 @@ def create_grasp_mesh(
 
     # Create coupler - horizontal bar connecting the fingers at the top
     coupler = o3d.geometry.TriangleMesh.create_box(
-        width=wid,     # X-axis - thickness
+        width=wid+0.1,     # X-axis - thickness
         height=0.09, # Y-axis - spans across both fingers
         depth=0.085   # Z-axis - height of connector
     )
     coupler.paint_uniform_color([0, 0, 1])
-    coupler.translate((-0.01, -0.045, 0) + center_point)
+    coupler.translate((-0.06, -0.045, 0) + center_point)
     coupler.rotate(final_rotation, center=center_point)
     grasp_geometries.append(coupler)
 

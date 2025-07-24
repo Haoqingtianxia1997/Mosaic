@@ -105,27 +105,65 @@ def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius
     pcd, _ = pcd.remove_radius_outlier(nb_points=nb_points, radius=radius)
     return pcd
 
+# def filter_and_merge_icp_translation_only(
+#         points_l, colors_l, points_r, colors_r, 
+#         voxel_size=0.005, nb_points=10, radius=0.02):
+
+#     pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, nb_points, radius)
+#     pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, nb_points, radius)
+
+#     arr_l = np.asarray(pcd_l.points)
+#     arr_r = np.asarray(pcd_r.points)
+    
+#     # 3. 手写ICP-只平移
+#     aligned_l, T = translation_only_icp(arr_l, arr_r)
+
+#     # 4. 合并点云
+#     all_points_arr = np.vstack([aligned_l, arr_r])
+#     if pcd_l.has_colors() and pcd_r.has_colors():
+#         all_colors_arr = np.vstack([np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)])
+#     else:
+#         all_colors_arr = np.ones_like(all_points_arr)
+
+#     return all_points_arr, all_colors_arr, T
+
 def filter_and_merge_icp_translation_only(
         points_l, colors_l, points_r, colors_r, 
-        voxel_size=0.005, nb_points=10, radius=0.02):
+        voxel_size=0.005, nb_points=10, radius=0.01):
+    
+    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.02)
+    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.02)
 
-    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, nb_points, radius)
-    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, nb_points, radius)
+    # # 1. 不预处理，直接创建点云对象
+    # pcd_l = o3d.geometry.PointCloud()
+    # pcd_l.points = o3d.utility.Vector3dVector(points_l)
+    # if colors_l is not None:
+    #     pcd_l.colors = o3d.utility.Vector3dVector(colors_l)
+
+    # pcd_r = o3d.geometry.PointCloud()
+    # pcd_r.points = o3d.utility.Vector3dVector(points_r)
+    # if colors_r is not None:
+    #     pcd_r.colors = o3d.utility.Vector3dVector(colors_r)
 
     arr_l = np.asarray(pcd_l.points)
     arr_r = np.asarray(pcd_r.points)
     
-    # 3. 手写ICP-只平移
+    # 2. 手写ICP-只平移
     aligned_l, T = translation_only_icp(arr_l, arr_r)
 
-    # 4. 合并点云
+    # 3. 合并点云
     all_points_arr = np.vstack([aligned_l, arr_r])
     if pcd_l.has_colors() and pcd_r.has_colors():
         all_colors_arr = np.vstack([np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)])
     else:
         all_colors_arr = np.ones_like(all_points_arr)
 
-    return all_points_arr, all_colors_arr, T
+    # 4. 对合并后的点云做预处理
+    merged_pcd = preprocess_pointcloud(all_points_arr, all_colors_arr, voxel_size, nb_points, radius)
+    filtered_points = np.asarray(merged_pcd.points)
+    filtered_colors = np.asarray(merged_pcd.colors) if merged_pcd.has_colors() else None
+
+    return filtered_points, filtered_colors, T    
 
 def filter_and_merge_icp(
         points_l, colors_l, points_r, colors_r, 
@@ -267,7 +305,7 @@ def get_cam_world_points(
     """
     img_path = agent_image_path if agent_image_path else rgb_path
     if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name, client)
-    if not if_find:
+    if not if_find or box_center_point is None or seg_center_point is None or all_seg_points is None:
         print(f"❌ Failed to perceive target: {target}")
         return if_find, response, None, None, None
     
@@ -556,7 +594,7 @@ def execute_action_sequence(actions, vlm_client):
                     
                     # 计算 move_target_point
                     move_target_point = center_world_points.copy()
-                    move_target_point[2] += 0.3  # 提升0.3米
+                    move_target_point[2] += 0.5  # 提升0.5米
 
                     print("移动目标点：", move_target_point)
 
@@ -591,7 +629,7 @@ def execute_action_sequence(actions, vlm_client):
                             {
                                 "x": float(current_position[0]),
                                 "y": float(current_position[1]),
-                                "z": float(current_position[2] + 0.3),  # 提升0.3米
+                                "z": float(0.5),  # 提升 to 0.5米
                                 "qx": 1.0,
                                 "qy": 0.0,
                                 "qz": 0.0,
@@ -706,8 +744,8 @@ def execute_action_sequence(actions, vlm_client):
                         print("✅ Grasp flavoring action executed successfully.")
                         grasped_thing = target
                         break
-                    else:
-                        print("❌ Grasp flavoring action failed, retrying...")
+                    # else:
+                    #     print("❌ Grasp flavoring action failed, retrying...")
 
             elif act_type == "grasp_otherthings":
                 success = False  # 重置成功状态

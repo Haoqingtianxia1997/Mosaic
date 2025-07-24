@@ -12,6 +12,7 @@ import cv2
 from PIL import Image, ImageDraw
 from segment_anything import sam_model_registry, SamPredictor
 
+yolo_model = YOLO('yolo_model/yolo11m.pt')  # 用你自己的权重
 
 # 伪彩色表（你可自定义）
 COLOR_TABLE = [
@@ -143,7 +144,7 @@ class TextDrivenSegmenter:
         return self.trans_tok.decode(gen[0], skip_special_tokens=True)
 
     # ---------------- 主流程 ----------------
-    def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False):
+    def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False, method="yolo"):
         image = Image.open(image_path).convert("RGB")
         W, H  = image.size
         draw_img   = image.copy()
@@ -163,13 +164,61 @@ class TextDrivenSegmenter:
                 p_tokens = prompt_tokens(label)
                 print(f'Prompt: "{label}"   →   Tokens: {p_tokens}')
             
-            inputs = self.owl_processor(text=[prompt], images=image,
-                                        return_tensors="pt").to(self.device)
-            with torch.no_grad():
-                out = self.owl_model(**inputs)
-            boxes  = out.pred_boxes[0].cpu()
-            scores = out.logits[0].cpu().sigmoid()[:, 0]
-            keep   = torch.topk(scores, k=min(5, len(scores))).indices  # 前 5 个候选
+
+            if method == "owlvit":
+                inputs = self.owl_processor(text=[prompt], images=image,
+                                            return_tensors="pt").to(self.device)
+                with torch.no_grad():
+                    out = self.owl_model(**inputs)
+                boxes  = out.pred_boxes[0].cpu()
+                scores = out.logits[0].cpu().sigmoid()[:, 0]
+                keep   = torch.topk(scores, k=min(5, len(scores))).indices  # 前 5 个候选
+                
+
+            elif method == "yolo":
+                yolo_results = yolo_model(image, conf=0.05)
+                boxes_xyxy = yolo_results[0].boxes.xyxy.cpu().numpy()
+                confs      = yolo_results[0].boxes.conf.cpu().numpy()
+                labels_idx = yolo_results[0].boxes.cls.cpu().numpy()
+                print(labels_idx)
+                class_names = yolo_model.names
+
+                print("YOLO 检测到的所有目标：")
+                for i, c in enumerate(labels_idx):
+                    name = class_names[int(c)]
+                    conf = confs[i]
+                    bbox = boxes_xyxy[i]
+                    print(f"  - 类别: {name:>10s}，置信度: {conf:.3f}，bbox: [{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]")
+                # 根据prompt筛选类别
+                prompt_lower = prompt.lower()
+                matched_idx = [
+                    i for i, c in enumerate(labels_idx)
+                    if class_names[int(c)].lower() == prompt_lower
+                ]
+                if not matched_idx:
+                    print(f"未找到与类别 {prompt} 匹配的目标框，自动跳过")
+                    return None, None, None
+
+                filtered_boxes = boxes_xyxy[matched_idx]
+                filtered_confs = confs[matched_idx]
+
+                top5_idx = filtered_confs.argsort()[::-1][:5]
+                boxes_list = []
+                for b in filtered_boxes[top5_idx]:
+                    x1, y1, x2, y2 = b
+                    # 保证顺序
+                    x1, x2 = sorted([x1, x2])
+                    y1, y2 = sorted([y1, y2])
+                    # 转成 cx, cy, bw, bh（归一化到0~1）
+                    cx = (x1 + x2) / 2 / W
+                    cy = (y1 + y2) / 2 / H
+                    bw = (x2 - x1) / W
+                    bh = (y2 - y1) / H
+                    boxes_list.append(np.array([cx, cy, bw, bh], dtype=np.float32))
+                boxes = [torch.from_numpy(b) for b in boxes_list]
+                scores = filtered_confs[top5_idx]
+                keep = range(len(boxes))
+
 
             matched = []   # OCR 命中的候选
             for idx in keep:
@@ -296,6 +345,10 @@ def get_segmenter():
 def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left"):
     seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
     img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate)
+    if img is None or boxes is None or points is None:
+        print(f"未找到目标 {target}，请检查图片或目标名称")
+        return None, None, None, None, None, None
+    
     if name == "left":
         img.save("images/result_l.jpg")
     elif name == "right":
@@ -323,11 +376,11 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
 
 # ---------------- demo ----------------
 if __name__ == "__main__":
-    target_label = "pepper bottle"  
-    text = "Schwarzer Pfeffer ganz"
-    image_path = "images/example1.jpg"  # 替换为你的图片路径
+    target_label = "carrot"  
+    text = ""
+    image_path = "images/example3.jpg"  # 替换为你的图片路径
     # text = ""
-    target_prompt, box_center_point, seg_center_point, bbox, score = find_object_central_pixel(target_label, text,image_path, is_sam = True, if_translate = False)  # 调用函数处理图像中的目标检测
+    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=False)  # 调用函数处理图像中的目标检测
     print(f"🔍 Detected target: {target_label}")
     print(f"📍 Target prompt: {target_prompt}")
     print(f"📏 Bounding box: {bbox}")

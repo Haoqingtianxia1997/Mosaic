@@ -6,9 +6,9 @@ from mistral_ai.mistral import Mistralmodel
 vlm_client = Mistralmodel()
 if __name__ == "__main__":
     actions = [
-        {"type": "perceive", "target": "tomato", "parameters": {}},
-        {"type": "move", "target": "tomato", "parameters": {}},
-        # {"type": "grasp_otherthings", "target": "tomato", "parameters": {}},
+        {"type": "perceive", "target": "bottle", "parameters": {}},
+        {"type": "move", "target": "bottle", "parameters": {}},
+        {"type": "grasp_otherthings", "target": "bottle", "parameters": {}},
         # {"type": "perceive", "target": "user person", "parameters": {}},
         # {"type": "move", "target": "user person", "parameters": {}},
         # {"type": "open", "target": "user person", "parameters": {}},

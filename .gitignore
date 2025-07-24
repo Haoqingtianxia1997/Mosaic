@@ -5,6 +5,7 @@ log/
 __pycache__/
 .vscode/
 .saved_images/
+.saved_images_yolo/
 
 *.py[oc]
 dist/

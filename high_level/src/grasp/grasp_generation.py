@@ -175,7 +175,7 @@ class GraspGeneration:
                 grasp_y_axis = -grasp_y_axis
 
             # 生成 [-80°, -45°] 范围内的随机角度（单位：弧度）
-            theta_deg = np.random.uniform(-80, -45)
+            theta_deg = np.random.uniform(-0, 0)
             theta_rad = np.radians(theta_deg)
 
             # 绕 grasp_y_axis 的旋转矩阵（Rodrigues 公式）
