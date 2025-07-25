@@ -23,7 +23,7 @@ from intention.l2cs import select_device, Pipeline
 class Intention():
     def __init__(self):
         self.bridge = CvBridge()
-        self.yolo_model = YOLO('yolo_model/yolo11m.pt')
+        self.yolo_model = YOLO('yolo_model/best.pt')
         self.transcriber = VoiceTranscriber()
 
         self.mp_hands = mp.solutions.hands
@@ -274,6 +274,42 @@ class Intention():
             stable = None
         return stable, last_output, pts_deque, base
     
+    # def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path):
+    #     """
+    #     img: bgr8 (cv2)
+    #     u, v: center point pixel of ROI
+    #     yolo_model: 
+    #     output_path: 
+    #     """
+    #     h, w = img.shape[:2]
+    #     roi_size = 500
+    #     half = roi_size // 2
+    #     x1, y1 = max(u - half, 0), max(v - half, 0)
+    #     x2, y2 = min(u + half, w-1), min(v + half, h-1)
+
+    #     # 画 ROI 框
+    #     cv2.rectangle(img, (x1, y1), (x2, y2), (0,255,255), 2)
+    #     roi = img[y1:y2, x1:x2]
+    #     labels = []
+    #     if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
+    #         print("ROI empty, skip YOLO")
+    #     else:
+    #         result = yolo_model(roi, verbose=False,  conf=0.05)[0]
+    #         if result.boxes.shape[0]:
+    #             for box in result.boxes:
+    #                 cls = int(box.cls[0].cpu().numpy())
+    #                 label = yolo_model.names[cls]
+    #                 conf = float(box.conf[0].cpu().numpy())
+    #                 bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
+    #                 cv2.rectangle(img, (bx1 + x1, by1 + y1), (bx2 + x1, by2 + y1), (0,0,255), 2)
+    #                 cv2.putText(img, f"{label} {conf:.2f}", (bx1 + x1, by1 + y1 - 5),
+    #                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    #                 labels.append(label)
+    #             print(f"YOLO detected: {', '.join(labels)}")
+    #     cv2.imwrite(output_path, img)
+    #     print(f"YOLO ROI & label image saved: {output_path}")
+    #     return labels
+    
     def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path):
         """
         img: bgr8 (cv2)
@@ -294,22 +330,26 @@ class Intention():
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
             print("ROI empty, skip YOLO")
         else:
-            result = yolo_model(roi, verbose=False)[0]
+            result = yolo_model(img, verbose=False,  conf=0.7)[0]
             if result.boxes.shape[0]:
                 for box in result.boxes:
-                    cls = int(box.cls[0].cpu().numpy())
-                    label = yolo_model.names[cls]
-                    conf = float(box.conf[0].cpu().numpy())
                     bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
-                    cv2.rectangle(img, (bx1 + x1, by1 + y1), (bx2 + x1, by2 + y1), (0,0,255), 2)
-                    cv2.putText(img, f"{label} {conf:.2f}", (bx1 + x1, by1 + y1 - 5),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-                    labels.append(label)
-                print(f"YOLO detected: {', '.join(labels)}")
+                    # 检查框的中心点是否在ROI内
+                    center_x = (bx1 + bx2) // 2
+                    center_y = (by1 + by2) // 2
+                    if x1 <= center_x <= x2 and y1 <= center_y <= y2:
+                        cls = int(box.cls[0].cpu().numpy())
+                        label = yolo_model.names[cls]
+                        conf = float(box.conf[0].cpu().numpy())
+                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (0,0,255), 2)
+                        cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+                        labels.append(label)
+                print(f"YOLO detected (ROI): {', '.join(labels)}")
         cv2.imwrite(output_path, img)
         print(f"YOLO ROI & label image saved: {output_path}")
         return labels
-
+    
     def ask_label_tts(self, labels):
         labels = list(set(labels))
         label_str = ", ".join(labels)

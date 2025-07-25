@@ -12,7 +12,8 @@ import cv2
 from PIL import Image, ImageDraw
 from segment_anything import sam_model_registry, SamPredictor
 
-yolo_model = YOLO('yolo_model/yolo11m.pt')  # 用你自己的权重
+# yolo_model = YOLO('yolo_model/yolo11m.pt')  # 用你自己的权重
+yolo_model = YOLO('yolo_model/best.pt')
 
 # 伪彩色表（你可自定义）
 COLOR_TABLE = [
@@ -152,18 +153,19 @@ class TextDrivenSegmenter:
         not_match = False
 
         for prompt, label in zip (text_prompts, text_label):
+           
             if label == "":
                 not_match = True
-
-            if if_translate:  # 翻译成德语
-                tokens_en = prompt_tokens(label) 
-                tokens_de = [self._en_word2de(w).lower() for w in tokens_en]
-                p_tokens = tokens_de         # 整句 prompt→单词列表
-                print(f'Prompt EN: "{label}"   →   DE: "{tokens_de}"')
             else:
-                p_tokens = prompt_tokens(label)
-                print(f'Prompt: "{label}"   →   Tokens: {p_tokens}')
-            
+                if if_translate:  # 翻译成德语
+                    tokens_en = prompt_tokens(label) 
+                    tokens_de = [self._en_word2de(w).lower() for w in tokens_en]
+                    p_tokens = tokens_de         # 整句 prompt→单词列表
+                    print(f'Prompt EN: "{label}"   →   DE: "{tokens_de}"')
+                else:
+                    p_tokens = prompt_tokens(label)
+                    print(f'Prompt: "{label}"   →   Tokens: {p_tokens}')
+                
 
             if method == "owlvit":
                 inputs = self.owl_processor(text=[prompt], images=image,
@@ -173,22 +175,21 @@ class TextDrivenSegmenter:
                 boxes  = out.pred_boxes[0].cpu()
                 scores = out.logits[0].cpu().sigmoid()[:, 0]
                 keep   = torch.topk(scores, k=min(5, len(scores))).indices  # 前 5 个候选
-                
 
             elif method == "yolo":
-                yolo_results = yolo_model(image, conf=0.05)
+                yolo_results = yolo_model(image, conf=0.7)
                 boxes_xyxy = yolo_results[0].boxes.xyxy.cpu().numpy()
                 confs      = yolo_results[0].boxes.conf.cpu().numpy()
                 labels_idx = yolo_results[0].boxes.cls.cpu().numpy()
-                print(labels_idx)
+                print(f"YOLO 检测到 {labels_idx}")
                 class_names = yolo_model.names
 
-                print("YOLO 检测到的所有目标：")
                 for i, c in enumerate(labels_idx):
                     name = class_names[int(c)]
                     conf = confs[i]
                     bbox = boxes_xyxy[i]
                     print(f"  - 类别: {name:>10s}，置信度: {conf:.3f}，bbox: [{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]")
+                
                 # 根据prompt筛选类别
                 prompt_lower = prompt.lower()
                 matched_idx = [
@@ -202,9 +203,9 @@ class TextDrivenSegmenter:
                 filtered_boxes = boxes_xyxy[matched_idx]
                 filtered_confs = confs[matched_idx]
 
-                top5_idx = filtered_confs.argsort()[::-1][:5]
+                top_idx = filtered_confs.argsort()[::-1][:2]
                 boxes_list = []
-                for b in filtered_boxes[top5_idx]:
+                for b in filtered_boxes[top_idx]:
                     x1, y1, x2, y2 = b
                     # 保证顺序
                     x1, x2 = sorted([x1, x2])
@@ -216,7 +217,7 @@ class TextDrivenSegmenter:
                     bh = (y2 - y1) / H
                     boxes_list.append(np.array([cx, cy, bw, bh], dtype=np.float32))
                 boxes = [torch.from_numpy(b) for b in boxes_list]
-                scores = filtered_confs[top5_idx]
+                scores = filtered_confs[top_idx]
                 keep = range(len(boxes))
 
 
@@ -376,11 +377,11 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
 
 # ---------------- demo ----------------
 if __name__ == "__main__":
-    target_label = "carrot"  
-    text = ""
-    image_path = "images/example3.jpg"  # 替换为你的图片路径
+    target_label = "pepper bottle"  # 替换为你要检测的目标
+    text = "black pepper"  # 替换为你要检测的文字
+    image_path = "images/example1.jpg"  # 替换为你的图片路径
     # text = ""
-    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=False)  # 调用函数处理图像中的目标检测
+    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=True)  # 调用函数处理图像中的目标检测
     print(f"🔍 Detected target: {target_label}")
     print(f"📍 Target prompt: {target_prompt}")
     print(f"📏 Bounding box: {bbox}")

@@ -559,7 +559,10 @@ def execute_action_sequence(actions, vlm_client):
                         success = True
                     else:
                         print("❌ Failed to perceive target points in both cameras.")
-                        play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
+                        if response_r:
+                            play_text_to_speech(response_r, language='en')
+                        else:
+                            play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
 
                         success = False
                         continue
