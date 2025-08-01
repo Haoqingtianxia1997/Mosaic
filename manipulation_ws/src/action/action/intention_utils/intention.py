@@ -7,12 +7,13 @@ import time
 from ultralytics import YOLO
 import os
 import sys
+import open3d as o3d
 HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../../../../../high_level/src"))
 if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
 from transcribe.tts import play_text_to_speech
 from transcribe.stt import VoiceTranscriber
-from pixel_world.pixel_and_world import left_cam, right_cam, world_to_pixels_left, world_to_pixels_right
+from pixel_world.pixel_and_world import left_cam, right_cam, gaze_cam, world_to_pixels_left, world_to_pixels_right, world_to_pixels_gaze, pixels_to_world_gaze
 SRC_PATH = os.path.abspath(os.path.join(__file__, "../../../../"))
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
@@ -144,24 +145,53 @@ class Intention():
         # step2: 双眼中心关键点（33, 263为左右眼球中心）
         left_eye = face_landmarks.landmark[33]
         right_eye = face_landmarks.landmark[263]
+      
         u = int((left_eye.x + right_eye.x) / 2 * w)
         v = int((left_eye.y + right_eye.y) / 2 * h)
 
+
         # step3: 反投影Z
-        if depth_msg is not None:
-            depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')
-            if 0 <= v < depth.shape[0] and 0 <= u < depth.shape[1]:
-                z = float(depth[v, u])
-                if z <= 0 or z > 5.0:
-                    z = 1.0  # fallback
-            else:
-                z = 1.0
+        depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')
+        if 0 <= v < depth.shape[0] and 0 <= u < depth.shape[1] and not np.isnan(depth[v, u]).any():
+            z = float(depth[v, u])/1000.0
         else:
-            z = 1.0
+            return None , None
 
         x = (u - cx) * z / fx
         y = (v - cy) * z / fy
         cam_origin_c = np.array([x, y, z])
+        print(f"cam_origin_c: {cam_origin_c}")
+        # u, v = np.meshgrid(np.arange(w), np.arange(h))
+        # z = depth.astype(np.float32) /1000.0
+
+        # x = (u - cx) * z / fx
+        # y = (v - cy) * z / fy
+
+        # cam_points_c = np.stack((x, y, z), axis=-1).reshape(-1, 3)
+        
+        
+        # rgb_flat = img_rgb.reshape(-1, 3)
+        # colors = rgb_flat / 255.0
+        # pcd = o3d.geometry.PointCloud()
+        # pcd.points = o3d.utility.Vector3dVector(cam_points_c)
+        # pcd.colors = o3d.utility.Vector3dVector(colors)
+
+        # world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
+
+        # # test point position
+        # sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.005)
+        # sphere.translate(test_point := cam_origin_c)
+        # sphere.paint_uniform_color([1, 0, 0])  # 红色
+
+        # # 可视化
+        # o3d.visualization.draw_geometries([world_frame, sphere, pcd],
+        #                                 window_name="ZED2 PointCloud with World & Camera Frame")
+
+        # cv2.circle(img, (u, v), 5, (0, 255, 0), -1)
+        # cv2.imshow("Gaze Point", img)
+        # cv2.waitKey(1)
+
+
 
         # step4: L2CSNet gaze方向
         results = self.gaze_pipeline.step(img)
@@ -186,7 +216,7 @@ class Intention():
             
         # 欧拉角→相机系单位向量
         gx = -np.cos(self.pitch) * np.sin(self.yaw)
-        gy = -np.sin(self.pitch)
+        gy = - np.sin(self.pitch)
         gz = -np.cos(self.pitch) * np.cos(self.yaw)
         gaze_vec_c = np.array([gx, gy, gz])
 
@@ -195,7 +225,7 @@ class Intention():
         t_wc = T_wc[:3, 3]
         gaze_vec_w = R_wc @ gaze_vec_c
         gaze_origin_w = R_wc @ cam_origin_c + t_wc
-
+        print(f"gaze_vec_w: {gaze_vec_w}, gaze_origin_w: {gaze_origin_w}")
         return gaze_vec_w, gaze_origin_w
     
     def line_plane_intersect(self, origin, direction, z_plane=0.0):

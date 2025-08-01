@@ -412,6 +412,32 @@ from math import radians
 
 
 
+# gaze camera image load
+depth_img = np.load('./saved_images/rgbd_depth.npy')
+height, width = depth_img.shape
+rgb_img = cv2.cvtColor(cv2.imread('./saved_images/rgbd_rgb.png'), cv2.COLOR_BGR2RGB)
+
+# intrinsics
+fx = 910.5794677734375
+fy = 910.3142700195312
+cx = 643.673583984375
+cy = 367.935546875
+# extrinsics
+translation = np.array([0.07261126, -0.54195948, 0.82295671])
+qx = 0.5
+qy = -0.5
+qz = 0.5
+qw = -0.5
+roll = -1.5707963267948966
+pitch = 0.0
+yaw = -1.5707963267948966
+
+
+test_point = np.array([0.70, -0.565, 0.63])
+
+
+
+
 # # left image load
 # depth_img = np.load('./saved_images/l_depth.npy')
 # height, width = depth_img.shape
@@ -436,27 +462,31 @@ from math import radians
 
 
 
-# right image load
-depth_img = np.load('./saved_images/r_depth.npy')
-height, width = depth_img.shape
-rgb_img = cv2.cvtColor(cv2.imread('./saved_images/r_rgb.png'), cv2.COLOR_BGR2RGB)
 
-# zedr cam intrinsics
-fx = 1059.9764404296875
-fy = 1059.9764404296875
-cx = 963.07568359375
-cy = 522.3530883789062
-# zedr extrinsics
-translation = [0.903701253331141, 0.439249176547482, 0.598645500102408]
-qx = -0.404974467935380
-qy = -0.808551385290863
-qz = 0.425767747250020
-qw = 0.031018753461827
-roll  = -2.298360156012407
-pitch = 0.299130700579650
-yaw   = 2.347883188101515
 
-test_point = np.array([0.7, 0.0, 0.2])
+
+
+# # right image load
+# depth_img = np.load('./saved_images/r_depth.npy')
+# height, width = depth_img.shape
+# rgb_img = cv2.cvtColor(cv2.imread('./saved_images/r_rgb.png'), cv2.COLOR_BGR2RGB)
+
+# # zedr cam intrinsics
+# fx = 1059.9764404296875
+# fy = 1059.9764404296875
+# cx = 963.07568359375
+# cy = 522.3530883789062
+# # zedr extrinsics
+# translation = [0.903701253331141, 0.439249176547482, 0.598645500102408]
+# qx = -0.404974467935380
+# qy = -0.808551385290863
+# qz = 0.425767747250020
+# qw = 0.031018753461827
+# roll  = -2.298360156012407
+# pitch = 0.299130700579650
+# yaw   = 2.347883188101515
+
+# test_point = np.array([0.7, 0.0, 0.2])
 
 
 
@@ -464,7 +494,8 @@ rot = R.from_euler('xyz', [roll, pitch, yaw])
 # rot = R.from_quat([qx, qy, qz, qw])
 # 生成像素网格
 u, v = np.meshgrid(np.arange(width), np.arange(height))
-z = depth_img
+z = depth_img / 1000
+print(fx, fy, cx, cy)
 x = (u - cx) * z / fx
 y = (v - cy) * z / fy
 

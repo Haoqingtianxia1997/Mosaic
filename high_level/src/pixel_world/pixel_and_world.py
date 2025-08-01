@@ -53,6 +53,21 @@ right_cam = CameraModel(
                    0.598645500102408])
 )
 
+gaze_cam = CameraModel(
+    fx = 910.5794677734375,
+    fy = 910.3142700195312,
+    cx = 643.673583984375,
+    cy = 367.935546875,
+    R_wc=R.from_quat([
+        0.5, 
+        -0.5, 
+        0.5, 
+        -0.5]).as_matrix(),
+    t_wc=np.array([0.07261126, 
+                   -0.54195948, 
+                   0.82295671])
+)
+
 # ---------- 像素 → 世界 ----------
 def pixels_to_world(pixels, depths, cam: CameraModel, rgb_img=None):
     """
@@ -130,3 +145,9 @@ def world_to_pixels_left(points_world, return_depth=False):
 
 def world_to_pixels_right(points_world, return_depth=False):
     return world_to_pixels(points_world, right_cam, return_depth)
+
+def world_to_pixels_gaze(points_world, return_depth=False):
+    return world_to_pixels(points_world, gaze_cam, return_depth)
+
+def pixels_to_world_gaze(pixels, depths, rgb_img=None):
+    return pixels_to_world(pixels, depths, gaze_cam, rgb_img)

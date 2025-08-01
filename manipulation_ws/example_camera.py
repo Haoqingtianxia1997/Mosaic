@@ -7,6 +7,7 @@ import os
 import time
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 import numpy as np
+from realsense2_camera_msgs.msg import RGBD
 
 class RGBDepthSaver(Node):
     def __init__(self):
@@ -16,6 +17,7 @@ class RGBDepthSaver(Node):
         # 分别记录左右相机的上次保存时间
         self.last_saved_time_r_ = 0
         self.last_saved_time_l_ = 0
+        self.last_saved_time_rgbd_ = 0
 
         # 创建保存目录
         self.output_dir = os.path.join(os.getcwd(), 'saved_images')
@@ -27,12 +29,17 @@ class RGBDepthSaver(Node):
         self.l_rgb_sub = Subscriber(self, Image, '/zedl/zed_node/rgb/image_rect_color')
         self.l_depth_sub = Subscriber(self, Image, '/zedl/zed_node/depth/depth_registered')
 
+        self.rgbd = Subscriber(self, RGBD, '/camera/camera/rgbd')
+
         # 分别为左右相机设置同步器
         self.ts_right = ApproximateTimeSynchronizer([self.r_rgb_sub, self.r_depth_sub], queue_size=10, slop=0.1)
         self.ts_right.registerCallback(self.callback_right)
 
         self.ts_left = ApproximateTimeSynchronizer([self.l_rgb_sub, self.l_depth_sub], queue_size=10, slop=0.1)
         self.ts_left.registerCallback(self.callback_left)
+
+        self.ts_rgbd = ApproximateTimeSynchronizer([self.rgbd], queue_size=10, slop=0.1)
+        self.ts_rgbd.registerCallback(self.callback_rgbd)
 
         self.get_logger().info('RGBDepthSaver node has been started.')
 
@@ -42,12 +49,17 @@ class RGBDepthSaver(Node):
     def callback_left(self, rgb_msg, depth_msg):
         self.save_images(rgb_msg, depth_msg, prefix='l_')
 
+    def callback_rgbd(self, rgbd_msg):
+        rgb_msg = rgbd_msg.rgb
+        depth_msg = rgbd_msg.depth
+        self.save_images(rgb_msg, depth_msg, prefix='rgbd_')
+
     def save_images(self, rgb_msg, depth_msg, prefix=''):
         current_time = time.time()
         # 每10秒保存一次，左右相机分别计时
         last_saved_attr = f'last_saved_time_{prefix}'
         last_saved = getattr(self, last_saved_attr)
-        if current_time - last_saved >= 10.0:
+        if current_time - last_saved >= 1.0:
             try:
                 # 转换为 OpenCV 图像
                 rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
@@ -64,11 +76,16 @@ class RGBDepthSaver(Node):
                 # 保存原始深度图（float32）
                 np.save(depth_raw_path, depth_image)
 
-                # 保存可视化深度图（归一化后转为 uint8）
-                depth_image_clipped = np.clip(depth_image, 0, 3.0)
-                depth_vis = cv2.normalize(depth_image_clipped, None, 0, 255, cv2.NORM_MINMAX)
-                depth_vis = depth_vis.astype('uint8')
-                cv2.imwrite(depth_vis_path, depth_vis)
+                if prefix == 'rgbd_':
+                    # directly save
+                    cv2.imwrite(depth_vis_path, depth_image)
+                    
+                else:
+                    # 保存可视化深度图（归一化后转为 uint8）
+                    depth_image_clipped = np.clip(depth_image, 0, 3.0)
+                    depth_vis = cv2.normalize(depth_image_clipped, None, 0, 255, cv2.NORM_MINMAX)
+                    depth_vis = depth_vis.astype('uint8')
+                    cv2.imwrite(depth_vis_path, depth_vis)
 
                 setattr(self, last_saved_attr, current_time)
                 self.get_logger().info(f'Saved {prefix} images')

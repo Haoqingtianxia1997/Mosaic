@@ -13,6 +13,7 @@ import os
 from intention_utils.intention import Intention
 from intention_utils.open3d_viewer import PersistentOpen3DViewer
 from action_interfaces.msg import Labels
+from realsense2_camera_msgs.msg import RGBD
 
 
 def create_Twc_from_quaternion(translation: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
@@ -58,8 +59,8 @@ class HandDetectionWithPointCloudNode(Node):
         )
         self.mp_drawing = mp.solutions.drawing_utils
 
-        self.rgb_buffer = {'left': None, 'right': None, 'front': None}
-        self.depth_buffer = {'left': None, 'right': None, 'front': None}
+        self.rgb_buffer = {'left': None, 'right': None, 'gaze': None}
+        self.depth_buffer = {'left': None, 'right': None, 'gaze': None}
         self.lock = Lock()
         
         time.sleep(5)
@@ -74,10 +75,7 @@ class HandDetectionWithPointCloudNode(Node):
         self.label_msg = Labels()
 
         # TODO: subscription 3
-        self.create_subscription(Image, '/gaze_camera/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'front', 'rgb'), 10)
-        self.create_subscription(Image, '/gaze_camera/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'front', 'depth'), 10)
-
-
+        self.create_subscription(RGBD, '/camera/camera/rgbd', lambda msg: self.buffer_callback(msg, 'gaze','rgb + depth'), 10)
         self.create_subscription(Image, '/zedl/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'left', 'rgb'), 10)
         self.create_subscription(Image, '/zedr/zed_node/rgb/image_rect_color', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
         self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'left', 'depth'), 10)
@@ -92,9 +90,9 @@ class HandDetectionWithPointCloudNode(Node):
         self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.903701253331141, 0.439249176547482, 0.598645500102408]), quaternion = np.array([-0.404974467935380, -0.808551385290863, 0.425767747250020, 0.031018753461827]))
         self.intrinsics_r = (1059.9764404296875, 1059.9764404296875, 963.07568359375, 522.3530883789062)
 
-        # TODO: front camera
-        self.T_wc_f = None
-        self.intrinsics_f = None
+        # gaze camera
+        self.T_wc_f = create_Twc_from_quaternion(translation = np.array([0.07261126, -0.54195948, 0.82295671]), quaternion = np.array([0.5, -0.5, 0.5, -0.5]))
+        self.intrinsics_f = (910.5794677734375, 910.5794677734375, 643.673583984375, 367.935546875)
 
         # finger detection
         self.finger_pts = deque()    # 存交点与时间戳
@@ -103,8 +101,6 @@ class HandDetectionWithPointCloudNode(Node):
         self.finger_stable_pos = None   # 当前窗口的稳定输出
 
         # gaze detection
-        # self.gaze_direction_ema = None
-        # self.gaze_origin_ema = None
         self.gaze_pts = deque()
         self.gaze_base = None
         self.gaze_last_output = None
@@ -114,19 +110,28 @@ class HandDetectionWithPointCloudNode(Node):
 
     def buffer_callback(self, msg, side, kind):
         with self.lock:
-            if kind == 'rgb':
-                self.rgb_buffer[side] = msg
-                img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                results = self.hands_detector.process(img_rgb)
-                if results.multi_hand_landmarks:
-                    for hand_landmarks in results.multi_hand_landmarks:
-                        self.mp_drawing.draw_landmarks(img, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
-                out_path = os.path.join(self.output_dir, f'{side}_gesture_result.png')
+            print(side, kind)
+            if side == 'gaze':
+                self.rgb_buffer[side] = msg.rgb
+                img = self.bridge.imgmsg_to_cv2(msg.rgb, 'bgr8')
+                out_path = os.path.join(self.output_dir, f'gaze_result.png')
                 cv2.imwrite(out_path, img)
+                self.depth_buffer[side] = msg.depth
+            else:
+                print("----------------------")
+                if kind == 'rgb':
+                    self.rgb_buffer[side] = msg
+                    img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    results = self.hands_detector.process(img_rgb)
+                    if results.multi_hand_landmarks:
+                        for hand_landmarks in results.multi_hand_landmarks:
+                            self.mp_drawing.draw_landmarks(img, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
+                    out_path = os.path.join(self.output_dir, f'{side}_gesture_result.png')
+                    cv2.imwrite(out_path, img)
 
-            elif kind == 'depth':
-                self.depth_buffer[side] = msg
+                elif kind == 'depth':
+                    self.depth_buffer[side] = msg
 
     def monitor_pair_thread(self):
         while rclpy.ok():
@@ -142,15 +147,15 @@ class HandDetectionWithPointCloudNode(Node):
                     depth_msg_r = self.depth_buffer['right']
                     rgb_msg_l = self.rgb_buffer['left']
                     depth_msg_l = self.depth_buffer['left']
-                    rgb_msg_front = self.rgb_buffer['front']
-                    depth_msg_front = self.depth_buffer['front']
+                    rgb_msg_gaze = self.rgb_buffer['gaze']
+                    depth_msg_gaze = self.depth_buffer['gaze']
 
                     if rgb_msg_l is not None and depth_msg_l is not None and rgb_msg_r is not None and depth_msg_r is not None:
 
                         finger_direction_l, finger_origin_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
                         finger_direction_r, finger_origin_r = self.intention.get_hand_pose(rgb_msg_r, depth_msg_r, self.T_wc_r, self.intrinsics_r)
-                        if rgb_msg_front is not None and depth_msg_front is not None:
-                            gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_front, depth_msg_front, self.T_wc_f, self.intrinsics_f)
+                        if rgb_msg_gaze is not None and depth_msg_gaze is not None:
+                            gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_gaze, depth_msg_gaze, self.T_wc_f, self.intrinsics_f)
                         else:
                             gaze_direction, gaze_origin = None, None
 
@@ -355,8 +360,8 @@ class HandDetectionWithPointCloudNode(Node):
                                     gaze_direction_ema, 
                                     gaze_origin_ema, 
                                     gaze_intersect, 
-                                    gaze_label_output) = self.intention.process_detection(gaze_direction, gaze_origin, rgb_msg_r, self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = ['fusion_gaze_yolo_r.png', 'fusion_gaze_yolo_l.png'], camera_side = ['right', 'left'])
-            
+                                    gaze_label_output) = self.intention.process_detection(gaze_direction, gaze_origin, [rgb_msg_r, rgb_msg_l], self.gaze_pts, direction_name = "gaze_direction", origin_name = "gaze_origin", image_name = ['gaze_yolo_r.png', 'gaze_yolo_l.png'], camera_side = ['right', 'left'])
+
                                     self.label_msg.gaze_labels = gaze_label_output
 
                                     all_direction.append(gaze_direction)
@@ -390,14 +395,14 @@ class HandDetectionWithPointCloudNode(Node):
                 elif self.right_camera_active:
                     rgb_msg = self.rgb_buffer['right']
                     depth_msg = self.depth_buffer['right']
-                    # rgb_msg_front = self.rgb_buffer['front']
-                    # depth_msg_front = self.depth_buffer['front']
+                    rgb_msg_gaze = self.rgb_buffer['gaze']
+                    depth_msg_gaze = self.depth_buffer['gaze']
 
                     # finger detection
                     if rgb_msg is not None and depth_msg is not None:
 
                         finger_direction, finger_origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
-                        gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg, depth_msg, self.T_wc_r, self.intrinsics_r)
+                        gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_gaze, depth_msg_gaze, self.T_wc_f, self.intrinsics_f)
                         
                         all_direction=[]
                         all_origin=[]
@@ -544,14 +549,14 @@ class HandDetectionWithPointCloudNode(Node):
                 elif self.left_camera_active:
                     rgb_msg = self.rgb_buffer['left']
                     depth_msg = self.depth_buffer['left']
-                    rgb_msg_front = self.rgb_buffer['front']
-                    depth_msg_front = self.depth_buffer['front']
+                    rgb_msg_gaze = self.rgb_buffer['gaze']
+                    depth_msg_gaze = self.depth_buffer['gaze']
 
                     if rgb_msg is not None and depth_msg is not None:
 
                         finger_direction, finger_origin = self.intention.get_hand_pose(rgb_msg, depth_msg, self.T_wc_l, self.intrinsics_l)
-                        if rgb_msg_front is not None and depth_msg_front is not None:
-                            gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_front, depth_msg_front, self.T_wc_f, self.intrinsics_f)
+                        if rgb_msg_gaze is not None and depth_msg_gaze is not None:
+                            gaze_direction, gaze_origin = self.intention.get_gaze_direction(rgb_msg_gaze, depth_msg_gaze, self.T_wc_f, self.intrinsics_f)
                         else:
                             gaze_direction, gaze_origin = None, None
                         
