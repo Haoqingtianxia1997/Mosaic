@@ -86,7 +86,7 @@ class GraspService(Node):
         move_prep_req.qz = request.qz_prep
         move_prep_req.qw = request.qw_prep
 
-        move_prep_res = self.cartesian_client.call(move_prep_req)
+        move_prep_res = self.move_client.call(move_prep_req)
         
         if not move_prep_res or not move_prep_res.success:
             self.get_logger().error('Move Service 调用失败！')

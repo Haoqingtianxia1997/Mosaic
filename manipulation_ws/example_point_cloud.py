@@ -412,53 +412,54 @@ from math import radians
 
 
 
-# gaze camera image load
-depth_img = np.load('./saved_images/rgbd_depth.npy')
-height, width = depth_img.shape
-rgb_img = cv2.cvtColor(cv2.imread('./saved_images/rgbd_rgb.png'), cv2.COLOR_BGR2RGB)
-
-# intrinsics
-fx = 910.5794677734375
-fy = 910.3142700195312
-cx = 643.673583984375
-cy = 367.935546875
-# extrinsics
-translation = np.array([0.07261126, -0.54195948, 0.82295671])
-qx = 0.5
-qy = -0.5
-qz = 0.5
-qw = -0.5
-roll = -1.5707963267948966
-pitch = 0.0
-yaw = -1.5707963267948966
-
-
-test_point = np.array([0.70, -0.565, 0.63])
-
-
-
-
-# # left image load
-# depth_img = np.load('./saved_images/l_depth.npy')
+# # gaze camera image load
+# depth_img = np.load('./saved_images/rgbd_depth.npy')
 # height, width = depth_img.shape
-# rgb_img = cv2.cvtColor(cv2.imread('./saved_images/l_rgb.png'), cv2.COLOR_BGR2RGB)
+# rgb_img = cv2.cvtColor(cv2.imread('./saved_images/rgbd_rgb.png'), cv2.COLOR_BGR2RGB)
 
-# # zedl cam intrinsics
-# fx = 1060.0899658203125
-# fy = 1059.0899658203125
-# cx = 958.9099731445312
-# cy = 561.5670166015625
-# # zedl extrinsics
-# translation = np.array([0.11261126, -0.50195948, 0.55795671])
-# qx = 0.81395177
-# qy = -0.40028226
-# qz = -0.07631803
-# qw = -0.41404371
-# roll = -2.38206340
-# pitch = 0.47316643
-# yaw = -0.72222115
+# # intrinsics
+# fx = 910.5794677734375
+# fy = 910.3142700195312
+# cx = 643.673583984375
+# cy = 367.935546875
+# # extrinsics
+# translation = np.array([0.07261126, -0.54195948, 0.82295671])
+# qx = 0.5
+# qy = -0.5
+# qz = 0.5
+# qw = -0.5
+# roll = -1.5707963267948966
+# pitch = 0.0
+# yaw = -1.5707963267948966
 
-# test_point = np.array([0.3, -0.2, 0.2])
+
+# test_point = np.array([0.70, -0.565, 0.63])
+
+
+
+
+# left image load
+depth_img = np.load('./saved_images/l_depth.npy')
+height, width = depth_img.shape
+rgb_img = cv2.cvtColor(cv2.imread('./saved_images/l_rgb.png'), cv2.COLOR_BGR2RGB)
+
+# zedl cam intrinsics
+fx = 1060.0899658203125
+fy = 1059.0899658203125
+cx = 958.9099731445312
+cy = 561.5670166015625
+# zedl extrinsics
+translation = np.array([0.11261126, -0.50195948, 0.55795671])
+# translation = np.array([0.11261126 + 0.005, -0.50195948 + 0.005, 0.55795671])
+qx = 0.81395177
+qy = -0.40028226
+qz = -0.07631803
+qw = -0.41404371
+roll = -2.38206340
+pitch = 0.47316643
+yaw = -0.72222115
+
+test_point = np.array([0.3, -0.2, 0.2])
 
 
 
@@ -494,7 +495,7 @@ rot = R.from_euler('xyz', [roll, pitch, yaw])
 # rot = R.from_quat([qx, qy, qz, qw])
 # 生成像素网格
 u, v = np.meshgrid(np.arange(width), np.arange(height))
-z = depth_img / 1000
+z = depth_img
 print(fx, fy, cx, cy)
 x = (u - cx) * z / fx
 y = (v - cy) * z / fy

@@ -61,8 +61,32 @@ class GraspGeneration:
         # sample the position in the bounding box
         for idx in range(num_grasps):
             rotated_coords = np.zeros(3)
-            rotated_coords[0] = np.random.uniform(min_point_rotated[0], max_point_rotated[0])
-            rotated_coords[1] = np.random.uniform(min_point_rotated[1], max_point_rotated[1])
+            
+            # 确定长轴和短轴在旋转坐标系中的索引
+            if x_size < y_size:
+                # y是长轴，x是短轴
+                long_axis_idx = 1
+                short_axis_idx = 0
+            else:
+                # x是长轴，y是短轴
+                long_axis_idx = 0
+                short_axis_idx = 1
+            
+            # 长轴方向使用正态分布采样（中心偏置）
+            long_axis_center = (min_point_rotated[long_axis_idx] + max_point_rotated[long_axis_idx]) / 2
+            long_axis_range = max_point_rotated[long_axis_idx] - min_point_rotated[long_axis_idx]
+            # 使用正态分布，标准差为范围的1/9
+            long_axis_std = long_axis_range / 9
+            rotated_coords[long_axis_idx] = np.clip(
+                np.random.normal(long_axis_center, long_axis_std),
+                min_point_rotated[long_axis_idx],
+                max_point_rotated[long_axis_idx]
+            )
+            
+            # 短轴方向保持均匀分布采样
+            rotated_coords[short_axis_idx] = np.random.uniform(min_point_rotated[short_axis_idx], max_point_rotated[short_axis_idx])
+            
+            # z轴方向保持均匀分布采样
             rotated_coords[2] = np.random.uniform(min_point_rotated[2], max_point_rotated[2])
             
             # convert the sampled point from the rotated coordinate system to the world coordinate system
@@ -75,6 +99,12 @@ class GraspGeneration:
             # Z axis is vertical downward
             grasp_z_axis = np.array([0, 0, -1])
             
+
+
+            world_x = np.array([1.0, 0.0, 0.0])
+
+            if np.dot(long_axis, world_x) < 0:
+                long_axis = -long_axis
             # X axis (the thickness direction of the gripper) uses the long axis
             grasp_x_axis = long_axis
             
@@ -84,6 +114,23 @@ class GraspGeneration:
             # ensure the coordinate system direction is correct
             if np.dot(np.cross(grasp_x_axis, grasp_y_axis), grasp_z_axis) < 0:
                 grasp_y_axis = -grasp_y_axis
+            
+            # 绕Z轴进行正负10度的随机旋转
+            rotation_angle = np.random.uniform(-10, 10)  # 均匀采样 -10 到 +10 度
+            rotation_rad = np.radians(rotation_angle)
+            
+            # 构建绕Z轴的旋转矩阵
+            cos_theta = np.cos(rotation_rad)
+            sin_theta = np.sin(rotation_rad)
+            rotation_z = np.array([
+                [cos_theta, -sin_theta, 0],
+                [sin_theta, cos_theta, 0],
+                [0, 0, 1]
+            ])
+            
+            # 应用旋转到X轴和Y轴（Z轴保持不变）
+            grasp_x_axis = rotation_z @ grasp_x_axis
+            grasp_y_axis = rotation_z @ grasp_y_axis
     
             # build the rotation matrix
             R = np.column_stack((grasp_x_axis, grasp_y_axis, grasp_z_axis))
@@ -431,7 +478,7 @@ class GraspGeneration:
         center_score = np.exp(-distance_to_center**2 / (2 * 0.05**2))
       
         # Incorporate both distance scores into final quality score
-        final_quality = 0.1 * containment_ratio + 0.1 * center_score + 80 * (1-np.exp(-max_interception_depth_score * 1000))
+        final_quality = 20 * containment_ratio + 10 * center_score + 70 * (1-np.exp(-max_interception_depth_score * 1000))
         
         # print(f"Grasp center: {grasp_center}")
         # print(f"Total distance: {distance_to_center}m, Total distance score: {center_score}")

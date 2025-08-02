@@ -54,7 +54,7 @@ def visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center
                                     window_name='Point Cloud with OBB and Center',
                                     width=800, height=600)  
 
-def translation_only_icp(source, target, max_iter=20, tolerance=1e-6):
+def translation_only_icp(source, target, max_iter=50, tolerance=1e-6):
     """
     source: (N,3) 源点云
     target: (M,3) 目标点云
@@ -131,8 +131,8 @@ def filter_and_merge_icp_translation_only(
         points_l, colors_l, points_r, colors_r, 
         voxel_size=0.005, nb_points=10, radius=0.01):
     
-    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.02)
-    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.02)
+    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.015)
+    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.015)
 
     # # 1. 不预处理，直接创建点云对象
     # pcd_l = o3d.geometry.PointCloud()
@@ -596,8 +596,8 @@ def execute_action_sequence(actions, vlm_client):
                     print("z轴方向上的最高点：", target_max_z_point)
                     
                     # 计算 move_target_point
-                    move_target_point = center_world_points.copy()
-                    move_target_point[2] += 0.5  # 提升0.5米
+                    move_target_point = target_center_point.copy()
+                    move_target_point[2] += 0.4  # 提升0.4米
 
                     print("移动目标点：", move_target_point)
 
@@ -639,6 +639,21 @@ def execute_action_sequence(actions, vlm_client):
                                 "qw": 0.0,
                             }
                         )
+                        if not success:
+                            success = call_ros2_service(
+                                "/move_service",
+                                "action_interfaces/srv/Move",
+                                {
+                                    "x": move_params["move_x"],
+                                    "y": move_params["move_y"],
+                                    "z": move_params["move_z"],
+                                    "qx": move_params["move_qx"],
+                                    "qy": move_params["move_qy"],
+                                    "qz": move_params["move_qz"],
+                                    "qw": move_params["move_qw"],
+                                }
+                            )
+
                     except ValueError as e:
                         print(e)
                     # time.sleep(3)  # 等待服务调用完成
@@ -672,8 +687,8 @@ def execute_action_sequence(actions, vlm_client):
                     if success:
                         print("✅ Move action executed successfully.")
                         break
-                    else:
-                        print("❌ Move action failed, retrying...")
+                    # else:
+                    #     print("❌ Move action failed, retrying...")
 
             elif act_type == "grasp_flavoring":
                 success = False  # 重置成功状态
