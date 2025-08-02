@@ -693,20 +693,20 @@ def execute_action_sequence(actions, vlm_client):
                                 "qw": 0.0,
                             }
                         )
-                        if not success:
-                            success = call_ros2_service(
-                                "/move_service",
-                                "action_interfaces/srv/Move",
-                                {
-                                    "x": move_params["move_x"],
-                                    "y": move_params["move_y"],
-                                    "z": move_params["move_z"],
-                                    "qx": move_params["move_qx"],
-                                    "qy": move_params["move_qy"],
-                                    "qz": move_params["move_qz"],
-                                    "qw": move_params["move_qw"],
-                                }
-                            )
+                        # if not success:
+                        #     success = call_ros2_service(
+                        #         "/move_service",
+                        #         "action_interfaces/srv/Move",
+                        #         {
+                        #             "x": move_params["move_x"],
+                        #             "y": move_params["move_y"],
+                        #             "z": move_params["move_z"],
+                        #             "qx": move_params["move_qx"],
+                        #             "qy": move_params["move_qy"],
+                        #             "qz": move_params["move_qz"],
+                        #             "qw": move_params["move_qw"],
+                        #         }
+                        #     )
 
                     except ValueError as e:
                         print(e)
