@@ -21,6 +21,10 @@ class ImageSaver(Node):
 
         self.rgb_queues = {'l': deque(maxlen=1), 'r': deque(maxlen=1)}
         self.depth_queues = {'l': deque(maxlen=1), 'r': deque(maxlen=1)}
+        
+        # 添加时间戳记录
+        self.last_received_time = {'l': {'rgb': 0, 'depth': 0}, 'r': {'rgb': 0, 'depth': 0}}
+        self.data_timeout = 9.0  # 9秒内没有新数据则认为数据过期
 
         self.create_subscription(Image, '/zedl/zed_node/rgb/image_rect_color', self.make_rgb_cb('l'), 10)
         self.create_subscription(Image, '/zedr/zed_node/rgb/image_rect_color', self.make_rgb_cb('r'), 10)
@@ -47,6 +51,7 @@ class ImageSaver(Node):
             try:
                 img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
                 self.rgb_queues[cam].append(img)
+                self.last_received_time[cam]['rgb'] = time.time()  # 记录接收时间
             except Exception as e:
                 self.get_logger().error(f"[{cam}] RGB error: {e}")
         return cb
@@ -56,6 +61,7 @@ class ImageSaver(Node):
             try:
                 depth = self.bridge.imgmsg_to_cv2(msg, 'passthrough')
                 self.depth_queues[cam].append(depth)
+                self.last_received_time[cam]['depth'] = time.time()  # 记录接收时间
             except Exception as e:
                 self.get_logger().error(f"[{cam}] Depth error: {e}")
         return cb
@@ -93,9 +99,20 @@ class ImageSaver(Node):
                 self.get_logger().error(f'Failed to process {prefix} images: {e}')
 
     def auto_save(self):
+        current_time = time.time()
+        
         for cam in ['l', 'r']:
+            # 检查队列是否为空
             if not self.rgb_queues[cam] or not self.depth_queues[cam]:
                 self.get_logger().warn(f"Skipping {cam}: missing data")
+                continue
+                
+            # 检查数据是否过期
+            rgb_age = current_time - self.last_received_time[cam]['rgb']
+            depth_age = current_time - self.last_received_time[cam]['depth']
+            
+            if rgb_age > self.data_timeout or depth_age > self.data_timeout:
+                self.get_logger().warn(f"Skipping {cam}: data too old (RGB: {rgb_age:.1f}s, Depth: {depth_age:.1f}s)")
                 continue
 
             rgb = self.rgb_queues[cam][-1]

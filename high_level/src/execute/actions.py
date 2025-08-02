@@ -87,7 +87,7 @@ def translation_only_icp(source, target, max_iter=50, tolerance=1e-6):
 
 def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius=0.02):
     """
-    对输入点云和颜色进行体素下采样+半径滤波
+    对输入点云和颜色进行体素下采样+半径滤波+聚类，保留最大聚类
     返回处理后的 open3d 点云对象
     """
     import open3d as o3d
@@ -96,14 +96,67 @@ def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius
     pcd.points = o3d.utility.Vector3dVector(np.asarray(points))
     if colors is not None:
         col = np.asarray(colors)
-        if col.max() > 1.1:
+        # 检查颜色数组是否为空
+        if col.size > 0 and col.max() > 1.1:
             col = col / 255.0
-        pcd.colors = o3d.utility.Vector3dVector(col)
+        # 只有当颜色数组不为空时才设置颜色
+        if col.size > 0:
+            pcd.colors = o3d.utility.Vector3dVector(col)
+    
     # 体素下采样
     pcd = pcd.voxel_down_sample(voxel_size)
+    
     # 半径滤波
     pcd, _ = pcd.remove_radius_outlier(nb_points=nb_points, radius=radius)
-    return pcd
+    
+    # 聚类分析，保留最大的聚类（只对XY方向聚类）
+    if len(pcd.points) > 0:
+        # 提取XY坐标进行聚类，忽略Z坐标
+        points_3d = np.asarray(pcd.points)
+        points_xy = points_3d[:, :2]  # 只取X和Y坐标
+        
+        # 创建临时的2D点云用于聚类
+        pcd_2d = o3d.geometry.PointCloud()
+        # 将2D点扩展为3D（Z设为0）用于聚类算法
+        points_xy_3d = np.column_stack([points_xy, np.zeros(len(points_xy))])
+        pcd_2d.points = o3d.utility.Vector3dVector(points_xy_3d)
+        
+        # 使用DBSCAN聚类算法（只在XY平面）
+        labels = np.array(pcd_2d.cluster_dbscan(eps=0.01, min_points=10, print_progress=False))
+        
+        # 如果找到了聚类
+        if len(labels) > 0 and np.max(labels) >= 0:
+            # 统计每个聚类的点数，-1表示噪声点
+            unique_labels, counts = np.unique(labels[labels >= 0], return_counts=True)
+            
+            if len(unique_labels) > 0:
+                # 找到最大聚类的标签
+                largest_cluster_label = unique_labels[np.argmax(counts)]
+                
+                # 保留最大聚类的点（使用原始3D坐标）
+                largest_cluster_indices = labels == largest_cluster_label
+                largest_cluster_points = points_3d[largest_cluster_indices]
+                
+                # 创建新的点云对象
+                pcd_filtered = o3d.geometry.PointCloud()
+                pcd_filtered.points = o3d.utility.Vector3dVector(largest_cluster_points)
+                
+                # 如果有颜色信息，也保留对应的颜色
+                if pcd.has_colors():
+                    largest_cluster_colors = np.asarray(pcd.colors)[largest_cluster_indices]
+                    pcd_filtered.colors = o3d.utility.Vector3dVector(largest_cluster_colors)
+                
+                print(f"XY平面聚类完成：找到 {len(unique_labels)} 个聚类，保留最大聚类 {np.max(counts)} 个点")
+                return pcd_filtered
+            else:
+                print("XY平面聚类失败：未找到有效聚类，返回原始点云")
+                return pcd
+        else:
+            print("XY平面聚类失败：所有点都是噪声，返回原始点云")
+            return pcd
+    else:
+        print("点云为空，返回空点云")
+        return pcd
 
 # def filter_and_merge_icp_translation_only(
 #         points_l, colors_l, points_r, colors_r, 
@@ -127,12 +180,13 @@ def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius
 
 #     return all_points_arr, all_colors_arr, T
 
+
 def filter_and_merge_icp_translation_only(
         points_l, colors_l, points_r, colors_r, 
         voxel_size=0.005, nb_points=10, radius=0.01):
     
-    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.015)
-    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.015)
+    pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.01)
+    pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.01)
 
     # # 1. 不预处理，直接创建点云对象
     # pcd_l = o3d.geometry.PointCloud()
