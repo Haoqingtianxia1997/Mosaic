@@ -118,11 +118,12 @@ fi
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/vignesh/.local/lib
 
-source /opt/ros/humble/setup.bash
+# source /opt/ros/humble/setup.bash
 
 # ...
-source /home/vignesh/cameras_ros2_ws/install/setup.bash
-source /home/vignesh/franka_ws/install/setup.bash
+#source /home/vignesh/cameras_ros2_ws/install/setup.bash
+# source /home/vignesh/franka_ws/install/setup.bash
+#source /home/vignesh/poseidon_ws/install/setup.bash
 
 # ws
 source ~/mosaic/manipulation_ws/install/setup.bash
@@ -154,4 +155,15 @@ export MISTRAL_API_KEY="6TwrzTjQNpn5E2TyCrm4DuaMKOUVDkog"
 
 # mosaic
 export PYTHONPATH=/opt/ros/humble/lib/python3.10/site-packages:$PYTHONPATH
+source -- ~/.local/share/blesh/ble.sh
 
+# cuda
+# default
+#export CUDA_HOME=/usr
+#export PATH=/usr/bin:$PATH
+#export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+# 12.8
+export CUDA_HOME=/usr/local/cuda-12.6
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+export LC_NUMERIC=en_US.UTF-8
