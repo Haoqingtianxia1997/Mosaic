@@ -23,3 +23,8 @@ Pillow
 scipy
 # face_detection (从Git安装)
 git+https://github.com/elliottzheng/face-detection
+
+typeguard
+unidiff
+black==21.12b0
+uvloop==0.17.0

@@ -13,7 +13,7 @@ class OpenService(Node):
         self.srv_group = ReentrantCallbackGroup()
 
         # Action client for grasp
-        self.grasp_client = ActionClient(self, Grasp, '/panda_gripper/grasp', callback_group=self.srv_group)
+        self.grasp_client = ActionClient(self, Grasp, '/fr3_gripper/grasp', callback_group=self.srv_group)
 
         self.place = self.create_service(
             Trigger, 'open_service',

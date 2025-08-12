@@ -62,7 +62,7 @@ class GraspService(Node):
         
         # self.traj_pub = self.create_publisher(
         #     JointTrajectory,
-        #     '/panda_arm_controller/joint_trajectory',
+        #     '/fr3_arm_controller/joint_trajectory',
         #     10
         # )
     

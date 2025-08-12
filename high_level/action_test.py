@@ -6,13 +6,13 @@ from mistral_ai.mistral import Mistralmodel
 vlm_client = Mistralmodel()
 if __name__ == "__main__":
     actions = [
-        {"type": "perceive", "target": "scouring pad", "parameters": {}},
-        # {"type": "move", "target": "salt bottle", "parameters": {}},
-        {"type": "grasp_otherthings", "target": "scouring pad", "parameters": {}},
+        {"type": "perceive", "target": "tomato", "parameters": {}},
+        {"type": "move", "target": "salt bottle", "parameters": {}},
+        {"type": "grasp_otherthings", "target": "tomato", "parameters": {}},
         # {"type": "perceive", "target": "user person", "parameters": {}},
         # {"type": "move", "target": "user person", "parameters": {}},
         # {"type": "open", "target": "user person", "parameters": {}},
-        # {"type": "reset", "target": "home", "parameters": {}}
+        {"type": "reset", "target": "home", "parameters": {}}
     ]
 
     execute_action_sequence(actions,vlm_client)

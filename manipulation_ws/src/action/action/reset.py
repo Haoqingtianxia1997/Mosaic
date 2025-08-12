@@ -26,11 +26,11 @@ class ResetService(Node):
         
         self.traj_pub = self.create_publisher(
             JointTrajectory,
-            '/panda_arm_controller/joint_trajectory',
+            '/fr3_arm_controller/joint_trajectory',
             10
         )
 
-        self.arm_joints = [f'panda_joint{i}' for i in range(1, 8)]
+        self.arm_joints = [f'fr3_joint{i}' for i in range(1, 8)]
         self.default_joints = [
             0.0, 
             -1.1, 

@@ -30,7 +30,7 @@ class AddService(Node):
         
         self.traj_pub = self.create_publisher(
             JointTrajectory,
-            '/panda_arm_controller/joint_trajectory',
+            '/fr3_arm_controller/joint_trajectory',
             10
         )
         
@@ -44,7 +44,7 @@ class AddService(Node):
     
         # 1. move robot to default "add" position
         seconds = 5.0
-        joint_names = ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7']
+        joint_names = ['fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4', 'fr3_joint5', 'fr3_joint6', 'fr3_joint7']
         positions = [-0.48676195798999533, 0.5543532511386491, 0.03989929914025449, -2.2205283593397933, -0.4840910321121013, 4.345486343026757, 0.9207771633742318]
         self.action(seconds, joint_names, positions)
         
@@ -52,11 +52,11 @@ class AddService(Node):
         i= 0       
         while i < times:  # Adjust the number of iterations as needed
             seconds = 1.0
-            joint_names = ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7']
+            joint_names = ['fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4', 'fr3_joint5', 'fr3_joint6', 'fr3_joint7']
             positions = [-0.48676195798999533, 0.5543532511386491, 0.03989929914025449, -2.2205283593397933, -0.4840910321121013, 4.345486343026757, 2.7540284229521808]
             self.action(seconds, joint_names, positions)
             seconds = 1.0
-            joint_names = ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7']
+            joint_names = ['fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4', 'fr3_joint5', 'fr3_joint6', 'fr3_joint7']
             positions = [-0.48676195798999533, 0.5543532511386491, 0.03989929914025449, -2.2205283593397933, -0.4840910321121013, 4.345486343026757, 0.9207771633742318]
             self.action(seconds, joint_names, positions)
             i += 1
@@ -69,7 +69,7 @@ class AddService(Node):
         
 
     def action(self, seconds, joint_names, positions): 
-        arm = [f'panda_joint{i}' for i in range(1, 8)]
+        arm = [f'fr3_joint{i}' for i in range(1, 8)]
         d = dict(zip(joint_names, positions))
         names = [j for j in arm if j in d]
         if not names:

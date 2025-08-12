@@ -2,19 +2,26 @@
 ```bash
 sudo iptables -I INPUT 1 -s 192.168.2.55 -j ACCEPT
 ros2 launch franka_bringup gravity_compensation_example_controller.launch.py robot_ip:=192.168.2.55 use_rviz:=True
-ros2 launch franka_moveit_config moveit_new.launch.py
+# ros2 launch franka_moveit_config moveit_new.launch.py
+ros2 launch franka_fr3_moveit_config moveit.launch.py robot_ip:=192.168.2.55
+
+#if remove /log /build /install folders , then : 
+source /home/vignesh/poseidon_ws/install/setup.bash
+
+#sometimes:
+source install/setup.bash
 ```
 
 
 # vision
 ```bash
 # right camera
-ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedr camera_model:=zed2 serial_number:=21177909 publish_urdf:=true publish_tf:=false publish_map_tf:=false publish_imu_tf:=false
-# left camera
-ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedl camera_model:=zed2 serial_number:=29934236 publish_urdf:=true publish_tf:=false publish_map_tf:=false publish_imu_tf:=false
+ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedr camera_model:=zed2 serial_number:=21177909 publish_urdf:=true publish_tf:=false publish_map_tf:=false publish_imu_tf:=false 
+ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedl camera_model:=zed2 serial_number:=29934236 publish_urdf:=true publish_tf:=false publish_map_tf:=false publish_imu_tf:=false 
 
 # gaze camera
-ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=1280x720x30 rgb_camera.color_profile:=1280x720x30
+ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=848x480x30 rgb_camera.color_profile:=848x480x30
+
 
 # image service node for left camera
 ros2 run action image_saver
@@ -41,6 +48,9 @@ python3 src/action/action/intention_detection.py
 
 #Debug intention_detection:
 ros2 topic pub /label_output action_interfaces/msg/Labels "{gaze_labels: [], gesture_labels: []}"
+
+# read_file ros node for speech.txt
+ros2 run action read_file
 
 #Debug read_file:
 ros2 topic pub /file_status action_interfaces/msg/FileStatus "{changed: true, content: 'hello world'}"
@@ -138,48 +148,11 @@ ros2 service call /add_service action_interfaces/srv/Add "{times: 2}"
 grasp:
 ```bash
 ros2 run action grasp
-ros2 service call /grasp_service action_interfaces/srv/Grasp "{
-  x_prep: 0.5,
-  y_prep: 0.6,
-  z_prep: 0.3,
-  qx_prep: 1.0,
-  qy_prep: 0.0, 
-  qz_prep: 0.0,
-  qw_prep: 0.0,
-  x_grasp: 0.5,
-  y_grasp: 0.6,
-  z_grasp: 0.2,
-  qx_grasp: 1.0,
-  qy_grasp: 0.0,
-  qz_grasp: 0.0,
-  qw_grasp: 0.0
-}"
+ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.5, y_prep: 0.6, z_prep: 0.3, qx_prep: 1.0, qy_prep: 0.0, qz_prep: 0.0, qw_prep: 0.0, x_grasp: 0.5, y_grasp: 0.6, z_grasp: 0.2, qx_grasp: 1.0, qy_grasp: 0.0, qz_grasp: 0.0, qw_grasp: 0.0}"
 ```
 
 return_back:
 ```bash
 ros2 run action return_back
-ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{
-  x_prep: 0.5,
-  y_prep: 0.0,
-  z_prep: 0.5,
-  qx_prep: 1.0,
-  qy_prep: 0.0, 
-  qz_prep: 0.0,
-  qw_prep: 0.0,
-  x_place: 0.5,
-  y_place: 0.0,
-  z_place: 0.4,
-  qx_place: 1.0,
-  qy_place: 0.0,
-  qz_place: 0.0,
-  qw_place: 0.0
-}"
-```
-
-
-
-intention_detection:
-```bash
-ros2 run action intention_detection
+ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{ x_prep: 0.5, y_prep: 0.0, z_prep: 0.5, qx_prep: 1.0, qy_prep: 0.0,  qz_prep: 0.0, qw_prep: 0.0, x_place: 0.5, y_place: 0.0, z_place: 0.4, qx_place: 1.0, qy_place: 0.0, qz_place: 0.0, qw_place: 0.0 }"
 ```

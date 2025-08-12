@@ -42,7 +42,7 @@ class MoveCartesianService(Node):
 
         self.traj_pub = self.create_publisher(
             JointTrajectory,
-            '/panda_arm_controller/joint_trajectory',
+            '/fr3_arm_controller/joint_trajectory',
             10
         )
 
@@ -80,17 +80,17 @@ class MoveCartesianService(Node):
         pose.orientation.w = qw
 
         cartesian_req = GetCartesianPath.Request()
-        cartesian_req.header.frame_id = 'panda_link0'
+        cartesian_req.header.frame_id = 'fr3_link0'
         cartesian_req.start_state = robot_state
-        cartesian_req.group_name = 'panda_arm'
+        cartesian_req.group_name = 'fr3_arm'
         cartesian_req.link_name = ''  # usually leave blank for default tip
         cartesian_req.waypoints = [pose]
         cartesian_req.max_step = 0.01  # meters
         cartesian_req.jump_threshold = 0.0
         cartesian_req.avoid_collisions = True
-        cartesian_req.max_cartesian_speed = 0.1
-        cartesian_req.max_acceleration_scaling_factor = 0.2
-        cartesian_req.max_velocity_scaling_factor = 0.2
+        # cartesian_req.max_cartesian_speed = 0.1
+        # cartesian_req.max_acceleration_scaling_factor = 0.2
+        # cartesian_req.max_velocity_scaling_factor = 0.2
 
         # Synchronous call for clarity (use async in prod)
         cartesian_res = self.cartesian_client.call(cartesian_req)

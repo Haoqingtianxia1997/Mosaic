@@ -18,8 +18,8 @@ class FKOnlyServer(Node):
 
         # 数据与锁
         self.joint_names = [
-            'panda_joint1','panda_joint2','panda_joint3',
-            'panda_joint4','panda_joint5','panda_joint6','panda_joint7'
+            'fr3_joint1','fr3_joint2','fr3_joint3',
+            'fr3_joint4','fr3_joint5','fr3_joint6','fr3_joint7'
         ]
         self._lock = threading.Lock()
         self.latest_angles = None
@@ -66,8 +66,8 @@ class FKOnlyServer(Node):
         fk_req = GetPositionFK.Request()
         fk_req.robot_state.joint_state.name = self.joint_names
         fk_req.robot_state.joint_state.position = angles
-        fk_req.fk_link_names = ['panda_hand']
-        fk_req.header.frame_id = 'panda_link0'
+        fk_req.fk_link_names = ['fr3_hand']
+        fk_req.header.frame_id = 'fr3_link0'
 
         fut = self.fk_client.call_async(fk_req)
         rclpy.spin_until_future_complete(self, fut, timeout_sec=5.0)

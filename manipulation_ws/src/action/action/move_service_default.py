@@ -23,16 +23,16 @@ class MoveClient(Node):
             self.get_logger().info('⏳ Waiting for /compute_ik service...')
 
         self.traj_pub = self.create_publisher(
-            JointTrajectory, '/panda_arm_controller/joint_trajectory', 10)
+            JointTrajectory, '/fr3_arm_controller/joint_trajectory', 10)
 
     def call_and_move(self):
         req = GetPositionIK.Request()
         ik = req.ik_request
-        ik.group_name = 'panda_arm'
+        ik.group_name = 'fr3_arm'
         ik.avoid_collisions = True
 
         ps = PoseStamped()
-        ps.header.frame_id = 'panda_link0'  # 或 "world"
+        ps.header.frame_id = 'fr3_link0'  # 或 "world"
         x, y, z, qx, qy, qz, qw = self.pose_input
         ps.pose.position.x = x
         ps.pose.position.y = y
@@ -58,8 +58,8 @@ class MoveClient(Node):
 
     def send_trajectory(self, joint_names, positions, seconds: float = 3.0):
         arm_joints = [
-            'panda_joint1', 'panda_joint2', 'panda_joint3',
-            'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7',
+            'fr3_joint1', 'fr3_joint2', 'fr3_joint3',
+            'fr3_joint4', 'fr3_joint5', 'fr3_joint6', 'fr3_joint7',
         ]
         name_pos_dict = dict(zip(joint_names, positions))
         filt_names = [j for j in arm_joints if j in name_pos_dict]

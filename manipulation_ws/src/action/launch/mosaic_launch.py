@@ -70,6 +70,12 @@ def generate_launch_description():
             name='forward_kinematic',
             output='screen',
         ),
+        Node(
+            package='action',
+            executable='read_file',
+            name='read_file',
+            output='screen',
+        ),
 
         # ExecuteProcess(
         #     cmd=[

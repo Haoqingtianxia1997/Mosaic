@@ -52,7 +52,7 @@ class MoveService(Node):
         # 轨迹发布器
         self.traj_pub = self.create_publisher(
             JointTrajectory,
-            '/panda_arm_controller/joint_trajectory',
+            '/fr3_arm_controller/joint_trajectory',
             10
         )
     
@@ -73,9 +73,9 @@ class MoveService(Node):
         # 组装 IK 请求
         ik_req = GetPositionIK.Request()
         ik = ik_req.ik_request
-        ik.group_name, ik.avoid_collisions = 'panda_arm', True
+        ik.group_name, ik.avoid_collisions = 'fr3_arm', True
         ik.pose_stamped = PoseStamped()
-        ik.pose_stamped.header.frame_id = 'panda_link0'
+        ik.pose_stamped.header.frame_id = 'fr3_link0'
         ik.pose_stamped.pose.position.x = req.x
         ik.pose_stamped.pose.position.y = req.y
         ik.pose_stamped.pose.position.z = req.z
@@ -134,7 +134,7 @@ class MoveService(Node):
     # ---------------------------------------------
 
     def publish_traj(self, joint_names, positions, seconds):
-        arm = [f'panda_joint{i}' for i in range(1, 8)]
+        arm = [f'fr3_joint{i}' for i in range(1, 8)]
         d = dict(zip(joint_names, positions))
         names = [j for j in arm if j in d]
         if not names:
