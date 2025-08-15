@@ -21,17 +21,17 @@ NEW_TEXT_EVENT = Event()
 
 class Config:
     # Use a larger model to improve multilingual recognition accuracy
-    MODEL_SIZE = "medium"  # Best multilingual model (tiny/base/small/medium/large/large-v3)
+    MODEL_SIZE = "medium.en"  # Best multilingual model (tiny/base/small/medium/large/large-v3)
     SAMPLE_RATE = 16000
     CHUNK = 1024
-    LANGUAGE = None          # Auto-detect language
+    LANGUAGE = "en"          # Auto-detect language
     TEMPERATURE = 0.0        # Lower temperature for more deterministic output (0.0–1.0)
     USE_CUDA = True          # Enable CUDA acceleration
     FP16 = True              # Use FP16 precision to accelerate inference
     MAX_RECORD_SECONDS = 10  # Maximum recording duration (seconds)
     
     # Multilingual recognition optimization parameters
-    LANGUAGE_PRIORITY = ["de", "en", "zh"]  # Language priority: German, English, Chinese
+    LANGUAGE_PRIORITY = ["en"]  # Language priority: English
     VOCABULARY = []  # Optional: Add specific vocabulary to improve recognition accuracy
     
     # Language-specific optimization parameters
@@ -160,13 +160,31 @@ class VoiceTranscriber:
             # Use FP16 only when CUDA is available
             fp16 = Config.FP16 and self.device == "cuda"
             
+            # result = self.model.transcribe(
+            #     audio_data,
+            #     language=Config.LANGUAGE,
+            #     temperature=Config.TEMPERATURE,
+            #     task="transcribe",
+            #     fp16=fp16  # Enable FP16 only on CUDA devices
+            # )
+
+
             result = self.model.transcribe(
                 audio_data,
-                language=Config.LANGUAGE,
-                temperature=Config.TEMPERATURE,
+                language="en",                 # 强制英文
                 task="transcribe",
-                fp16=fp16  # Enable FP16 only on CUDA devices
+                fp16=fp16,
+                temperature=0.0,               # 首先用最确定的解码
+                condition_on_previous_text=False,  # 每段独立，避免上一段影响下一段变语言
+                initial_prompt=(
+                    "This is an English dictation. Transcribe strictly in English. "
+                    "Do not translate. Use standard English spelling."
+                ),
+                no_speech_threshold=0.4,       # 适度过滤静音触发
+                logprob_threshold=-1.0,        # 避免过度丢弃英文tokens
+                compression_ratio_threshold=2.4
             )
+            
             text = result["text"].strip()
             print(f"\n📝 Result: {text}")
         
@@ -249,7 +267,7 @@ def run_stt(blocking: bool = True):
     last_s_time = None
     recording = False
 
-    print("\n🎧 Hold S to start Chinese-English recording (ESC to exit)")
+    print("\n🎧 Hold S to start English recording (ESC to exit)")
     try:
         while True:
             ready, _, _ = select.select([sys.stdin], [], [], 0.05)

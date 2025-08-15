@@ -25,7 +25,7 @@ class Intention():
     def __init__(self):
         self.bridge = CvBridge()
         self.yolo_model = YOLO('yolo_model/best.pt')
-        self.transcriber = VoiceTranscriber()
+        # self.transcriber = VoiceTranscriber()
 
         self.mp_hands = mp.solutions.hands
         self.hands_detector = self.mp_hands.Hands(
@@ -36,7 +36,7 @@ class Intention():
         )
 
         
-        self.play_text_to_speech = play_text_to_speech
+        # self.play_text_to_speech = play_text_to_speech
 
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
@@ -380,57 +380,57 @@ class Intention():
         print(f"YOLO ROI & label image saved: {output_path}")
         return labels
     
-    def ask_label_tts(self, labels):
-        labels = list(set(labels))
-        label_str = ", ".join(labels)
-        if len(labels) == 0:
-            last_query_result =""
-        elif len(labels) == 1:
-            tts_text = f"Are you looking for {label_str}?"
-            play_text_to_speech(tts_text, language='en')
-            stt_text = self.transcriber.auto_record_and_transcribe(5)
-            print(f"📝 STT Result: {stt_text}")
+    # def ask_label_tts(self, labels):
+    #     labels = list(set(labels))
+    #     label_str = ", ".join(labels)
+    #     if len(labels) == 0:
+    #         last_query_result =""
+    #     elif len(labels) == 1:
+    #         tts_text = f"Are you looking for {label_str}?"
+    #         play_text_to_speech(tts_text, language='en')
+    #         stt_text = self.transcriber.auto_record_and_transcribe(5)
+    #         print(f"📝 STT Result: {stt_text}")
 
 
-            if stt_text and ("yes" in stt_text.lower() or
-                            labels[0].lower() in stt_text.lower()):
-                play_text_to_speech(
-                    "OK！",
-                    language='en'
-                )
-                last_query_result = f'please give me "{labels[0]}"'
-            else:
-                last_query_result =""
+    #         if stt_text and ("yes" in stt_text.lower() or
+    #                         labels[0].lower() in stt_text.lower()):
+    #             play_text_to_speech(
+    #                 "OK！",
+    #                 language='en'
+    #             )
+    #             last_query_result = f'please give me "{labels[0]}"'
+    #         else:
+    #             last_query_result =""
 
-        else:
-            tts_text = f"There are {label_str}. What do you want?"
-            play_text_to_speech(tts_text, language='en')
-            stt_text = self.transcriber.auto_record_and_transcribe(5)
-            print(f"📝 STT Result: {stt_text}")
+    #     else:
+    #         tts_text = f"There are {label_str}. What do you want?"
+    #         play_text_to_speech(tts_text, language='en')
+    #         stt_text = self.transcriber.auto_record_and_transcribe(5)
+    #         print(f"📝 STT Result: {stt_text}")
 
-            found = ""
-            if stt_text:
-                stt_lower = stt_text.lower()
-                for item in labels:
-                    if item.lower() in stt_lower:
-                        found = item
-                        break
-            if found:
-                last_query_result = f'please give me "{found}"'
-                play_text_to_speech(
-                    "OK！",
-                    language='en'
-                )
-            else:
-                last_query_result = ""
+    #         found = ""
+    #         if stt_text:
+    #             stt_lower = stt_text.lower()
+    #             for item in labels:
+    #                 if item.lower() in stt_lower:
+    #                     found = item
+    #                     break
+    #         if found:
+    #             last_query_result = f'please give me "{found}"'
+    #             play_text_to_speech(
+    #                 "OK！",
+    #                 language='en'
+    #             )
+    #         else:
+    #             last_query_result = ""
 
-        print(last_query_result)
+    #     print(last_query_result)
 
-        TRANS_FILE = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '../../../../../high_level/src/transcribe/transcription.txt')
-        )
-        with open(TRANS_FILE, "w", encoding="utf-8") as f:
-            f.write(last_query_result)
+    #     TRANS_FILE = os.path.abspath(
+    #         os.path.join(os.path.dirname(__file__), '../../../../../high_level/src/transcribe/transcription.txt')
+    #     )
+    #     with open(TRANS_FILE, "w", encoding="utf-8") as f:
+    #         f.write(last_query_result)
 
     def process_detection(self, direction, origin, rgb_msg, finger_pts, direction_name, origin_name, image_name, camera_side):
 

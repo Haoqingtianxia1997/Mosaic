@@ -14,33 +14,33 @@ from transcribe.stt import VoiceTranscriber
 from mistral_ai.mistral import Mistralmodel
 from mistral_ai.llm import run_mistral_llm_direct
 
-def ask_label_tts(labels, transcriber):
-    labels = list(set(labels))
-    label_str = ", ".join(labels)
-    if len(labels) == 0:
-        last_query_result =""
-    elif len(labels) == 1:
-        tts_text = f"Are you looking for {label_str}?"
-        play_text_to_speech(tts_text, language='en')
-        stt_text = transcriber.auto_record_and_transcribe(5)
-        print(f"📝 STT Result: {stt_text}")
+# def ask_label_tts(labels, transcriber):
+#     labels = list(set(labels))
+#     label_str = ", ".join(labels)
+#     if len(labels) == 0:
+#         last_query_result =""
+#     elif len(labels) == 1:
+#         tts_text = f"Are you looking for {label_str}?"
+#         play_text_to_speech(tts_text, language='en')
+#         stt_text = transcriber.auto_record_and_transcribe(5)
+#         print(f"📝 STT Result: {stt_text}")
 
 
-        if stt_text and ("yes" in stt_text.lower() or
-                        labels[0].lower() in stt_text.lower()):
-            play_text_to_speech(
-                "OK！",
-                language='en'
-            )
-            last_query_result = f'please give me "{labels[0]}"'
-        else:
-            last_query_result =""
+#         if stt_text and ("yes" in stt_text.lower() or
+#                         labels[0].lower() in stt_text.lower()):
+#             play_text_to_speech(
+#                 "OK！",
+#                 language='en'
+#             )
+#             last_query_result = f'please give me "{labels[0]}"'
+#         else:
+#             last_query_result =""
 
-    else:
-        tts_text = f"There are {label_str}. What do you want?"
-        play_text_to_speech(tts_text, language='en')
-        stt_text = transcriber.auto_record_and_transcribe(5)
-        print(f"📝 STT Result: {stt_text}")
+#     else:
+#         tts_text = f"There are {label_str}. What do you want?"
+#         play_text_to_speech(tts_text, language='en')
+#         stt_text = transcriber.auto_record_and_transcribe(5)
+#         print(f"📝 STT Result: {stt_text}")
 
         # found = ""
         # if stt_text:
@@ -59,21 +59,21 @@ def ask_label_tts(labels, transcriber):
         # else:
         #     last_query_result = ""
         
-        last_query_result = stt_text if stt_text else ""
+    #     last_query_result = stt_text if stt_text else ""
         
-        play_text_to_speech(
-            "OK！",
-            language='en'
-        )
+    #     play_text_to_speech(
+    #         "OK！",
+    #         language='en'
+    #     )
     
-    print(last_query_result)
-    return last_query_result
+    # print(last_query_result)
+    # return last_query_result
 
 class IntentionLLM(Node):
     def __init__(self):
         super().__init__('intention_llm')
 
-        self.transcriber = VoiceTranscriber()
+        # self.transcriber = VoiceTranscriber()
         self.client = Mistralmodel()
 
         CUR_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -86,7 +86,7 @@ class IntentionLLM(Node):
             FileStatus,
             'file_status',
             self.file_status_cb,
-            10
+            1
         )
         self.speech_changed = False
         self.new_file_content = None
@@ -95,52 +95,75 @@ class IntentionLLM(Node):
             Labels,
             'label_output',
             self.label_cb,
-            10
+            1
         )
         self.latest_gesture_labels = None
         self.latest_gaze_labels = None
         self.all_labels = None
+        
+        # 保存最近20个标签的历史记录
+        self.gesture_history = []  # 保存最近50个gesture_labels
+        self.gaze_history = []     # 保存最近50个gaze_labels
+        self.max_history_size = 50
+        
         self.get_logger().info('Intention LLM Node has been started.')
 
     def label_cb(self, msg):
-        self.latest_gesture_labels = msg.gesture_labels
-        self.latest_gaze_labels = msg.gaze_labels
-        self.get_logger().info(f"Received gesture labels: {self.latest_gesture_labels}, Received gaze labels: {self.latest_gaze_labels}")
+        # 添加到历史记录
+        self.gesture_history.append(msg.gesture_labels)
+        self.gaze_history.append(msg.gaze_labels)
+        
+        # 保持历史记录大小不超过20
+        if len(self.gesture_history) > self.max_history_size:
+            self.gesture_history.pop(0)
+        if len(self.gaze_history) > self.max_history_size:
+            self.gaze_history.pop(0)
+        
+        # 从历史记录中找到最新的非空标签
+        self.latest_gesture_labels = self._find_latest_non_empty(self.gesture_history)
+        self.latest_gaze_labels = self._find_latest_non_empty(self.gaze_history)
+        
+        self.get_logger().info(f"Received gesture labels: {msg.gesture_labels}, Received gaze labels: {msg.gaze_labels}")
+        self.get_logger().info(f"Latest non-empty gesture labels: {self.latest_gesture_labels}, Latest non-empty gaze labels: {self.latest_gaze_labels}")
+    
+    def _find_latest_non_empty(self, history_list):
+        """从历史记录中找到最新的非空标签"""
+        # 从最新的开始向前查找
+        for labels in reversed(history_list):
+            if labels and len(labels) > 0:  # 检查是否非空且不为空列表
+                return labels
+        return None
 
     def file_status_cb(self, msg):
         self.speech_changed = msg.changed
         self.new_file_content = msg.content
-        self.get_logger().info(f"File changed: {self.speech_changed}, Content: {self.new_file_content}")
-        
+        if self.speech_changed:
+            self.get_logger().info(f"File changed: {self.speech_changed}, Content: {self.new_file_content}")
 
-        if self.latest_gaze_labels is None and self.latest_gesture_labels is None:
-            
-            self.get_logger().warning("Labels not received yet, cannot process intention.")
 
+        if self.speech_changed == True and self.new_file_content is not None : #and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None
+            cmd_str = self.new_file_content if self.new_file_content else "None"
+            gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
+            gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
+
+            output = (
+                f"I have a speech command: {cmd_str}, "
+                f"gesture label: {gesture_str} and "
+                f"gaze label: {gaze_str}."
+            )
+            response, content, json_blocks = run_mistral_llm_direct(
+                output,
+                self.client,
+            )
+
+            if response != "":
+                with open(self.file_path, 'w', encoding='utf-8') as f:
+                    f.write(response)
+
+            self.latest_gesture_labels, self.latest_gaze_labels, self.new_file_content = None, None, None
         else:
-            if self.speech_changed == True and self.new_file_content is not None and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None:
-                cmd_str = self.new_file_content if self.new_file_content else "None"
-                gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
-                gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
-
-                output = (
-                    f"I have a speech command: {cmd_str}, "
-                    f"gesture label: {gesture_str} and "
-                    f"gaze label: {gaze_str}."
-                )
-                response, content, json_blocks = run_mistral_llm_direct(
-                    output,
-                    self.client,
-                )
-
-                if response != "":
-                    with open(self.file_path, 'w', encoding='utf-8') as f:
-                        f.write(response)
-
-                self.latest_gesture_labels, self.latest_gaze_labels, self.new_file_content = None, None, None
-            else:
-                response, content, json_blocks = "", "", ""
-                output = None   
+            response, content, json_blocks = "", "", ""
+            output = None   
             # elif self.latest_gaze_labels is not None and self.latest_gesture_labels is not None :
             #     self.all_labels = list(set(self.latest_gesture_labels + self.latest_gaze_labels))
             #     if len(self.all_labels) > 0:

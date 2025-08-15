@@ -17,6 +17,8 @@ source install/setup.bash
 ```bash
 # right camera
 ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedr camera_model:=zed2 serial_number:=21177909 publish_urdf:=true publish_tf:=false publish_map_tf:=false publish_imu_tf:=false 
+
+# left camera
 ros2 launch zed_wrapper zed_camera.launch.py camera_name:=zedl camera_model:=zed2 serial_number:=29934236 publish_urdf:=true publish_tf:=false publish_map_tf:=false publish_imu_tf:=false 
 
 # gaze camera
