@@ -39,6 +39,7 @@ python3 /home/mosaic/mosaic/manipulation_ws/camera_calibration/calibration_toolb
 
 ## launch:
 ```bash
+cd manipulation_ws
 ros2 launch action mosaic_launch.py
 ```
 
@@ -150,7 +151,7 @@ ros2 service call /add_service action_interfaces/srv/Add "{times: 2}"
 grasp:
 ```bash
 ros2 run action grasp
-ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.5, y_prep: 0.6, z_prep: 0.3, qx_prep: 1.0, qy_prep: 0.0, qz_prep: 0.0, qw_prep: 0.0, x_grasp: 0.5, y_grasp: 0.6, z_grasp: 0.2, qx_grasp: 1.0, qy_grasp: 0.0, qz_grasp: 0.0, qw_grasp: 0.0}"
+ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.5, y_prep: 0.6, z_prep: 0.5, qx_prep: 1.0, qy_prep: 0.0, qz_prep: 0.0, qw_prep: 0.0, x_grasp: 0.5, y_grasp: 0.6, z_grasp: 0.3, qx_grasp: 1.0, qy_grasp: 0.0, qz_grasp: 0.0, qw_grasp: 0.0}"
 ```
 
 return_back:

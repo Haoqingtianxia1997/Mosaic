@@ -66,8 +66,8 @@ class HandDetectionWithPointCloudNode(Node):
         time.sleep(5)
 
         available_topics = dict(self.get_topic_names_and_types())
-        left_rgb = '/zedl/zed_node/rgb/image_rect_color'
-        right_rgb = '/zedr/zed_node/rgb/image_rect_color'
+        left_rgb = '/zedl/zed_node/rgb/image_rect_color/compressed'
+        right_rgb = '/zedr/zed_node/rgb/image_rect_color/compressed'
         self.left_camera_active = left_rgb in available_topics 
         self.right_camera_active = right_rgb in available_topics 
 
@@ -380,17 +380,17 @@ class HandDetectionWithPointCloudNode(Node):
                                 all_origin.clear()
 
                                 self.label_pub.publish(self.label_msg)
+                    else:
+                        self.finger_pts.clear()
+                        self.finger_base = None
+                        self.finger_last_output = None
+                        self.finger_stable_pos = None  
 
-                        
-                            self.finger_pts.clear()
-                            self.finger_base = None
-                            self.finger_last_output = None
-                            self.finger_stable_pos = None  
-
-                            self.gaze_pts.clear()
-                            self.gaze_base = None
-                            self.gaze_last_output = None
-                            self.gaze_stable_pos = None 
+                        self.gaze_pts.clear()
+                        self.gaze_base = None
+                        self.gaze_last_output = None
+                        self.gaze_stable_pos = None 
+                        self.label_pub.publish(self.label_msg)
 
                 elif self.right_camera_active:
                     rgb_msg = self.rgb_buffer['right']
