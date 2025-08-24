@@ -42,10 +42,10 @@
 #         request = GetPositionIK.Request()
         
 #         # 设置目标位置和姿态
-#         request.ik_request.group_name = "panda_arm"  # 机械臂组名
+#         request.ik_request.group_name = "fr3_arm"  # 机械臂组名
 #         request.ik_request.robot_state.joint_state.name = [
-#             'panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4',
-#             'panda_joint5', 'panda_joint6', 'panda_joint7'
+#             'fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4',
+#             'fr3_joint5', 'fr3_joint6', 'fr3_joint7'
 #         ]
         
 #         # 当前关节状态（作为初始猜测）
@@ -54,7 +54,7 @@
 #         ]
         
 #         # 设置末端执行器链接
-#         request.ik_request.ik_link_name = "panda_hand"
+#         request.ik_request.ik_link_name = "fr3_hand"
         
 #         # 目标位置
 #         target_pose = Pose()
@@ -76,7 +76,7 @@
 #                 w=float(world_orientation[3])
 #             )
         
-#         request.ik_request.pose_stamped.header.frame_id = "panda_link0"
+#         request.ik_request.pose_stamped.header.frame_id = "fr3_link0"
 #         request.ik_request.pose_stamped.pose = target_pose
         
 #         # 设置超时和尝试次数
@@ -117,15 +117,15 @@
 #             dict: {link_name: {'position': [x, y, z], 'orientation': [x, y, z, w]}}
 #         """
 #         if link_names is None:
-#             link_names = ["panda_hand"]  # 默认计算末端执行器位置
+#             link_names = ["fr3_hand"]  # 默认计算末端执行器位置
         
 #         # 创建FK请求
 #         request = GetPositionFK.Request()
         
 #         # 设置机器人状态
 #         request.robot_state.joint_state.name = [
-#             'panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4',
-#             'panda_joint5', 'panda_joint6', 'panda_joint7'
+#             'fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4',
+#             'fr3_joint5', 'fr3_joint6', 'fr3_joint7'
 #         ]
 #         request.robot_state.joint_state.position = [float(angle) for angle in joint_angles]
         
@@ -133,7 +133,7 @@
 #         request.fk_link_names = link_names
         
 #         # 设置参考坐标系
-#         request.header.frame_id = "panda_link0"
+#         request.header.frame_id = "fr3_link0"
         
 #         # 调用服务
 #         try:
@@ -182,10 +182,10 @@
 #                    orientation: [x, y, z, w] 四元数方向
 #         """
 #         try:
-#             result = self.forward_kinematics(joint_angles, ["panda_hand"])
-#             if "panda_hand" in result:
-#                 position = result["panda_hand"]["position"]
-#                 orientation = result["panda_hand"]["orientation"]
+#             result = self.forward_kinematics(joint_angles, ["fr3_hand"])
+#             if "fr3_hand" in result:
+#                 position = result["fr3_hand"]["position"]
+#                 orientation = result["fr3_hand"]["orientation"]
 #                 return position, orientation
 #             else:
 #                 raise RuntimeError("未能获取末端执行器位置")
@@ -205,14 +205,14 @@
 #         """
 #         # 常用的链接名称
 #         link_names = [
-#             "panda_link1",
-#             "panda_link2", 
-#             "panda_link3",
-#             "panda_link4",
-#             "panda_link5",
-#             "panda_link6",
-#             "panda_link7",
-#             "panda_hand"
+#             "fr3_link1",
+#             "fr3_link2", 
+#             "fr3_link3",
+#             "fr3_link4",
+#             "fr3_link5",
+#             "fr3_link6",
+#             "fr3_link7",
+#             "fr3_hand"
 #         ]
         
 #         return self.forward_kinematics(joint_angles, link_names)
@@ -252,9 +252,9 @@
                 
 #                 print(f"FK执行时间: {execution_time:.4f} 秒")
                 
-#                 if "panda_hand" in end_effector_pose:
-#                     pos = end_effector_pose["panda_hand"]["position"]
-#                     ori = end_effector_pose["panda_hand"]["orientation"]
+#                 if "fr3_hand" in end_effector_pose:
+#                     pos = end_effector_pose["fr3_hand"]["position"]
+#                     ori = end_effector_pose["fr3_hand"]["orientation"]
 #                     print(f"末端执行器位置: [{pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f}]")
 #                     print(f"末端执行器方向: [{ori[0]:.3f}, {ori[1]:.3f}, {ori[2]:.3f}, {ori[3]:.3f}]")
                 
@@ -309,8 +309,8 @@
 #                 # 验证：使用求解的关节角度进行正运动学验证
 #                 print("\n验证求解结果...")
 #                 fk_result = solver.forward_kinematics(joint_angles)
-#                 if "panda_hand" in fk_result:
-#                     calculated_pos = fk_result["panda_hand"]["position"]
+#                 if "fr3_hand" in fk_result:
+#                     calculated_pos = fk_result["fr3_hand"]["position"]
 #                     error = np.linalg.norm(np.array(pos) - np.array(calculated_pos))
 #                     print(f"计算得到的位置: [{calculated_pos[0]:.3f}, {calculated_pos[1]:.3f}, {calculated_pos[2]:.3f}]")
 #                     print(f"位置误差: {error:.6f} m")
@@ -395,10 +395,10 @@ class MoveItIKFKSolver(Node):
         request = GetPositionIK.Request()
         
         # 设置目标位置和姿态
-        request.ik_request.group_name = "panda_arm"  # 机械臂组名
+        request.ik_request.group_name = "fr3_arm"  # 机械臂组名
         request.ik_request.robot_state.joint_state.name = [
-            'panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4',
-            'panda_joint5', 'panda_joint6', 'panda_joint7'
+            'fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4',
+            'fr3_joint5', 'fr3_joint6', 'fr3_joint7'
         ]
         
         # 当前关节状态（作为初始猜测）
@@ -407,7 +407,7 @@ class MoveItIKFKSolver(Node):
         ]
         
         # 设置末端执行器链接
-        request.ik_request.ik_link_name = "panda_hand"
+        request.ik_request.ik_link_name = "fr3_hand"
         
         # 目标位置
         target_pose = Pose()
@@ -429,7 +429,7 @@ class MoveItIKFKSolver(Node):
                 w=float(world_orientation[3])
             )
         
-        request.ik_request.pose_stamped.header.frame_id = "panda_link0"
+        request.ik_request.pose_stamped.header.frame_id = "fr3_link0"
         request.ik_request.pose_stamped.pose = target_pose
         
         # 设置超时和尝试次数
@@ -470,15 +470,15 @@ class MoveItIKFKSolver(Node):
             dict: {link_name: {'position': [x, y, z], 'orientation': [x, y, z, w]}}
         """
         if link_names is None:
-            link_names = ["panda_hand"]  # 默认计算末端执行器位置
-        
+            link_names = ["fr3_hand"]  # 默认计算末端执行器位置
+
         # 创建FK请求
         request = GetPositionFK.Request()
         
         # 设置机器人状态
         request.robot_state.joint_state.name = [
-            'panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4',
-            'panda_joint5', 'panda_joint6', 'panda_joint7'
+            'fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4',
+            'fr3_joint5', 'fr3_joint6', 'fr3_joint7'
         ]
         request.robot_state.joint_state.position = [float(angle) for angle in joint_angles]
         
@@ -486,8 +486,8 @@ class MoveItIKFKSolver(Node):
         request.fk_link_names = link_names
         
         # 设置参考坐标系
-        request.header.frame_id = "panda_link0"
-        
+        request.header.frame_id = "fr3_link0"
+
         # 调用服务
         try:
             future = self.fk_client.call_async(request)
@@ -535,10 +535,10 @@ class MoveItIKFKSolver(Node):
                    orientation: [x, y, z, w] 四元数方向
         """
         try:
-            result = self.forward_kinematics(joint_angles, ["panda_hand"])
-            if "panda_hand" in result:
-                position = result["panda_hand"]["position"]
-                orientation = result["panda_hand"]["orientation"]
+            result = self.forward_kinematics(joint_angles, ["fr3_hand"])
+            if "fr3_hand" in result:
+                position = result["fr3_hand"]["position"]
+                orientation = result["fr3_hand"]["orientation"]
                 return position, orientation
             else:
                 raise RuntimeError("未能获取末端执行器位置")
@@ -559,14 +559,14 @@ class MoveItIKFKSolver(Node):
         """
         # 常用的链接名称
         link_names = [
-            "panda_link1",
-            "panda_link2", 
-            "panda_link3",
-            "panda_link4",
-            "panda_link5",
-            "panda_link6",
-            "panda_link7",
-            "panda_hand"
+            "fr3_link1",
+            "fr3_link2", 
+            "fr3_link3",
+            "fr3_link4",
+            "fr3_link5",
+            "fr3_link6",
+            "fr3_link7",
+            "fr3_hand"
         ]
         
         return self.forward_kinematics(joint_angles, link_names)
@@ -581,14 +581,15 @@ def test_simple_ik_fk():
         print("=" * 30)
 
         # joint_angles = [-0.7687153380443489, 0.11247818654052139, 0.1119013495414711, -2.361459772011796, 0.031976763940068646, 2.5149397281779167, 0.05702809129333345]
-        joint_angles = [0.7765536276230033, 0.34124123950473306, -0.04999900996581268, -1.8657713907570563, -0.022721458996105243, 2.6287936187967533, 2.0858866890530665]
+        joint_angles = [0.7908531189025602, 0.7331863290614418, 0.14616466051488475, -1.5549292373432555, -0.12421715045696818, 2.3260297300625146, 0.24813900307069997]
         
-        
+
+
         print(f"输入关节角度: {[f'{a:.3f}' for a in joint_angles]}")
         fk_result = solver.forward_kinematics(joint_angles)
 
-        pos = fk_result["panda_hand"]["position"]
-        ori = fk_result["panda_hand"]["orientation"]
+        pos = fk_result["fr3_hand"]["position"]
+        ori = fk_result["fr3_hand"]["orientation"]
         print(f"末端位置: [{pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f}]")
         print(f"末端方向: [{ori[0]:.3f}, {ori[1]:.3f}, {ori[2]:.3f}, {ori[3]:.3f}]")
 

@@ -506,14 +506,14 @@ def execute_action_sequence(actions, vlm_client):
                     print(f"✅ Target '{target}' already grasped, skipping perception.")
                     continue            
                 elif target == "user person":
-                    move_params = {"move_x" : 0.718029693832728, "move_y" : -0.07702313108387482, "move_z" : 0.23, "move_qx" : 0.707, "move_qy" : -0.707, "move_qz" : 0.0, "move_qw" : 0.0}
+                    move_params = {"move_x" : 0.718029693832728, "move_y" : -0.07702313108387482, "move_z" : 0.4, "move_qx" : 0.707, "move_qy" : -0.707, "move_qz" : 0.0, "move_qw" : 0.0}
                     success = True
                     print("✅ Perceived user person, moving to target point.")
                     continue
                 elif target == "spoon":
                     move_params = {"move_x" : 0.406, "move_y" : -0.313, "move_z" : 0.6, "move_qx" : 0.999, "move_qy" : 0.023, "move_qz" : 0.026, "move_qw" : 0.001}
                     grasp_params = {"x_prep": 0.406, "y_prep": -0.313, "z_prep": 0.57, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
-                            "x_grasp": 0.406, "y_grasp": -0.313, "z_grasp": 0.42, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
+                            "x_grasp": 0.406, "y_grasp": -0.313, "z_grasp": 0.3, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
                     success = True
                     print("✅ Perceived spoon, moving to target point.")
                     continue
@@ -522,7 +522,21 @@ def execute_action_sequence(actions, vlm_client):
                     success = True
                     print("✅ Perceived soup pot, moving to target point.")
                     continue
-                        
+                elif target == "salt bottle":
+                    move_params = {"move_x" : 0.434, "move_y" : 0.561, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
+                    grasp_params = {"x_prep": 0.434, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
+                                "x_grasp": 0.434, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
+                    success = True
+                    print("✅ Perceived salt bottle, moving to target point.")
+                    continue
+                elif target == "pepper bottle":
+                    move_params = {"move_x" : 0.27, "move_y" : 0.561, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
+                    grasp_params = {"x_prep": 0.27, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
+                                "x_grasp": 0.27, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
+                    success = True
+                    print("✅ Perceived pepper bottle, moving to target point.")
+                    continue
+
                 else:  
                     print(f"Perceiving target: {target}")
                     
@@ -744,80 +758,80 @@ def execute_action_sequence(actions, vlm_client):
                     # else:
                     #     print("❌ Move action failed, retrying...")
 
-            elif act_type == "grasp_flavoring":
-                success = False  # 重置成功状态
-                if target is  grasped_thing:
-                    continue 
+            # elif act_type == "grasp_flavoring":
+            #     success = False  # 重置成功状态
+            #     if target is  grasped_thing:
+            #         continue 
                 
-                print("execute grasp action")
+            #     print("execute grasp action")
  
                 
-                if target == "spoon": 
-                    grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
-                                "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
-                else:
+            #     if target == "spoon": 
+            #         grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
+            #                     "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
+            #     else:
  
-                    if all_points_arr is None:
-                        print("❌ Failed to perceive target points in both cameras.")
+            #         if all_points_arr is None:
+            #             print("❌ Failed to perceive target points in both cameras.")
 
-                    else:
+            #         else:
 
-                        obb_corners, rotation_matrix, center = compute_obb(all_points_arr)
+            #             obb_corners, rotation_matrix, center = compute_obb(all_points_arr)
 
-                        visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center)
+            #             visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center)
 
-                        grasp_generator = GraspGeneration(center, rotation_matrix)
-                        pose1_pos, pose1_orn, pose2_pos, pose2_orn = grasp_generator.final_compute_poses(all_points_arr, all_colors_arr, visualize=True, grasp_type='flavoring')    
-                        print("Pose 1 - Position:", pose1_pos, "Orientation:", pose1_orn)
-                        print("Pose 2 - Position:", pose2_pos, "Orientation:", pose2_orn)
+            #             grasp_generator = GraspGeneration(center, rotation_matrix)
+            #             pose1_pos, pose1_orn, pose2_pos, pose2_orn = grasp_generator.final_compute_poses(all_points_arr, all_colors_arr, visualize=True, grasp_type='flavoring')    
+            #             print("Pose 1 - Position:", pose1_pos, "Orientation:", pose1_orn)
+            #             print("Pose 2 - Position:", pose2_pos, "Orientation:", pose2_orn)
                         
-                        if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
-                            print("❌ Failed to compute grasp poses from OBB.")
-                            success = False
-                            continue
+            #             if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
+            #                 print("❌ Failed to compute grasp poses from OBB.")
+            #                 success = False
+            #                 continue
 
-                        grasp_params = {
-                            "x_prep": float(pose1_pos[0]), "y_prep": float(pose1_pos[1]), "z_prep": float(pose1_pos[2]),
-                            "qx_prep": float(pose1_orn[0]), "qy_prep": float(pose1_orn[1]), "qz_prep": float(pose1_orn[2]), "qw_prep": float(pose1_orn[3]),
-                            "x_grasp": float(pose2_pos[0]), "y_grasp": float(pose2_pos[1]), "z_grasp": float(pose2_pos[2]),
-                            "qx_grasp": float(pose2_orn[0]), "qy_grasp": float(pose2_orn[1]), "qz_grasp": float(pose2_orn[2]), "qw_grasp": float(pose2_orn[3])
-                        }
-                        print("Grasp parameters computed from OBB:", grasp_params) 
+            #             grasp_params = {
+            #                 "x_prep": float(pose1_pos[0]), "y_prep": float(pose1_pos[1]), "z_prep": float(pose1_pos[2]),
+            #                 "qx_prep": float(pose1_orn[0]), "qy_prep": float(pose1_orn[1]), "qz_prep": float(pose1_orn[2]), "qw_prep": float(pose1_orn[3]),
+            #                 "x_grasp": float(pose2_pos[0]), "y_grasp": float(pose2_pos[1]), "z_grasp": float(pose2_pos[2]),
+            #                 "qx_grasp": float(pose2_orn[0]), "qy_grasp": float(pose2_orn[1]), "qz_grasp": float(pose2_orn[2]), "qw_grasp": float(pose2_orn[3])
+            #             }
+            #             print("Grasp parameters computed from OBB:", grasp_params) 
                 
 
-                try:
-                    # 检查所有值
-                    if any(v is None for v in grasp_params.values()):
-                        raise ValueError("Missing grasp parameters.")
-                    success = call_ros2_service(
-                        "/grasp_service",
-                        "action_interfaces/srv/Grasp",
-                        {
-                            "x_prep":   grasp_params["x_prep"],
-                            "y_prep":   grasp_params["y_prep"],
-                            "z_prep":   grasp_params["z_prep"],
-                            "qx_prep":  grasp_params["qx_prep"],
-                            "qy_prep":  grasp_params["qy_prep"],
-                            "qz_prep":  grasp_params["qz_prep"],
-                            "qw_prep":  grasp_params["qw_prep"],
-                            "x_grasp":  grasp_params["x_grasp"],
-                            "y_grasp":  grasp_params["y_grasp"],
-                            "z_grasp":  grasp_params["z_grasp"],
-                            "qx_grasp": grasp_params["qx_grasp"],
-                            "qy_grasp": grasp_params["qy_grasp"],
-                            "qz_grasp": grasp_params["qz_grasp"],
-                            "qw_grasp": grasp_params["qw_grasp"],
-                        }
-                    )
-                except ValueError as e:
-                    print(e)
-                while True:
-                    if success:
-                        print("✅ Grasp flavoring action executed successfully.")
-                        grasped_thing = target
-                        break
-                    # else:
-                    #     print("❌ Grasp flavoring action failed, retrying...")
+            #     try:
+            #         # 检查所有值
+            #         if any(v is None for v in grasp_params.values()):
+            #             raise ValueError("Missing grasp parameters.")
+            #         success = call_ros2_service(
+            #             "/grasp_service",
+            #             "action_interfaces/srv/Grasp",
+            #             {
+            #                 "x_prep":   grasp_params["x_prep"],
+            #                 "y_prep":   grasp_params["y_prep"],
+            #                 "z_prep":   grasp_params["z_prep"],
+            #                 "qx_prep":  grasp_params["qx_prep"],
+            #                 "qy_prep":  grasp_params["qy_prep"],
+            #                 "qz_prep":  grasp_params["qz_prep"],
+            #                 "qw_prep":  grasp_params["qw_prep"],
+            #                 "x_grasp":  grasp_params["x_grasp"],
+            #                 "y_grasp":  grasp_params["y_grasp"],
+            #                 "z_grasp":  grasp_params["z_grasp"],
+            #                 "qx_grasp": grasp_params["qx_grasp"],
+            #                 "qy_grasp": grasp_params["qy_grasp"],
+            #                 "qz_grasp": grasp_params["qz_grasp"],
+            #                 "qw_grasp": grasp_params["qw_grasp"],
+            #             }
+            #         )
+            #     except ValueError as e:
+            #         print(e)
+            #     while True:
+            #         if success:
+            #             print("✅ Grasp flavoring action executed successfully.")
+            #             grasped_thing = target
+            #             break
+            #         # else:
+            #         #     print("❌ Grasp flavoring action failed, retrying...")
 
             elif act_type == "grasp_otherthings":
                 success = False  # 重置成功状态
@@ -828,8 +842,15 @@ def execute_action_sequence(actions, vlm_client):
                 
                 # put the value into go_params by grasp strategy with points cloud or something else
                 if target == "spoon": 
-                    grasp_params = {"x_prep": 0.5, "y_prep": 0.6, "z_prep": 0.3, "qx_prep": 1.0, "qy_prep": 0.0, "qz_prep": 0.0, "qw_prep": 0.0,
-                                "x_grasp": 0.5, "y_grasp": 0.6, "z_grasp": 0.2, "qx_grasp": 1.0, "qy_grasp": 0.0, "qz_grasp": 0.0, "qw_grasp": 0.0}
+                    grasp_params = {"x_prep": 0.406, "y_prep": -0.313, "z_prep": 0.57, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
+                            "x_grasp": 0.406, "y_grasp": -0.313, "z_grasp": 0.3, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
+                elif target == "pepper bottle":
+                    grasp_params = {"x_prep": 0.27, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
+                                "x_grasp": 0.27, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
+                elif target == "salt bottle":
+                    grasp_params = {"x_prep": 0.434, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
+                                "x_grasp": 0.434, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
+
                 else:
                     if all_points_arr is None:
                         print("❌ Failed to perceive target points in both cameras.")
@@ -906,10 +927,10 @@ def execute_action_sequence(actions, vlm_client):
                     if stir_time is None:
                         raise ValueError("Missing stir time.")
                     success = call_ros2_service("/stir_service", "action_interfaces/srv/Stir", {
-                        "center_x": 0.6,
-                        "center_y": -0.3,
-                        "center_z": 0.4,
-                        "radius": 0.08,
+                        "center_x": 0.62,
+                        "center_y": -0.37,
+                        "center_z": 0.42,
+                        "radius": 0.05,
                         "start_angle_deg": 0.0,
                         "move_down_offset": 0.1,
                         "speed": 0.5,

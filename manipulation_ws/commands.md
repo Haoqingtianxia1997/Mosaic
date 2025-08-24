@@ -66,8 +66,8 @@ python3 src/action/action/intention_llm.py
 ```
 ## move
 ```bash
-ros2 topic pub --once /panda_arm_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "
-joint_names: ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7']
+ros2 topic pub --once /fr3_arm_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "
+joint_names: ['fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4', 'fr3_joint5', 'fr3_joint6', 'fr3_joint7']
 points:
 - positions: [0.0, 0.0, 0.0, -1.57, 0.0, 1.57, 0.0]
   time_from_start: {sec: 3, nanosec: 0}
@@ -81,15 +81,15 @@ ros2 run action move_service_default 0.6 0.0 0.5 1.0 0.0 0.0 0.0
 
 # gripper example
 ```bash
-ros2 action send_goal /panda_gripper/move franka_msgs/action/Move "{width: 0.08, speed: 0.1}"
+ros2 action send_goal /fr3_gripper/move franka_msgs/action/Move "{width: 0.08, speed: 0.1}"
 ```
 
 ```bash
-ros2 action send_goal /panda_gripper/move franka_msgs/action/Move "{width: 0.01, speed: 0.1}" 
+ros2 action send_goal /fr3_gripper/move franka_msgs/action/Move "{width: 0.01, speed: 0.1}" 
 ```
 
 ```bash
-ros2 action send_goal /panda_gripper/grasp franka_msgs/action/Grasp "{width: 0.01, speed: 0.1, force: 20.0, epsilon: {inner: 0.01, outer: 0.01}}"
+ros2 action send_goal /fr3_gripper/grasp franka_msgs/action/Grasp "{width: 0.01, speed: 0.1, force: 20.0, epsilon: {inner: 0.01, outer: 0.01}}"
 ```
 
 
@@ -151,11 +151,21 @@ ros2 service call /add_service action_interfaces/srv/Add "{times: 2}"
 grasp:
 ```bash
 ros2 run action grasp
-ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.5, y_prep: 0.6, z_prep: 0.5, qx_prep: 1.0, qy_prep: 0.0, qz_prep: 0.0, qw_prep: 0.0, x_grasp: 0.5, y_grasp: 0.6, z_grasp: 0.3, qx_grasp: 1.0, qy_grasp: 0.0, qz_grasp: 0.0, qw_grasp: 0.0}"
+
+# salt
+ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.434, y_prep: 0.561, z_prep: 0.523, qx_prep: 0.725, qy_prep: 0.688, qz_prep: 0.023, qw_prep: -0.007, x_grasp: 0.434, y_grasp: 0.561, z_grasp: 0.223, qx_grasp: 0.725, qy_grasp: 0.688, qz_grasp: 0.023, qw_grasp: -0.007}"
+
+# pepper
+ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.27, y_prep: 0.561, z_prep: 0.523, qx_prep: 0.725, qy_prep: 0.688, qz_prep: 0.023, qw_prep: -0.007, x_grasp: 0.27, y_grasp: 0.561, z_grasp: 0.223, qx_grasp: 0.725, qy_grasp: 0.688, qz_grasp: 0.023, qw_grasp: -0.007}"
 ```
 
 return_back:
 ```bash
 ros2 run action return_back
-ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{ x_prep: 0.5, y_prep: 0.0, z_prep: 0.5, qx_prep: 1.0, qy_prep: 0.0,  qz_prep: 0.0, qw_prep: 0.0, x_place: 0.5, y_place: 0.0, z_place: 0.4, qx_place: 1.0, qy_place: 0.0, qz_place: 0.0, qw_place: 0.0 }"
+
+# salt
+ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep: 0.434, y_prep: 0.561, z_prep: 0.523, qx_prep: 0.725, qy_prep: 0.688, qz_prep: 0.023, qw_prep: -0.007, x_place: 0.434, y_place: 0.561, z_place: 0.223, qx_place: 0.725, qy_place: 0.688, qz_place: 0.023, qw_place: -0.007}"
+
+# pepper
+ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep: 0.27, y_prep: 0.561, z_prep: 0.523, qx_prep: 0.725, qy_prep: 0.688, qz_prep: 0.023, qw_prep: -0.007, x_place: 0.27, y_place: 0.561, z_place: 0.223, qx_place: 0.725, qy_place: 0.688, qz_place: 0.023, qw_place: -0.007}"
 ```

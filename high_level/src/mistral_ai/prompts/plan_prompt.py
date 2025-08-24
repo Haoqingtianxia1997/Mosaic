@@ -16,7 +16,7 @@ JSON FORMAT
   "response": "<short natural-language reply>",
   "actions": [
     {
-      "type": "<perceive | move | grasp_flavoring | grasp_otherthings | stir | reset | add | return_back | open | close>",
+      "type": "<perceive | move | grasp_otherthings | grasp_otherthings | stir | reset | add | return_back | open | close>",
       "target": "<object or location>",
       "parameters": { ... }   # optional fields per action
     },
@@ -38,12 +38,6 @@ ACTION TYPES
 
 - grasp_otherthings
   · Pick up the target object.  
-  · parameters: none
-
-- grasp_flavoring
-  · Pick up a container of seasoning (e.g. "salt bottle").  
-  · Rules: the robot grasps the **container** (e.g. "salt bottle"), never the
-           loose seasoning itself.  
   · parameters: none
 
 - stir  
@@ -125,7 +119,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "move",     "target": "salt bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "salt bottle", "parameters": {} },
     { "type": "perceive", "target": "user person", "parameters": {} },
     { "type": "move",     "target": "user person", "parameters": {} },
     { "type": "open",    "target": "user person", "parameters": {} },
@@ -138,7 +132,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "move",     "target": "salt bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "salt bottle", "parameters": {} },
     { "type": "perceive", "target": "soup pot",    "parameters": {} },
     { "type": "add",      "target": "soup pot",    "parameters": { "add_times": 2 } },
     { "type": "return_back","target": "salt bottle", "parameters": {} },
@@ -165,7 +159,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "pepper bottle", "parameters": {} },
     { "type": "move",     "target": "pepper bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "pepper bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "pepper bottle", "parameters": {} },
     { "type": "perceive", "target": "table",         "parameters": {} },
     { "type": "move",     "target": "table",         "parameters": {} },
     { "type": "open",    "target": "table",         "parameters": {} },
@@ -202,7 +196,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "move",     "target": "salt bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "salt bottle", "parameters": {} },
     { "type": "perceive", "target": "user person",        "parameters": {} },
     { "type": "move",     "target": "user person",        "parameters": {} },
     { "type": "open",    "target": "user person",        "parameters": {} },
@@ -214,7 +208,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "move",     "target": "salt bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "salt bottle", "parameters": {} },
     { "type": "return_back", "target": "salt bottle", "parameters": {} },
     { "type": "reset",    "target": "home",        "parameters": {} }
   ]
@@ -224,7 +218,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "hand",  "parameters": {} },
     { "type": "move",     "target": "hand",  "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "pepper bottle",  "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "pepper bottle",  "parameters": {} },
     { "type": "return_back", "target": "pepper bottle",  "parameters": {} },
     { "type": "reset",    "target": "home",        "parameters": {} }
   ]
@@ -234,7 +228,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "pepper bottle", "parameters": {} },
     { "type": "move",     "target": "pepper bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "pepper bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "pepper bottle", "parameters": {} },
     { "type": "perceive", "target": "soup pot",    "parameters": {} },
     { "type": "add",      "target": "soup pot",    "parameters": { "add_times": None } },
     { "type": "return_back","target": "pepper bottle",  "parameters": {} },
@@ -286,7 +280,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "move",     "target": "salt bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "salt bottle", "parameters": {} }
+    { "type": "grasp_otherthings",    "target": "salt bottle", "parameters": {} }
   ]
 }
 
@@ -294,7 +288,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "move",     "target": "salt bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "salt bottle", "parameters": {} },
     { "type": "perceive", "target": "salt bottle", "parameters": {} },
     { "type": "return_back", "target": "salt bottle", "parameters": {} },
     { "type": "reset",    "target": "home",        "parameters": {} }
@@ -316,7 +310,7 @@ assistant_prompt = '''
   "actions": [
     { "type": "perceive", "target": "curry bottle", "parameters": {} },
     { "type": "move",     "target": "curry bottle", "parameters": {} },
-    { "type": "grasp_flavoring",    "target": "curry bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "curry bottle", "parameters": {} },
     { "type": "perceive", "target": "soup pot",    "parameters": {} },
     { "type": "add",      "target": "soup pot",    "parameters": { "add_times": 5 } }
   ]
