@@ -518,7 +518,7 @@ def execute_action_sequence(actions, vlm_client):
                     print("✅ Perceived spoon, moving to target point.")
                     continue
                 elif target == "soup pot":
-                    move_params = {"move_x" : 0.6, "move_y" : -0.3, "move_z" : 0.62, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
+                    move_params = {"move_x" : 0.6, "move_y" : -0.3, "move_z" : 0.32, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
                     success = True
                     print("✅ Perceived soup pot, moving to target point.")
                     continue
@@ -707,21 +707,6 @@ def execute_action_sequence(actions, vlm_client):
                                 "qw": 0.0,
                             }
                         )
-                        # if not success:
-                        #     success = call_ros2_service(
-                        #         "/move_service",
-                        #         "action_interfaces/srv/Move",
-                        #         {
-                        #             "x": move_params["move_x"],
-                        #             "y": move_params["move_y"],
-                        #             "z": move_params["move_z"],
-                        #             "qx": move_params["move_qx"],
-                        #             "qy": move_params["move_qy"],
-                        #             "qz": move_params["move_qz"],
-                        #             "qw": move_params["move_qw"],
-                        #         }
-                        #     )
-
                     except ValueError as e:
                         print(e)
                     # time.sleep(3)  # 等待服务调用完成
@@ -731,7 +716,36 @@ def execute_action_sequence(actions, vlm_client):
                             break
                         else:
                             print("❌ List action failed, retrying...")
-
+                
+                
+                
+                if move_params["move_z"] < 0.35:   
+                    try:
+                        if any(v is None for v in move_params.values()):
+                            raise ValueError("Missing move parameters.")
+                        success = call_ros2_service(
+                            "/move_cartesian_service",
+                            "action_interfaces/srv/Move",
+                            {
+                                "x": move_params["move_x"],
+                                "y": move_params["move_y"],
+                                "z":                    0.5,# to 0.5米
+                                "qx": move_params["move_qx"],
+                                "qy": move_params["move_qy"],
+                                "qz": move_params["move_qz"],
+                                "qw": move_params["move_qw"],
+                            }
+                        )
+                    except ValueError as e:
+                        print(e)
+                    # time.sleep(3)  # 等待服务调用完成
+                    while True:
+                        if success:
+                            print("✅ List action executed successfully.")
+                            break
+                        else:
+                            print("❌ List action failed, retrying...")
+                
                 try:
                     if any(v is None for v in move_params.values()):
                         raise ValueError("Missing move parameters.")

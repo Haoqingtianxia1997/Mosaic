@@ -77,6 +77,11 @@ GENERAL RULES
   containers such as "salt bottle", "pepper bottle", etc.  
 • Always perceive an object before grasping it if its location is not certain.  
 • Output **only** valid JSON — no markdown, no explanations, no commentary.
+• If there're multiple actions, e.g. "give me the salt and then give me the pepper", 
+you should do "reset" first after "give me the salt" before "give me the pepper". Or 
+if "stir the soup pot for 5 minutes and then add salt twice to the soup, finally give 
+me the apple", you should do "reset" first after "stir the soup pot for 5 minutes", 
+and then "reset" again after "add salt twice to the soup" before "give me the apple".
 """
 
 # ---------------------------------------------------------------------
@@ -177,6 +182,7 @@ assistant_prompt = '''
     { "type": "move",     "target": "soup pot",     "parameters": {} },
     { "type": "stir",     "target": "soup pot",     "parameters": { "stir_time": 600} },
     { "type": "return_back", "target": "spoon",   "parameters": {} },
+    { "type": "reset",    "target": "home",        "parameters": {} },
     { "type": "perceive", "target": "apple",        "parameters": {} },
     { "type": "move",     "target": "apple",        "parameters": {} },
     { "type": "grasp_otherthings",    "target": "apple",        "parameters": {} },

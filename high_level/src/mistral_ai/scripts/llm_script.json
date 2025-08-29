@@ -1,34 +1,34 @@
 {
-  "response": "Sure, handing you the ketchup bottle.",
+  "response": "Sure, putting the tomato into the soup pot.",
   "actions": [
     {
       "type": "perceive",
-      "target": "ketchup bottle",
+      "target": "tomato",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "ketchup bottle",
+      "target": "tomato",
       "parameters": {}
     },
     {
       "type": "grasp_otherthings",
-      "target": "ketchup bottle",
+      "target": "tomato",
       "parameters": {}
     },
     {
       "type": "perceive",
-      "target": "user person",
+      "target": "soup pot",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "user person",
+      "target": "soup pot",
       "parameters": {}
     },
     {
       "type": "open",
-      "target": "user person",
+      "target": "gripper",
       "parameters": {}
     },
     {

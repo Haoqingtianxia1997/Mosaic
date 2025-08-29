@@ -5,10 +5,8 @@ ros2 launch franka_bringup gravity_compensation_example_controller.launch.py rob
 # ros2 launch franka_moveit_config moveit_new.launch.py
 ros2 launch franka_fr3_moveit_config moveit.launch.py robot_ip:=192.168.2.55
 
-#if remove /log /build /install folders , then : 
-source /home/vignesh/poseidon_ws/install/setup.bash
 
-#sometimes:
+#If sometimes something wrong, do:
 source install/setup.bash
 ```
 
