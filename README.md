@@ -58,5 +58,10 @@ Our code is divided into two parts: high level and low level(manipulation_ws). F
 chmod +x launch.sh
 ./launch.sh
 ```
+Tmux is used to manage all the necessary components. Use Ctrl + b then a number in 0~7 to switch among all the sessions.
 
+To close the multiplexer(first detach with Ctrl+b then d) : 
+```bash
+tmux kill-session -t mosaic
+```
 
