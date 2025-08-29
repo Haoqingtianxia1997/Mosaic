@@ -26,7 +26,7 @@ Our code is divided into two parts: high level and low level(manipulation_ws). F
    source /opt/ros/humble/setup.bash
    colcon build
    ```
-   
+
 2. **Install Python dependencies**  
    ```bash
    conda create -n mosaic python=3.10
@@ -38,6 +38,9 @@ Our code is divided into two parts: high level and low level(manipulation_ws). F
    Add the following lines to `~/.bashrc`, `~/.zshrc` or `~/.config/fish/config.fish`:  
    ```bash
    export MISTRAL_API_KEY="your_mistral_api_key_here"
+   ```
+   or
+   ```bash
    export OPENAI_API_KEY="your_openai_api_key_here"
    ```
 
