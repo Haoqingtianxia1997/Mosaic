@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ik_service.py — 接收 6D pose -> 计算 IK -> 发布轨迹
+ik_service.py — Receive 6D pose -> Compute IK -> Publish trajectory
 """
 
 import math
@@ -49,7 +49,7 @@ class MoveService(Node):
             10
         )
 
-        # 轨迹发布器
+        # Trajectory publisher
         self.traj_pub = self.create_publisher(
             JointTrajectory,
             '/fr3_arm_controller/joint_trajectory',
@@ -58,19 +58,19 @@ class MoveService(Node):
     
     def joint_state_cb(self, msg: JointState):
         self.current_js = msg
-        # print(f'接收到关节角：{msg.name} = {msg.position}')
+        # print(f'Receive joint angle：{msg.name} = {msg.position}')
 
 
-    # ------------------- 主回调 -------------------
+    # ------------------- Main callback -------------------
     def move_cb(self, req: Move.Request, res: Move.Response):
-        if not self.current_js.name:             # 还没收到关节角
-            self.get_logger().warn('joint_states 未就绪，忽略本次请求')
+        if not self.current_js.name:             # Joint angles not received yet
+            self.get_logger().warn('joint_states not ready, ignoring request')
             res.success = False
             return res
 
         qx, qy, qz, qw = normalize_quat(req.qx, req.qy, req.qz, req.qw)
-        print(f'接收到请求：x={req.x}, y={req.y}, z={req.z}, q=({qx}, {qy}, {qz}, {qw})')
-        # 组装 IK 请求
+        print(f'Receive request：x={req.x}, y={req.y}, z={req.z}, q=({qx}, {qy}, {qz}, {qw})')
+        # Assemble IK request
         ik_req = GetPositionIK.Request()
         ik = ik_req.ik_request
         ik.group_name, ik.avoid_collisions = 'fr3_arm', True
@@ -97,21 +97,20 @@ class MoveService(Node):
             print(js.position, "=================")
             print(js.name, js.position)
             self.publish_traj(js.name, js.position, 5.0)
-            self.get_logger().info('✅ IK success，轨迹已发送')
-            
-            # ===== 新增等待实际到位逻辑 =====
+            self.get_logger().info('✅ IK success, trajectory published.')
+
+            # ===== New wait for actual reach logic =====
             target_name_list = js.name
             target_pos = np.array(js.position)
-            # 你可以适当调整阈值
-            pos_tol = 0.01   # 允许的角度误差（弧度）
+            pos_tol = 0.01   # Allowed position tolerance (radians)
             reached = False
             while True:
-                # 从 current_js 获取当前关节角
+                # Get current joint angles from current_js
                 name_to_idx = {name: i for i, name in enumerate(self.current_js.name)}
                 try:
                     cur_pos = np.array([self.current_js.position[name_to_idx[n]] for n in target_name_list])
                 except Exception as e:
-                    self.get_logger().warn(f'当前关节角获取失败: {e}')
+                    self.get_logger().warn(f'Failed to get current joint angles: {e}')
                    
                     continue
                 if np.all(np.abs(cur_pos - target_pos) < pos_tol):
@@ -119,14 +118,14 @@ class MoveService(Node):
                     break
                 
             if reached:
-                self.get_logger().info('🎉 机械臂已到达目标关节角')
+                self.get_logger().info('🎉 Robot arm reached target joint angles')
             else:
-                self.get_logger().warn('⚠️ 等待超时，机械臂未完全到位')
+                self.get_logger().warn('⚠️ Wait timeout, robot arm not fully reached')
 
-            ok = reached  # 你可以决定是否以是否到位来决定 response
+            ok = reached  # You can decide whether to base the response on whether it reached
         else:
             code = ik_res.error_code.val if ik_res else 'None'
-            self.get_logger().error(f'❌ IK 失败，code={code}')
+            self.get_logger().error(f'❌ IK failed, code={code}')
             ok = False
         
         res.success = ok
@@ -138,7 +137,7 @@ class MoveService(Node):
         d = dict(zip(joint_names, positions))
         names = [j for j in arm if j in d]
         if not names:
-            self.get_logger().error('IK 解未包含机械臂关节！')
+            self.get_logger().error('IK solution does not contain arm joints!')
             return
         pos = [d[j] for j in names]
 

@@ -365,61 +365,61 @@ class MoveItIKFKSolver(Node):
     def __init__(self):
         super().__init__('moveit_ik_fk_solver')
         
-        # MoveIt IK服务客户端
+        # MoveIt IK Service Client
         self.ik_client = self.create_client(GetPositionIK, '/compute_ik')
-        
-        # MoveIt FK服务客户端
+
+        # MoveIt FK Service Client
         self.fk_client = self.create_client(GetPositionFK, '/compute_fk')
-        
-        # 等待服务可用
+
+        # Wait for services to be available
         while not self.ik_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('等待MoveIt IK服务...')
-        
+            self.get_logger().info('Waiting for MoveIt IK service...')
+
         while not self.fk_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('等待MoveIt FK服务...')
+            self.get_logger().info('Waiting for MoveIt FK service...')
         
-        self.get_logger().info("✅ MoveIt IK/FK求解器已就绪")
+        self.get_logger().info("✅ MoveIt IK/FK Solver is ready")
 
     def inverse_kinematics(self, world_position, world_orientation=None) -> list:
         """
-        使用MoveIt计算逆运动学
-        
+        Use MoveIt to compute inverse kinematics
+
         Args:
-            world_position: [x, y, z] 世界坐标位置
-            world_orientation: [x, y, z, w] 四元数方向 (可选)
-        
+            world_position: [x, y, z] world position
+            world_orientation: [x, y, z, w] quaternion orientation (optional)
+
         Returns:
-            list: 关节角度 [joint1, joint2, ..., joint7]
+            list: joint angles [joint1, joint2, ..., joint7]
         """
-        # 创建IK请求
+        # Create IK request
         request = GetPositionIK.Request()
-        
-        # 设置目标位置和姿态
-        request.ik_request.group_name = "fr3_arm"  # 机械臂组名
+
+        # Set target position and orientation
+        request.ik_request.group_name = "fr3_arm"  # Robot arm group name
         request.ik_request.robot_state.joint_state.name = [
             'fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4',
             'fr3_joint5', 'fr3_joint6', 'fr3_joint7'
         ]
-        
-        # 当前关节状态（作为初始猜测）
+
+        # Current joint state (as initial guess)
         request.ik_request.robot_state.joint_state.position = [
             0.0, 0.0, 0.0, -1.57, 0.0, 1.57, 0.0
         ]
-        
-        # 设置末端执行器链接
+
+        # Set end effector link
         request.ik_request.ik_link_name = "fr3_hand"
-        
-        # 目标位置
+
+        # Target position
         target_pose = Pose()
         target_pose.position = Point(
             x=float(world_position[0]),
             y=float(world_position[1]),
             z=float(world_position[2])
         )
-        
-        # 目标方向
+
+        # Target orientation
         if world_orientation is None:
-            # 默认方向：末端执行器朝下
+            # Default orientation: end effector points down
             target_pose.orientation = Quaternion(x=1.0, y=0.0, z=0.0, w=0.0)
         else:
             target_pose.orientation = Quaternion(
@@ -431,12 +431,12 @@ class MoveItIKFKSolver(Node):
         
         request.ik_request.pose_stamped.header.frame_id = "fr3_link0"
         request.ik_request.pose_stamped.pose = target_pose
-        
-        # 设置超时和尝试次数
+
+        # Set timeout and attempts
         request.ik_request.timeout.sec = 5
         # request.ik_request.attempts = 10
-        
-        # 调用服务
+
+        # Call service
         try:
             future = self.ik_client.call_async(request)
             rclpy.spin_until_future_complete(self, future, timeout_sec=10.0)
@@ -445,50 +445,50 @@ class MoveItIKFKSolver(Node):
                 response = future.result()
                 if response.error_code.val == 1:  # SUCCESS
                     joint_angles = list(response.solution.joint_state.position)
-                    self.get_logger().info(f"✅ IK求解成功: {[f'{angle:.3f}' for angle in joint_angles]}")
+                    self.get_logger().info(f"✅ IK solution successful: {[f'{angle:.3f}' for angle in joint_angles]}")
                     return joint_angles
                 else:
-                    error_msg = f"IK求解失败，错误代码: {response.error_code.val}"
+                    error_msg = f"IK solution failed, error code: {response.error_code.val}"
                     self.get_logger().error(f"❌ {error_msg}")
                     raise RuntimeError(error_msg)
             else:
-                raise TimeoutError("IK服务调用超时")
-                
+                raise TimeoutError("IK service call timed out")
+
         except Exception as e:
-            self.get_logger().error(f"❌ IK求解异常: {e}")
+            self.get_logger().error(f"❌ IK solution exception: {e}")
             raise
 
     def forward_kinematics(self, joint_angles, link_names=None) -> dict:
         """
-        使用MoveIt计算正运动学
-        
+        Use MoveIt to compute forward kinematics
+
         Args:
-            joint_angles: [joint1, joint2, ..., joint7] 关节角度列表
-            link_names: 要计算的链接名称列表，默认为末端执行器
-        
+            joint_angles: [joint1, joint2, ..., joint7] joint angle list
+            link_names: List of link names to compute, defaults to end effector
+
         Returns:
             dict: {link_name: {'position': [x, y, z], 'orientation': [x, y, z, w]}}
         """
         if link_names is None:
-            link_names = ["fr3_hand"]  # 默认计算末端执行器位置
+            link_names = ["fr3_hand"]  # Default to computing end effector position
 
-        # 创建FK请求
+        # Create FK request
         request = GetPositionFK.Request()
-        
-        # 设置机器人状态
+
+        # Set robot state
         request.robot_state.joint_state.name = [
             'fr3_joint1', 'fr3_joint2', 'fr3_joint3', 'fr3_joint4',
             'fr3_joint5', 'fr3_joint6', 'fr3_joint7'
         ]
         request.robot_state.joint_state.position = [float(angle) for angle in joint_angles]
-        
-        # 设置要计算的链接
+
+        # Set links to compute
         request.fk_link_names = link_names
-        
-        # 设置参考坐标系
+
+        # Set reference frame
         request.header.frame_id = "fr3_link0"
 
-        # 调用服务
+        # Call service
         try:
             future = self.fk_client.call_async(request)
             rclpy.spin_until_future_complete(self, future, timeout_sec=10.0)
@@ -504,35 +504,35 @@ class MoveItIKFKSolver(Node):
                             'orientation': [pose.orientation.x, pose.orientation.y, 
                                           pose.orientation.z, pose.orientation.w]
                         }
-                    
-                    self.get_logger().info(f"✅ FK求解成功")
+
+                    self.get_logger().info(f"✅ FK solution successful")
                     for link_name, data in results.items():
                         pos = data['position']
-                        self.get_logger().info(f"  {link_name}: 位置=[{pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f}]")
-                    
+                        self.get_logger().info(f"  {link_name}: position=[{pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f}]")
+
                     return results
                 else:
-                    error_msg = f"FK求解失败，错误代码: {response.error_code.val}"
+                    error_msg = f"FK solution failed, error code: {response.error_code.val}"
                     self.get_logger().error(f"❌ {error_msg}")
                     raise RuntimeError(error_msg)
             else:
-                raise TimeoutError("FK服务调用超时")
-                
+                raise TimeoutError("FK service call timed out")
+
         except Exception as e:
-            self.get_logger().error(f"❌ FK求解异常: {e}")
+            self.get_logger().error(f"❌ FK solution exception: {e}")
             raise
 
     def get_end_effector_position(self, joint_angles) -> tuple:
         """
-        获取末端执行器的世界坐标位置
-        
+        Get the world coordinates of the end effector
+
         Args:
-            joint_angles: 关节角度列表
-            
+            joint_angles: List of joint angles
+
         Returns:
             tuple: (position, orientation) 
-                   position: [x, y, z] 位置
-                   orientation: [x, y, z, w] 四元数方向
+                   position: [x, y, z] position
+                   orientation: [x, y, z, w] quaternion orientation
         """
         try:
             result = self.forward_kinematics(joint_angles, ["fr3_hand"])
@@ -541,23 +541,23 @@ class MoveItIKFKSolver(Node):
                 orientation = result["fr3_hand"]["orientation"]
                 return position, orientation
             else:
-                raise RuntimeError("未能获取末端执行器位置")
+                raise RuntimeError("Unable to get end effector position")
         except Exception as e:
-            self.get_logger().error(f"❌ 获取末端执行器位置失败: {e}")
+            self.get_logger().error(f"❌ Failed to get end effector position: {e}")
             raise
 
 
     def get_multiple_link_positions(self, joint_angles) -> dict:
         """
-        获取多个链接的世界坐标位置
-        
+        Get the world coordinates of multiple links
+
         Args:
-            joint_angles: 关节角度列表
-            
+            joint_angles: List of joint angles
+
         Returns:
-            dict: 多个链接的位置信息
+            dict: Position information of multiple links
         """
-        # 常用的链接名称
+        # Common link names
         link_names = [
             "fr3_link1",
             "fr3_link2", 
@@ -577,7 +577,7 @@ def test_simple_ik_fk():
 
     try:
         print("=" * 30)
-        print("👉 正运动学测试")
+        print("👉 Forward Kinematics Test")
         print("=" * 30)
 
         # joint_angles = [-0.7687153380443489, 0.11247818654052139, 0.1119013495414711, -2.361459772011796, 0.031976763940068646, 2.5149397281779167, 0.05702809129333345]
@@ -585,25 +585,25 @@ def test_simple_ik_fk():
         
 
 
-        print(f"输入关节角度: {[f'{a:.3f}' for a in joint_angles]}")
+        print(f"Joint angles: {[f'{a:.3f}' for a in joint_angles]}")
         fk_result = solver.forward_kinematics(joint_angles)
 
         pos = fk_result["fr3_hand"]["position"]
         ori = fk_result["fr3_hand"]["orientation"]
-        print(f"末端位置: [{pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f}]")
-        print(f"末端方向: [{ori[0]:.3f}, {ori[1]:.3f}, {ori[2]:.3f}, {ori[3]:.3f}]")
+        print(f"End effector position: [{pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f}]")
+        print(f"End effector orientation: [{ori[0]:.3f}, {ori[1]:.3f}, {ori[2]:.3f}, {ori[3]:.3f}]")
 
         print("\n" + "=" * 30)
-        print("👉 逆运动学测试")
+        print("👉 Inverse Kinematics Test")
         print("=" * 30)
 
         target_position = [0.554, -0.000, 0.625]
-        print(f"目标位置: {target_position}")
+        print(f"Target position: {target_position}")
         ik_result = solver.inverse_kinematics(target_position)
-        print(f"求解得到的关节角度: {[f'{a:.3f}' for a in ik_result]}")
+        print(f"Joint angles: {[f'{a:.3f}' for a in ik_result]}")
 
     except Exception as e:
-        print(f"测试过程中发生错误: {e}")
+        print(f"Error occurred during testing: {e}")
     finally:
         rclpy.shutdown()
 

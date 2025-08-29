@@ -25,7 +25,7 @@ with mp_hands.Hands(static_image_mode=False,
             for hand_lms in results.multi_hand_landmarks:
                 h, w = frame.shape[:2]
 
-                # ---------- A) 计算手指方向 ----------
+                # ---------- A) Calculate Finger Direction ----------
                 tip_xy  = np.array([hand_lms.landmark[8].x * w,
                                     hand_lms.landmark[8].y * h]).astype(int)
                 base_xy = np.array([hand_lms.landmark[5].x * w,
@@ -34,7 +34,7 @@ with mp_hands.Hands(static_image_mode=False,
                 scale = 6 
                 end_xy = (base_xy + v * scale).astype(int)
                 angle = (np.degrees(np.arctan2(-v[1], v[0])) + 360) % 360
-                dirs = ['右','右上','上','左上','左','左下','下','右下']
+                dirs = ['Right','Right-Up','Up','Left-Up','Left','Left-Down','Down','Right-Down']
                 idx = int(((angle + 22.5) % 360) // 45)
 
                 cv2.arrowedLine(frame, tuple(base_xy), tuple(end_xy),
@@ -44,7 +44,7 @@ with mp_hands.Hands(static_image_mode=False,
                             (base_xy[0]+10, base_xy[1]-10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
-                # ---------- B) 估算手掌心 ----------
+                # ---------- B) Estimate Palm Center ----------
                 palm_ids = [0, 5, 9, 13, 17]
                 pts = np.array([[hand_lms.landmark[i].x * w,
                                  hand_lms.landmark[i].y * h] for i in palm_ids])
@@ -55,7 +55,7 @@ with mp_hands.Hands(static_image_mode=False,
                             (center[0]+10, center[1]-10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
-                # ---------- C) 可选：画骨架 ----------
+                # ---------- C) Optional: Draw Skeleton ----------
                 mp_drawing.draw_landmarks(frame, hand_lms,
                                           mp_hands.HAND_CONNECTIONS)
 

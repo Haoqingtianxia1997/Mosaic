@@ -4,19 +4,19 @@ from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from sensor_msgs.msg import JointState
 from moveit_msgs.srv import GetPositionFK
-from action_interfaces.srv import Fk            # ← 替换为你的包名
+from action_interfaces.srv import Fk
 import threading
 
 class FKOnlyServer(Node):
     def __init__(self):
-        super().__init__('fk_servive')
+        super().__init__('fk_service')
 
-        # MoveIt FK 服务客户端
+        # MoveIt FK service client
         self.fk_client = self.create_client(GetPositionFK, '/compute_fk')
         while not self.fk_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('等待 MoveIt FK 服务...')
+            self.get_logger().info('Waiting for MoveIt FK service...')
 
-        # 数据与锁
+        # Data and lock
         self.joint_names = [
             'fr3_joint1','fr3_joint2','fr3_joint3',
             'fr3_joint4','fr3_joint5','fr3_joint6','fr3_joint7'
@@ -24,25 +24,25 @@ class FKOnlyServer(Node):
         self._lock = threading.Lock()
         self.latest_angles = None
 
-        # 分离的 callback group，确保订阅与服务互不阻塞
+        # Separate callback groups to ensure subscription and service do not block each other
         sub_group = MutuallyExclusiveCallbackGroup()
         srv_group = MutuallyExclusiveCallbackGroup()
 
-        # 订阅关节角
+        # Subscribe to joint angles
         self.create_subscription(
             JointState, '/joint_states',
             self.joint_state_cb, 10,
             callback_group=sub_group
         )
 
-        # 创建服务
+        # Create service
         self.create_service(
             Fk, '/fk_service',
             self.handle_request,
             callback_group=srv_group
         )
 
-        self.get_logger().info('✅ /get_ee_position FK 服务已就绪')
+        self.get_logger().info('✅ /get_ee_position FK service is ready')
 
     # ---------- Callbacks ----------
     def joint_state_cb(self, msg: JointState):
@@ -51,18 +51,18 @@ class FKOnlyServer(Node):
             with self._lock:
                 self.latest_angles = [float(name2pos[n]) for n in self.joint_names]
         except KeyError:
-            pass  # joints 未齐全，忽略
+            pass  # joints not complete, ignore
 
     def handle_request(self, req, res):
-        # 取最新关节角
+        # Get latest joint angles
         with self._lock:
             angles = None if self.latest_angles is None else self.latest_angles.copy()
         if angles is None:
-            self.get_logger().warn('⏳ 还未收到 joint_states，返回 NaN')
+            self.get_logger().warn('⏳ Haven\'t received joint_states, returning NaN')
             res.x = res.y = res.z = float('nan')
             return res
 
-        # 调用 FK
+        # Call FK
         fk_req = GetPositionFK.Request()
         fk_req.robot_state.joint_state.name = self.joint_names
         fk_req.robot_state.joint_state.position = angles
@@ -76,9 +76,9 @@ class FKOnlyServer(Node):
             pose = fut.result().pose_stamped[0].pose
             res.x, res.y, res.z = pose.position.x, pose.position.y, pose.position.z
             self.get_logger().info(
-                f'📐 末端位置: {res.x:.3f}, {res.y:.3f}, {res.z:.3f}')
+                f'📐 End effector position: {res.x:.3f}, {res.y:.3f}, {res.z:.3f}')
         else:
-            self.get_logger().error('❌ FK 计算失败')
+            self.get_logger().error('❌ FK computation failed')
             res.x = res.y = res.z = float('nan')
         return res
 

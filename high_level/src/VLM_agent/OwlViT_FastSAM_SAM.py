@@ -1,4 +1,4 @@
-# 支持多目标种类+文字检测 + FastSAM/SAM分割
+# Support text-driven object detection and segmentation using OwlViT + FastSAM/SAM
 import re, difflib,functools
 import torch, numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFont
@@ -12,10 +12,10 @@ import cv2
 from PIL import Image, ImageDraw
 from segment_anything import sam_model_registry, SamPredictor
 
-# yolo_model = YOLO('yolo_model/yolo11m.pt')  # 用你自己的权重
+# yolo_model = YOLO('yolo_model/yolo11m.pt')  # Or use your custom model path
 yolo_model = YOLO('yolo_model/best.pt')
 
-# 伪彩色表（你可自定义）
+# Pseudo color table (customizable)
 COLOR_TABLE = [
     (255, 0, 0),    # Red
     (0, 255, 0),    # Green
@@ -25,18 +25,18 @@ COLOR_TABLE = [
     (0, 255, 255),  # Cyan
 ]
 
-# ---------------- 辅助函数 ----------------
+# ---------------- Auxiliary Functions ----------------
 def apply_mask_color(mask, color, alpha=120):
     """mask: [H, W] np.uint8 0-255, color: (R,G,B), alpha: 0-255"""
     mask_img = Image.fromarray(mask)
     color_img = Image.new("RGBA", mask_img.size, color + (0,))
-    # 只在前景上加透明色
+    # Only add transparency to the foreground
     mask_rgba = mask_img.convert("L").point(lambda x: alpha if x > 0 else 0)
     color_img.putalpha(mask_rgba)
     return color_img
 
 def prompt_tokens(prompt: str):
-    """把 prompt 拆成长度≥3 的英文单词列表，全小写"""
+    """Split the prompt into a list of English words with length ≥ 3, all lowercase"""
     return [w for w in re.findall(r"[a-zA-Z']+", prompt.lower()) if len(w) >= 3]
 
 def fuzzy_ratio(a: str, b: str) -> float:
@@ -44,9 +44,9 @@ def fuzzy_ratio(a: str, b: str) -> float:
 
 def prompt_match(tokens, ocr_tokens, fuzzy_th=0.8):
     """
-    所有 tokens 必须全部匹配 OCR 才返回 True：
-    ① 若 kw 是某个 OCR t 的子串 → 匹配成功
-    ② 或模糊相似度 ≥ fuzzy_th    → 匹配成功
+    All tokens must match the OCR completely to return True:
+    ① If kw is a substring of some OCR t → Match successful
+    ② Or fuzzy similarity ≥ fuzzy_th → Match successful
     """
     matched_scores = []
 
@@ -60,17 +60,17 @@ def prompt_match(tokens, ocr_tokens, fuzzy_th=0.8):
             if kw in t:
                 matched = True
                 best_score = 1.0
-                break  # 直接命中，退出内层
+                break  # Direct hit, exit inner loop
             score = fuzzy_ratio(kw, t)
             if score >= fuzzy_th:
                 matched = True
                 best_score = max(best_score, score)
 
         if not matched:
-            return False, 0  # 只要有一个关键词不匹配 → 全部失败
+            return False, 0  # As long as one keyword does not match → All fail
         matched_scores.append(best_score)
 
-    # 所有都匹配了，返回最小得分（最弱一项）
+    # All matched, return the minimum score (the weakest link)
     return True, min(matched_scores)
 
 # --------------------
@@ -84,8 +84,8 @@ class SAMSegmenter:
     def segment_with_boxes(self, image_path, boxes_xyxy, multimask_output=False):
         """
         image_path      : str
-        boxes_xyxy      : (x0,y0,x1,y1)  或  [(...), (...)]   像素坐标
-        returns         : numpy.bool_  [N,H,W]  (multi=False)  或  [N,3,H,W]
+        boxes_xyxy      : (x0,y0,x1,y1)  or  [(...), (...)]   pixel coordinates
+        returns         : numpy.bool_  [N,H,W]  (multi=False)  or  [N,3,H,W]
         """
         img_bgr = cv2.imread(image_path)
         if img_bgr is None:
@@ -93,7 +93,7 @@ class SAMSegmenter:
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         H, W = img_rgb.shape[:2]
 
-        # --- 标准化 boxes 到 [N,4] ---
+        # --- Standardize boxes to [N,4] ---
         if isinstance(boxes_xyxy[0], (int, float)):
             boxes_arr = np.asarray([boxes_xyxy], dtype=np.float32)
         else:
@@ -135,7 +135,7 @@ class TextDrivenSegmenter:
         trans_name = "Helsinki-NLP/opus-mt-en-de"
         self.trans_tok = MarianTokenizer.from_pretrained(trans_name)
         self.trans_mod = MarianMTModel.from_pretrained(trans_name)
-        self.trans_mod.to(self.device)      # 放同一张 GPU / CPU
+        self.trans_mod.to(self.device)      # in the same device
 
     @functools.lru_cache(maxsize=512)
     @torch.inference_mode()
@@ -144,7 +144,7 @@ class TextDrivenSegmenter:
         gen   = self.trans_mod.generate(**batch, max_length=16)
         return self.trans_tok.decode(gen[0], skip_special_tokens=True)
 
-    # ---------------- 主流程 ----------------
+    # ---------------- Main Process ----------------
     def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False, method="yolo"):
         image = Image.open(image_path).convert("RGB")
         W, H  = image.size
@@ -157,10 +157,10 @@ class TextDrivenSegmenter:
             if label == "":
                 not_match = True
             else:
-                if if_translate:  # 翻译成德语
-                    tokens_en = prompt_tokens(label) 
+                if if_translate:  # Translate to German
+                    tokens_en = prompt_tokens(label)
                     tokens_de = [self._en_word2de(w).lower() for w in tokens_en]
-                    p_tokens = tokens_de         # 整句 prompt→单词列表
+                    p_tokens = tokens_de         # Full prompt → word list
                     print(f'Prompt EN: "{label}"   →   DE: "{tokens_de}"')
                 else:
                     p_tokens = prompt_tokens(label)
@@ -174,30 +174,30 @@ class TextDrivenSegmenter:
                     out = self.owl_model(**inputs)
                 boxes  = out.pred_boxes[0].cpu()
                 scores = out.logits[0].cpu().sigmoid()[:, 0]
-                keep   = torch.topk(scores, k=min(5, len(scores))).indices  # 前 5 个候选
+                keep   = torch.topk(scores, k=min(5, len(scores))).indices  # Top 5 candidates
 
             elif method == "yolo":
                 yolo_results = yolo_model(image, conf=0.7)
                 boxes_xyxy = yolo_results[0].boxes.xyxy.cpu().numpy()
                 confs      = yolo_results[0].boxes.conf.cpu().numpy()
                 labels_idx = yolo_results[0].boxes.cls.cpu().numpy()
-                print(f"YOLO 检测到 {labels_idx}")
+                print(f"YOLO detected {labels_idx}")
                 class_names = yolo_model.names
 
                 for i, c in enumerate(labels_idx):
                     name = class_names[int(c)]
                     conf = confs[i]
                     bbox = boxes_xyxy[i]
-                    print(f"  - 类别: {name:>10s}，置信度: {conf:.3f}，bbox: [{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]")
-                
-                # 根据prompt筛选类别
+                    print(f"  - Class: {name:>10s}, Confidence: {conf:.3f}, BBox: [{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]")
+
+                # Filter categories based on prompt
                 prompt_lower = prompt.lower()
                 matched_idx = [
                     i for i, c in enumerate(labels_idx)
                     if class_names[int(c)].lower() == prompt_lower
                 ]
                 if not matched_idx:
-                    print(f"未找到与类别 {prompt} 匹配的目标框，自动跳过")
+                    print(f"Cannot find target '{prompt}' in the detected objects. Skipping...")
                     return None, None, None
 
                 filtered_boxes = boxes_xyxy[matched_idx]
@@ -207,10 +207,10 @@ class TextDrivenSegmenter:
                 boxes_list = []
                 for b in filtered_boxes[top_idx]:
                     x1, y1, x2, y2 = b
-                    # 保证顺序
+                    # Ensure x1 < x2 and y1 < y2
                     x1, x2 = sorted([x1, x2])
                     y1, y2 = sorted([y1, y2])
-                    # 转成 cx, cy, bw, bh（归一化到0~1）
+                    # Convert to cx, cy, bw, bh (normalized to 0~1)
                     cx = (x1 + x2) / 2 / W
                     cy = (y1 + y2) / 2 / H
                     bw = (x2 - x1) / W
@@ -221,33 +221,33 @@ class TextDrivenSegmenter:
                 keep = range(len(boxes))
 
 
-            matched = []   # OCR 命中的候选
+            matched = []   # OCR matched candidates
             for idx in keep:
-                if scores[idx] < 0.1:    # 分数下限
+                if scores[idx] < 0.1:    # Score lower limit
                     continue
-                if not_match:            # 无匹配任务，直接用最高分的框
+                if not_match:            # No matching task, directly use the highest score box
                     box = self._box_xyxy(boxes[idx], W, H)
                     matched.append((box, scores[idx].item()))
                 else:
                     box  = self._box_xyxy(boxes[idx], W, H)
                     x1,y1,x2,y2 = box
-                    pad = 20                  # 扩张 20 px 免得截掉文字
+                    pad = 20                  # Expand 20 px to avoid cutting off text
                     crop = image.crop((max(0,x1-pad), max(0,y1-pad),
                                     min(W,x2+pad), min(H,y2+pad)))
                     ocr_tokens = [t.lower() for t in self.reader.readtext(np.array(crop),
                                                                         detail=0)]
                     exist , matched_score = prompt_match(p_tokens, ocr_tokens)
-                    if exist:   # 命中一次即可
-                        total_score = matched_score + scores[idx].item()  # 命中分数 + 检测分数
+                    if exist:   # Hit once is enough
+                        total_score = matched_score + scores[idx].item()  # Hit score + detection score
                         print(matched_score, scores[idx].item(), total_score)
                         matched.append((box, total_score))
                 
             
             if len(matched)>1 and not multi_task:
-                # 多任务模式下，允许多个匹配；否则只保留最高分的一个
+                # In multi-task mode, allow multiple matches; otherwise, keep only the highest-scoring one
                 matched = sorted(matched, key=lambda x: x[1], reverse=True)[:1]
 
-            # 若有命中用命中，否则用最高置信度那一框兜底
+            # If there are hits, use them; otherwise, fallback to the highest confidence box
             cand = matched if matched else [(self._box_xyxy(boxes[keep[0]], W, H),
                                              scores[keep[0]].item())]
 
@@ -256,12 +256,12 @@ class TextDrivenSegmenter:
                 if if_sam:
                     masks_sam = self.sam.segment_with_boxes(image_path, [box],
                                                             multimask_output=False)
-                    mask = masks_sam[0].astype(np.uint8)             # 取第 1 个框的单一 mask
+                    mask = masks_sam[0].astype(np.uint8)             # Choose single mask in the first box
                 else:
                     mask = self._fastsam_seg(image_path, box)
 
                 bcen, mcen = self._centers(box, mask)
-                all_seg_points = self._all_seg_points(mask)  # 计算所有分割点
+                all_seg_points = self._all_seg_points(mask)  # Calculate all segmentation points
                 
                 all_boxes.append((box, prompt, conf))
                 all_masks.append(mask)
@@ -274,7 +274,7 @@ class TextDrivenSegmenter:
         return result, all_boxes, all_points
 
 
-    # ---------- 工具 ----------
+    # ---------- Tools ----------
     @staticmethod
     def _box_xyxy(box, W, H):
         cx, cy, bw, bh = box.numpy()
@@ -314,7 +314,7 @@ class TextDrivenSegmenter:
             final[y1:y2,x1:x2] = best
         return final
 
-    # ---------- 可视化 ----------
+    # ---------- Visualization ----------
     def _visual(self, img, boxes, masks):
         draw = ImageDraw.Draw(img)
         overlay = Image.new("RGBA", img.size, (0,0,0,0))
@@ -347,7 +347,7 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
     seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
     img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate)
     if img is None or boxes is None or points is None:
-        print(f"未找到目标 {target}，请检查图片或目标名称")
+        print(f"Cannot find target '{target}' in the image.")
         return None, None, None, None, None, None
     
     if name == "left":
@@ -364,24 +364,24 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
     seg_center_point = points[0]["seg_center_point"]
     all_seg_points = points[0]["seg_points"]
 
-    bbox = tuple(boxes[0][0])  # 获取第一个目标的边界框
-    score = boxes[0][2]  # 获取第一个目标的置信度分数
+    bbox = tuple(boxes[0][0])  # Get the bounding box of the first target
+    score = boxes[0][2]  # Get the confidence score of the first target
 
-    # del seg, img, boxes, points # 1去引用
-    if torch.cuda.is_available(): # 2清 CUDA 缓存
+    # del seg, img, boxes, points
+    if torch.cuda.is_available(): # clear CUDA cache
         torch.cuda.empty_cache()
-    gc.collect() # 3 可选，但推荐
-    
-    return target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score   
+    gc.collect() # 3 Optional, but recommended
+
+    return target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score
 
 
 # ---------------- demo ----------------
 if __name__ == "__main__":
-    target_label = "pepper bottle"  # 替换为你要检测的目标
-    text = "black pepper"  # 替换为你要检测的文字
-    image_path = "images/example1.jpg"  # 替换为你的图片路径
+    target_label = "pepper bottle"  # Replace with the target you want to detect
+    text = "black pepper"  # Replace with the text you want to detect
+    image_path = "images/example1.jpg"  # Replace with your image path
     # text = ""
-    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=True)  # 调用函数处理图像中的目标检测
+    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=True)  # Call the function to process object detection in the image
     print(f"🔍 Detected target: {target_label}")
     print(f"📍 Target prompt: {target_prompt}")
     print(f"📏 Bounding box: {bbox}")

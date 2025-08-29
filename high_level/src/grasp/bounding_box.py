@@ -87,20 +87,20 @@ def compute_obb(points_cloud: np.ndarray) -> np.ndarray:
 #     if len(points_cloud) == 0:
 #         raise ValueError("Point cloud is empty, cannot calculate bounding box")
     
-#     # Step 1: 生成点云对象
+#     # Step 1: Generate Open3D point cloud from numpy array
 #     pcd = o3d.geometry.PointCloud()
 #     pcd.points = o3d.utility.Vector3dVector(points_cloud)
-#     pcd.paint_uniform_color([0.1, 0.7, 0.1])  # 绿色点云
+#     pcd.paint_uniform_color([0.1, 0.7, 0.1])  # Green point cloud
 
-#     # Step 2: 计算凸包（mesh）
+#     # Step 2: Compute convex hull (mesh)
 #     mesh, _ = pcd.compute_convex_hull()
-#     mesh.paint_uniform_color([0.2, 0.2, 0.7])  # 蓝色凸包
+#     mesh.paint_uniform_color([0.2, 0.2, 0.7])  # Blue convex hull
 
 #     obb_points = np.asarray(mesh.vertices)
 #     if obb_points.shape[0] < 4:
 #         obb_points = points_cloud
 
-#     # Step 3: 计算 OBB（PCA方式，和你的原代码一致）
+#     # Step 3: Compute OBB (PCA method, consistent with your original code)
 #     center = np.mean(obb_points, axis=0)
 #     points_xy = obb_points.copy()
 #     points_xy[:, 2] = 0
@@ -132,28 +132,28 @@ def compute_obb(points_cloud: np.ndarray) -> np.ndarray:
 #     ])
 #     obb_corners = np.dot(bbox_corners_rotated, rotation_matrix.T) + xy_mean
 
-#     # Step 4: 用Open3D可视化 mesh、点云和OBB
-#     # 1. 画 OBB 的线框
+#     # Step 4: Visualize mesh, point cloud, and OBB using Open3D
+#     # 1. Draw OBB wireframe
 #     lines = [
 #         [0, 1], [1, 2], [2, 3], [3, 0],
 #         [4, 5], [5, 6], [6, 7], [7, 4],
 #         [0, 4], [1, 5], [2, 6], [3, 7]
 #     ]
-#     colors = [[1, 0, 0] for _ in range(len(lines))]  # 红色OBB线
+#     colors = [[1, 0, 0] for _ in range(len(lines))]  # Red OBB lines
 #     line_set = o3d.geometry.LineSet(
 #         points=o3d.utility.Vector3dVector(obb_corners),
 #         lines=o3d.utility.Vector2iVector(lines),
 #     )
 #     line_set.colors = o3d.utility.Vector3dVector(colors)
-
-#     # 2. 可选：凸包mesh透明度（需要open3d>=0.13，老版本用不了）
+#
+#     # 2. Optional: Set transparency of convex hull mesh (requires open3d>=0.13)
 #     if hasattr(mesh, 'compute_vertex_normals'):
 #         mesh.compute_vertex_normals()
 #     mesh.compute_triangle_normals()
-#     mesh.paint_uniform_color([0.2, 0.2, 0.7])  # 还是蓝色
-#     # Open3D本身不直接支持透明度（除非在Jupyter里用draw_geometries_with_editing）
+#     mesh.paint_uniform_color([0.2, 0.2, 0.7])  # Still blue
+#     # Open3D does not support mesh transparency directly in visualization
 
-#     # 3. 显示
+#     # 3. Display
 #     o3d.visualization.draw_geometries([pcd, mesh, line_set],
 #                                       window_name="PointCloud + ConvexHull + OBB",
 #                                       width=960, height=720)

@@ -73,7 +73,7 @@ class AddService(Node):
         d = dict(zip(joint_names, positions))
         names = [j for j in arm if j in d]
         if not names:
-            self.get_logger().error('IK 解未包含机械臂关节！')
+            self.get_logger().error('IK solver result has no arm joint')
             return
         pos = [d[j] for j in names]
 
@@ -87,16 +87,16 @@ class AddService(Node):
         self.traj_pub.publish(traj)
         
         while True:
-            # 从 current_js 获取当前关节角
+            # Get current joint angles from current_js
             name_to_idx = {name: i for i, name in enumerate(self.current_js.name)}
             try:
                 cur_pos = [self.current_js.position[name_to_idx[n]] for n in names]
             except Exception as e:
-                self.get_logger().warn(f'当前关节角获取失败: {e}')
+                self.get_logger().warn(f'Failed to get current joint angles: {e}')
                 continue
             
             if all(abs(cp - p) < 0.05 for cp, p in zip(cur_pos, pos)):
-                self.get_logger().info('🎉 机械臂已到达目标关节角')
+                self.get_logger().info('🎉 Robot arm reached target joint angles!')
                 break
         
         

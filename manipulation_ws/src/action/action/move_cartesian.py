@@ -32,7 +32,7 @@ class MoveCartesianService(Node):
             callback_group=self.srv_group
         )
         while not self.cartesian_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('等待 /compute_cartesian_path ...')
+            self.get_logger().info('Wait for /compute_cartesian_path ...')
 
         self.current_js = JointState()
         self.create_subscription(
@@ -51,7 +51,7 @@ class MoveCartesianService(Node):
 
     def move_cb(self, req: Move.Request, res: Move.Response):
         if not self.current_js.name:
-            self.get_logger().warn('joint_states 未就绪，忽略本次请求')
+            self.get_logger().warn('joint_states not ready, ignoring request')
             res.success = False
             return res
 

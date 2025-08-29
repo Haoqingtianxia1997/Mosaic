@@ -21,7 +21,7 @@ import os
 
 from src.intention.l2cs import select_device, Pipeline
 
-# 添加 high_level/src 到 sys.path
+# add high_level/src to sys.path
 HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../high_level/src"))
 if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
@@ -216,34 +216,33 @@ def in_valid_area(pt):
 def draw_point_on_images(
         world_pt,
         tag: str = '',
-        roi_size: float = 0.3,             # 正方形ROI的物理边长（米）
-        center_color=(0, 0, 255),            # 中心点颜色
-        edge_color=(0, 255, 255),            # ROI边框颜色
+        roi_size: float = 0.3,             # Square ROI size in metres
+        center_color=(0, 0, 255),            # Center point color
+        edge_color=(0, 255, 255),            # ROI edge color
         save_dir: str = '',
         yolo_model: YOLO = None):
     """
-    在左右图各画红点+正方形黄框；用正方形ROI跑YOLO。
-    合并左右标签后打印并返回 (label, conf) 或 None。
+    Draw red dot and yellow square on both images; run YOLO on square ROI.
+    Print and return merged left and right labels (label, conf) or None.
 
-    world_pt: 世界坐标中的中心点 (x, y, z)
-    roi_size: 物理边长（米），正方形ROI的边长
+    world_pt: Center point in world coordinates (x, y, z)
+    roi_size: Physical size (m), side length of the square ROI
     """
 
-    # 原图复制
+    # Copy original images
     l_detect = l_img_orig.copy()
     r_detect = r_img_orig.copy()
 
-    # 世界 → 像素
+    # World → Pixel
     pix_left,  _ = world_to_pixels_left(world_pt)
     pix_right, _ = world_to_pixels_right(world_pt)
 
-    # 用“边长的一半”在X轴上算像素间距，得到像素半边长
     half_size = roi_size / 2
 
-    # 左图
+    # left image
     left_best = None
     if pix_left is not None:
-        # 用世界坐标往X正方向偏移，测得像素“半边长”
+        # Offset world coordinates in the positive X direction to measure pixel "half size"
         world_pt_offset = world_pt + np.array([half_size, 0, 0])
         pix_offset, _ = world_to_pixels_left(world_pt_offset)
 
@@ -251,9 +250,9 @@ def draw_point_on_images(
         if pix_offset is not None:
             half_size_px = int(np.linalg.norm(pix_offset - pix_left))
         else:
-            half_size_px = 60   # fallback，默认60像素半边长
+            half_size_px = 60   # fallback，60 pixels by default
 
-        # ROI坐标
+        # ROI coordinates
         x1, y1 = u - half_size_px, v - half_size_px
         x2, y2 = u + half_size_px, v + half_size_px
         h, w = l_img_orig.shape[:2]
@@ -262,7 +261,7 @@ def draw_point_on_images(
         x2 = min(w, x2)
         y2 = min(h, y2)
 
-        # 绘制中心点和正方形
+        # Draw center point and square
         cv2.circle(l_detect, (u, v), 6, center_color, -1, cv2.LINE_AA)
         cv2.rectangle(l_detect, (x1, y1), (x2, y2), edge_color, 2)
 
@@ -281,7 +280,7 @@ def draw_point_on_images(
                               (int(bx2)+x1, int(by2)+y1),
                               (0, 0, 255), 2)
 
-    # 右图
+    # Right image
     right_best = None
     if pix_right is not None:
         world_pt_offset = world_pt + np.array([half_size, 0, 0])
@@ -318,11 +317,11 @@ def draw_point_on_images(
                               (int(bx2)+x1, int(by2)+y2),
                               (0, 0, 255), 2)
 
-    # 保存结果图片
+    # Save result images
     cv2.imwrite(f"{save_dir}/l_rgb_detect.png", l_detect)
     cv2.imwrite(f"{save_dir}/r_rgb_detect.png", r_detect)
 
-    # 合并左右检测结果
+    # Merge left and right detection results
     merged = None
     if left_best and right_best:
         if left_best[0] == right_best[0]:
@@ -354,7 +353,7 @@ def process_gaze(
         gaze_origin_w = camera_to_world_point(gaze_origin_c, R_wc, T_wc)
         gaze_ctx['origin_w'] = gaze_origin_w
         
-        # EMA更新
+        # EMA update
         if gaze_ctx['vec_ema'] is None:
             gaze_ctx['vec_ema'] = gaze_vec_w
         else:
@@ -371,12 +370,12 @@ def process_gaze(
         gaze_ctx['arrow'] = new_arrow
         gaze_ctx['arrow_visible'] = True
 
-        # 求交点
+        # Compute intersection
         intersect = line_plane_intersect(gaze_origin_w, gaze_ctx['vec_ema'])
         gaze_intersect = intersect
 
         if in_valid_area(intersect):
-            # 球体可视化
+            # Sphere visualization
             new_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.025)
             new_sphere.paint_uniform_color([1.0, 0.0, 0.0])
             new_sphere.translate(intersect)
@@ -385,7 +384,7 @@ def process_gaze(
             vis.add_geometry(new_sphere, reset_bounding_box=False)
             gaze_ctx['sphere'] = new_sphere
 
-            # 滑动窗口“稳定点”估计
+            # Sliding window "stable point" estimation
             now = time.time()
             gaze_ctx['pts'].append((intersect.copy(), now))
             window_duration = now - gaze_ctx['pts'][0][1]
@@ -415,7 +414,7 @@ def process_gaze(
                 if outlier_count >= OUTLIER_COUNT:
                     gaze_ctx['pts'].clear()
                     gaze_ctx['base'] = None
-            # 清理过期点
+            # Clear expired points
             while gaze_ctx['pts'] and now - gaze_ctx['pts'][0][1] > SLIDING_WINDOW_SEC:
                 gaze_ctx['pts'].popleft()
         elif gaze_ctx['sphere'] is not None:
@@ -427,7 +426,7 @@ def process_gaze(
         else:
             gaze_ctx['last_output'] = None
     else:
-        # gaze丢失，清理可视化和状态
+        # Gaze lost, clear visualization and state
         if gaze_ctx['arrow_visible']:
             vis.remove_geometry(gaze_ctx['arrow'], reset_bounding_box=False)
             gaze_ctx['arrow_visible'] = False
@@ -487,8 +486,8 @@ def process_finger(
 
         finger_ctx['origin_w'] = finger_ctx['origin_ema']
         finger_ctx['vec_ema']  = finger_ctx['vec_ema']
-        
-        # 可视化
+
+        # Visualization
         new_ori = o3d.geometry.TriangleMesh.create_sphere(0.02)
         new_ori.paint_uniform_color([1, 0.4, 0])
         new_ori.translate(origin_w)
@@ -563,7 +562,7 @@ def process_finger(
             finger_ctx['base'] = None
             finger_ctx['last_output'] = None
     else:
-        # 无手或丢失，清理所有可视化和状态
+        # No hand or lost, clear all visualization and state
         if finger_ctx['arrow_visible']:
             vis.remove_geometry(finger_ctx['arrow'], reset_bounding_box=False)
             finger_ctx['arrow_visible'] = False
@@ -603,7 +602,7 @@ def process_fusion(
         fusion_vec = fusion_vec / np.linalg.norm(fusion_vec)
         fusion_origin = (gaze_origin_w + finger_origin_w) / 2
 
-        # EMA更新
+        # EMA update
         if fusion_ctx['vec_ema'] is None:
             fusion_ctx['vec_ema'] = fusion_vec
             fusion_ctx['origin_ema'] = fusion_origin
@@ -612,7 +611,7 @@ def process_fusion(
             fusion_ctx['vec_ema']   /= np.linalg.norm(fusion_ctx['vec_ema'])
             fusion_ctx['origin_ema'] = alpha * fusion_origin + (1 - alpha) * fusion_ctx['origin_ema']
 
-        # 可视化
+        # Visualization
         if fusion_ctx['arrow'] is not None:
             vis.remove_geometry(fusion_ctx['arrow'], reset_bounding_box=False)
         new_arrow = create_arrow_mesh()
@@ -716,7 +715,7 @@ def process_window_summary(
 
             print(f"\n[Window Summary] Intention: {most_common_key} → {most_common_label}, 占比: {percent:.2%}")
 
-        # 清空窗口
+        # Clear window
         window_key_stat.clear()
         window_label_stat.clear()
         last_window_time = now
@@ -743,7 +742,6 @@ def process_intention_qa(
         play_text_to_speech(tts_text, language='en')
         print(f"TTS asked: {tts_text}")
 
-        # 录音 + 识别
         stt_text = transcriber.auto_record_and_transcribe(5)
         print(f"📝 STT Result: {stt_text}")
 
@@ -759,7 +757,7 @@ def process_intention_qa(
             play_text_to_speech("I didn't catch that. Please try again.", language='en')
             last_query_result = ""
 
-        # 写文件
+        # Write file
         with open(transcription_file, "w", encoding="utf-8") as f:
             f.write(last_query_result)
         print(f"last_query_result: {last_query_result}")
@@ -820,7 +818,7 @@ def main(args=None):
     l_detect   = l_img_orig.copy()  # for drawing ROI and bbox
     r_detect   = r_img_orig.copy()
 
-    # ====== 加载点云和坐标系 ======
+    # ====== Load point clouds and coordinate systems ======
     pcd_right, frame_right, pcd_left_icp, frame_left_icp = load_all_pointclouds(L_DEPTH_PATH, L_RGB_PATH, R_DEPTH_PATH, R_RGB_PATH)
 
     gaze_pipeline = Pipeline(
@@ -836,17 +834,17 @@ def main(args=None):
     # === Open3D setup ===
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name='Intention 3D', width=800, height=600)
-    # 世界坐标系（原点[0,0,0]）
+    # World coordinate system (origin [0,0,0])
     axis_world = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
     vis.add_geometry(axis_world)
 
-    # 两个点云和相机坐标系
+    # Two point clouds and camera coordinate systems
     vis.add_geometry(pcd_right)
     vis.add_geometry(pcd_left_icp)
     vis.add_geometry(frame_right)
     vis.add_geometry(frame_left_icp)
 
-    # 你的第三个相机坐标系（就是原来的axis_camera）
+    # Your third camera coordinate system (the original axis_camera)
     R_wc, T_wc = cam_3_extrinsics()
     axis_camera = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.10)
     T = np.eye(4)
@@ -855,7 +853,7 @@ def main(args=None):
     axis_camera.transform(T)
     vis.add_geometry(axis_camera)
 
-    # 三个箭头在相机坐标系下的原点
+    # Three arrows at the origin of the camera coordinate system
     gaze_origin_c = np.array([0.0, 0.0, 1.0])
     head_origin_c = np.array([0.0, 0.1, 1.0])
     finger_origin_c = np.array([-0.2, 0.2, 0.8])
@@ -878,8 +876,8 @@ def main(args=None):
     arrow_finger = None
     arrow_finger_visible = False
     sphere_finger = None
-    sphere_ori     = None       ### ← new 起点球
-    sphere_tip     = None       ### ← new 终点球
+    sphere_ori     = None       ### ← new origin sphere
+    sphere_tip     = None       ### ← new tip sphere
     finger_vec_ema = None       # Exponential Moving Average for finger vector
     finger_pts = deque()
     finger_base = None
@@ -903,19 +901,19 @@ def main(args=None):
     AVG_LAST_N = 5
     
     line_results = {}
-    window_key_stat = []    # 新增：存每帧的line_results.keys()
-    window_label_stat = []  # 新增：存每帧line_results的value（label部分）
-    last_window_time = time.time()  # 上一次统计的时间
-    current_intention_label = None  # 你的输出变量
+    window_key_stat = []    # New: store line_results.keys() for each frame
+    window_label_stat = []  # New: store line_results values (label part) for each frame
+    last_window_time = time.time()  # Last statistics time
+    current_intention_label = None  # Your output variable
     current_intention_type = None
     
     # transcribe
     transcriber = VoiceTranscriber()
     last_tts_time = 0
-    tts_interval = 10           # 两次TTS之间最小间隔（秒），可调节
-    last_queried_label = None   # 记录上一次问过的label，防止重复问
-    last_query_result = None    # 你的最终结果
-    
+    tts_interval = 10           # Minimum interval between two TTS (seconds), adjustable
+    last_queried_label = None   # Record the last queried label to prevent repetition
+    last_query_result = None    # Your final result
+
     # laptop camera intrinsics (arbitrary)
     FX = 1370.0
     FY = 1370.0
@@ -928,7 +926,7 @@ def main(args=None):
             print("Failed to obtain frame")
             time.sleep(0.1)
             continue
-        # ========== 状态变量初始化 ==========
+        # ========== State variable initialization ==========
         fusion_label = None
         gaze_label = None
         finger_label = None
@@ -955,7 +953,7 @@ def main(args=None):
             save_dir, yolo_model
         )
 
-        # ===================== 只允许有一条label用于统计 =====================
+        # ===================== Only allow one label for statistics =====================
         line_results.clear()
         if fusion_label is not None:
             line_results['fusion'] = fusion_label

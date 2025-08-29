@@ -19,35 +19,35 @@ from src.grasp.grasp_generation import GraspGeneration
 
 def visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center):
     """
-    可视化点云、OBB边界框和中心点
+    Visualize point cloud with OBB and center using Open3D
     """
     import open3d as o3d
-    
-    # 创建OBB边界框的点云
+
+    # Create point cloud for OBB bounding box
     pcd_vis = o3d.geometry.PointCloud()
     pcd_vis.points = o3d.utility.Vector3dVector(all_points_arr)
     if all_colors_arr.max() > 1.1:
         all_colors_arr = all_colors_arr / 255.0
     pcd_vis.colors = o3d.utility.Vector3dVector(all_colors_arr)
-    
-    # 创建OBB边界框的线框
+
+    # Create line set for OBB bounding box
     lines = [
-        [0, 1], [1, 2], [2, 3], [3, 0],  # 底面
-        [4, 5], [5, 6], [6, 7], [7, 4],  # 顶面
-        [0, 4], [1, 5], [2, 6], [3, 7]   # 垂直边
+        [0, 1], [1, 2], [2, 3], [3, 0],  # Bottom face
+        [4, 5], [5, 6], [6, 7], [7, 4],  # Top face
+        [0, 4], [1, 5], [2, 6], [3, 7]   # Vertical edges
     ]
-    colors = [[1, 0, 0] for _ in range(len(lines))]  # 红色边框
+    colors = [[1, 0, 0] for _ in range(len(lines))]  # Red edges
     line_set = o3d.geometry.LineSet()
     line_set.points = o3d.utility.Vector3dVector(obb_corners)
     line_set.lines = o3d.utility.Vector2iVector(lines)
     line_set.colors = o3d.utility.Vector3dVector(colors)
 
-    # 创建中心点球体
+    # Create center point sphere
     center_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
-    center_sphere.paint_uniform_color([0, 1, 0])  # 绿色
-    center_sphere.translate(center) 
+    center_sphere.paint_uniform_color([0, 1, 0])  # Green
+    center_sphere.translate(center)
 
-    # 创建坐标系
+    # Create coordinate frame
     coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0,0,0])   
     vis_geometries = [pcd_vis, line_set, center_sphere, coord_frame]
     o3d.visualization.draw_geometries(vis_geometries,
@@ -56,9 +56,9 @@ def visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center
 
 def translation_only_icp(source, target, max_iter=50, tolerance=1e-6):
     """
-    source: (N,3) 源点云
-    target: (M,3) 目标点云
-    返回: 源点云变换后的点、平移向量T
+    source: (N,3) Source point cloud
+    target: (M,3) Target point cloud
+    Returns: Transformed source point cloud, Translation vector T
     """
     src = np.asarray(source).copy()
     tgt = np.asarray(target).copy()
@@ -67,17 +67,17 @@ def translation_only_icp(source, target, max_iter=50, tolerance=1e-6):
     T_total = np.zeros(3)
 
     for i in range(max_iter):
-        # 1. 最近邻配对
+        # 1. Nearest neighbor matching
         tree = cKDTree(tgt)
         dist, idx = tree.query(src)
         tgt_corr = tgt[idx]
 
-        # 2. 计算平移量（即配对点平均偏移）
+        # 2. Compute translation (i.e., average offset of matched points)
         delta_t = tgt_corr.mean(axis=0) - src.mean(axis=0)
         src += delta_t
         T_total += delta_t
 
-        # 3. 收敛判断
+        # 3. Convergence check
         mean_error = np.mean(np.linalg.norm(src - tgt_corr, axis=1))
         if abs(prev_error - mean_error) < tolerance:
             break
@@ -87,8 +87,8 @@ def translation_only_icp(source, target, max_iter=50, tolerance=1e-6):
 
 def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius=0.02):
     """
-    对输入点云和颜色进行体素下采样+半径滤波+聚类，保留最大聚类
-    返回处理后的 open3d 点云对象
+    Downsample, radius filter, and cluster the input point cloud and colors, keeping the largest cluster.
+    Returns the processed Open3D point cloud object.
     """
     import open3d as o3d
     import numpy as np
@@ -96,66 +96,66 @@ def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius
     pcd.points = o3d.utility.Vector3dVector(np.asarray(points))
     if colors is not None:
         col = np.asarray(colors)
-        # 检查颜色数组是否为空
+        # Check if color array is empty
         if col.size > 0 and col.max() > 1.1:
             col = col / 255.0
-        # 只有当颜色数组不为空时才设置颜色
+        # Only set colors if color array is not empty
         if col.size > 0:
             pcd.colors = o3d.utility.Vector3dVector(col)
-    
-    # 体素下采样
+
+    # Voxel downsampling
     pcd = pcd.voxel_down_sample(voxel_size)
-    
-    # 半径滤波
+
+    # Radius filtering
     pcd, _ = pcd.remove_radius_outlier(nb_points=nb_points, radius=radius)
-    
-    # 聚类分析，保留最大的聚类（只对XY方向聚类）
+
+    # Clustering analysis, keeping the largest cluster (only clustering in XY direction)
     if len(pcd.points) > 0:
-        # 提取XY坐标进行聚类，忽略Z坐标
+        # Extract XY coordinates for clustering, ignoring Z coordinate
         points_3d = np.asarray(pcd.points)
-        points_xy = points_3d[:, :2]  # 只取X和Y坐标
-        
-        # 创建临时的2D点云用于聚类
+        points_xy = points_3d[:, :2]  # Only take X and Y coordinates
+
+        # Create temporary 2D point cloud for clustering
         pcd_2d = o3d.geometry.PointCloud()
-        # 将2D点扩展为3D（Z设为0）用于聚类算法
+        # Expand 2D points to 3D (set Z to 0) for clustering algorithm
         points_xy_3d = np.column_stack([points_xy, np.zeros(len(points_xy))])
         pcd_2d.points = o3d.utility.Vector3dVector(points_xy_3d)
-        
-        # 使用DBSCAN聚类算法（只在XY平面）
+
+        # Use DBSCAN clustering algorithm (only in XY plane)
         labels = np.array(pcd_2d.cluster_dbscan(eps=0.01, min_points=10, print_progress=False))
-        
-        # 如果找到了聚类
+
+        # If clusters are found
         if len(labels) > 0 and np.max(labels) >= 0:
-            # 统计每个聚类的点数，-1表示噪声点
+            # Count points in each cluster, -1 indicates noise points
             unique_labels, counts = np.unique(labels[labels >= 0], return_counts=True)
             
             if len(unique_labels) > 0:
-                # 找到最大聚类的标签
+                # Find the label of the largest cluster
                 largest_cluster_label = unique_labels[np.argmax(counts)]
                 
-                # 保留最大聚类的点（使用原始3D坐标）
+                # Save points belonging to the largest cluster
                 largest_cluster_indices = labels == largest_cluster_label
                 largest_cluster_points = points_3d[largest_cluster_indices]
-                
-                # 创建新的点云对象
+
+                # Create new point cloud object
                 pcd_filtered = o3d.geometry.PointCloud()
                 pcd_filtered.points = o3d.utility.Vector3dVector(largest_cluster_points)
-                
-                # 如果有颜色信息，也保留对应的颜色
+
+                # If color information is available, keep the corresponding colors
                 if pcd.has_colors():
                     largest_cluster_colors = np.asarray(pcd.colors)[largest_cluster_indices]
                     pcd_filtered.colors = o3d.utility.Vector3dVector(largest_cluster_colors)
-                
-                print(f"XY平面聚类完成：找到 {len(unique_labels)} 个聚类，保留最大聚类 {np.max(counts)} 个点")
+
+                print(f"XY plane clustering completed: found {len(unique_labels)} clusters, kept largest cluster with {np.max(counts)} points")
                 return pcd_filtered
             else:
-                print("XY平面聚类失败：未找到有效聚类，返回原始点云")
+                print("XY plane clustering failed: no valid clusters found, returning original point cloud")
                 return pcd
         else:
-            print("XY平面聚类失败：所有点都是噪声，返回原始点云")
+            print("XY plane clustering failed: all points are noise, returning original point cloud")
             return pcd
     else:
-        print("点云为空，返回空点云")
+        print("Point cloud is empty, returning empty point cloud")
         return pcd
 
 # def filter_and_merge_icp_translation_only(
@@ -168,10 +168,10 @@ def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius
 #     arr_l = np.asarray(pcd_l.points)
 #     arr_r = np.asarray(pcd_r.points)
     
-#     # 3. 手写ICP-只平移
+#     # 3. Manual ICP-only translation
 #     aligned_l, T = translation_only_icp(arr_l, arr_r)
 
-#     # 4. 合并点云
+#     # 4. Merge point clouds
 #     all_points_arr = np.vstack([aligned_l, arr_r])
 #     if pcd_l.has_colors() and pcd_r.has_colors():
 #         all_colors_arr = np.vstack([np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)])
@@ -188,7 +188,7 @@ def filter_and_merge_icp_translation_only(
     pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.01)
     pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.01)
 
-    # # 1. 不预处理，直接创建点云对象
+    # # 1. No downsampling, directly use input points
     # pcd_l = o3d.geometry.PointCloud()
     # pcd_l.points = o3d.utility.Vector3dVector(points_l)
     # if colors_l is not None:
@@ -201,18 +201,18 @@ def filter_and_merge_icp_translation_only(
 
     arr_l = np.asarray(pcd_l.points)
     arr_r = np.asarray(pcd_r.points)
-    
-    # 2. 手写ICP-只平移
+
+    # 2. Manual ICP-only translation
     aligned_l, T = translation_only_icp(arr_l, arr_r)
 
-    # 3. 合并点云
+    # 3. Merge point clouds
     all_points_arr = np.vstack([aligned_l, arr_r])
     if pcd_l.has_colors() and pcd_r.has_colors():
         all_colors_arr = np.vstack([np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)])
     else:
         all_colors_arr = np.ones_like(all_points_arr)
 
-    # 4. 对合并后的点云做预处理
+    # 4. Preprocess the merged point cloud
     merged_pcd = preprocess_pointcloud(all_points_arr, all_colors_arr, voxel_size, nb_points, radius)
     filtered_points = np.asarray(merged_pcd.points)
     filtered_colors = np.asarray(merged_pcd.colors) if merged_pcd.has_colors() else None
@@ -224,25 +224,25 @@ def filter_and_merge_icp(
         voxel_size=0.005, nb_points=10, radius=0.02, 
         icp_max_corr=0.03, icp_threshold=1.0):
     """
-    :param points_l, colors_l: 左点云与颜色 (Nx3)
-    :param points_r, colors_r: 右点云与颜色 (Mx3)
-    :return: all_points_arr, all_colors_arr, transformation (左对准右)
+    :param points_l, colors_l: left point cloud and colors (Nx3)
+    :param points_r, colors_r: right point cloud and colors (Mx3)
+    :return: all_points_arr, all_colors_arr, transformation (left aligned to right)
     """
 
     pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, nb_points, radius)
     pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, nb_points, radius)
 
-    # 4. ICP 配准（左对齐到右）
+    # 4. ICP registration (left aligned to right)
     reg = o3d.pipelines.registration.registration_icp(
         pcd_l, pcd_r, icp_max_corr,
-        np.eye(4),  # 初始变换
+        np.eye(4),  # Initial transformation
         o3d.pipelines.registration.TransformationEstimationPointToPoint()
     )
     T = reg.transformation
-    # 变换左点云
+    # Transform left point cloud
     pcd_l.transform(T)
 
-    # 5. 合并
+    # 5. Merge point clouds
     all_points_arr = np.vstack([
         np.asarray(pcd_l.points), np.asarray(pcd_r.points)
     ])
@@ -251,9 +251,9 @@ def filter_and_merge_icp(
             np.asarray(pcd_l.colors), np.asarray(pcd_r.colors)
         ])
     else:
-        all_colors_arr = np.ones_like(all_points_arr)  # 若没颜色则全白
+        all_colors_arr = np.ones_like(all_points_arr)  # If no color, set to white
 
-    return all_points_arr, all_colors_arr, T  # T可选
+    return all_points_arr, all_colors_arr, T  # T is optional
 
 def sphere_at(point, color, radius=0.02):
     s = o3d.geometry.TriangleMesh.create_sphere(radius)
@@ -265,19 +265,19 @@ def open3d_show(all_points_arr, all_colors_arr, target_center_point, target_max_
     import open3d as o3d
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_points_arr)
-    if all_colors_arr.max() > 1.1:   # 如果颜色是0~255
+    if all_colors_arr.max() > 1.1:   # If colors are in 0~255 range
         all_colors_arr = all_colors_arr / 255.0
     pcd.colors = o3d.utility.Vector3dVector(all_colors_arr)
 
     vis_geoms = [pcd]
-    vis_geoms.append(sphere_at(target_center_point, color=[1,0,0], radius=0.012))# 红色球体表示质心
-    vis_geoms.append(sphere_at(target_max_z_point, color=[0,0,1], radius=0.01))# 蓝色球体表示z轴最高点
-    vis_geoms.append(sphere_at(center_world_points, color=[0,1,0], radius=0.01))# 绿色球体表示移动目标点
-    vis_geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=[0,0,0]))  # 坐标系
+    vis_geoms.append(sphere_at(target_center_point, color=[1,0,0], radius=0.012))# Red sphere represents centroid
+    vis_geoms.append(sphere_at(target_max_z_point, color=[0,0,1], radius=0.01))# Blue sphere represents max Z point
+    vis_geoms.append(sphere_at(center_world_points, color=[0,1,0], radius=0.01))# Green sphere represents target point
+    vis_geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=[0,0,0]))  # Coordinate frame
     o3d.visualization.draw_geometries(vis_geoms)
 
 def call_ros2_service(service_name, service_type, args_dict):
-    # 把字典转成一行的 YAML 字符串
+    # Convert dictionary to a single line YAML string
     arg_str = yaml.dump(args_dict, default_flow_style=True, sort_keys=False).strip()
     cmd = [
         "ros2", "service", "call",
@@ -303,11 +303,11 @@ def call_ros2_service(service_name, service_type, args_dict):
 
 def call_fk_service():
     """
-    通过 shell 调用 `ros2 service call /fk_service action_interfaces/srv/Fk "{}"`
-    返回 (x, y, z) 浮点数元组
+    Call the `ros2 service call /fk_service action_interfaces/srv/Fk "{}"` via shell
+    Returns a tuple of (x, y, z) float values
     """
     cmd = 'ros2 service call /fk_service action_interfaces/srv/Fk "{}"'
-    # 用 shlex.split 避免引号问题
+    # Use shlex.split to avoid issues with quotes
     result = subprocess.run(
         shlex.split(cmd),
         stdout=subprocess.PIPE,
@@ -318,8 +318,8 @@ def call_fk_service():
     if result.returncode != 0:
         raise RuntimeError(f"ros2 命令失败: {result.stderr}")
 
-    # 在输出里找 x=..., y=..., z=...
-    # 兼容下面两种格式：
+    # Find x=..., y=..., z=... in the output
+    # Compatible with the following two formats:
     #   action_interfaces.srv.Fk_Response(x=0.39, y=0.29, z=0.30)
     #   x: 0.39
     pattern = r'[xyz]\s*=\s*([-+]?\d+\.?\d*(?:[eE][-+]?\d+)?)'
@@ -328,7 +328,7 @@ def call_fk_service():
         x, y, z = map(float, matches[:3])
         return x, y, z
     else:
-        # 第二种 YAML 风格
+        # Second YAML style
         yaml_pat = r'^\s*[xyz]:\s*([-+]?\d+\.?\d*(?:[eE][-+]?\d+)?)\s*$'
         found = {}
         for line in result.stdout.splitlines():
@@ -338,7 +338,7 @@ def call_fk_service():
                 found[key] = float(m.group(1))
         if {'x', 'y', 'z'} <= found.keys():
             return found['x'], found['y'], found['z']
-        raise ValueError("未能从输出中解析到 x y z")
+        raise ValueError("Cannot find x y z in service response")
 
 def get_cam_world_points(
     client,
@@ -351,11 +351,11 @@ def get_cam_world_points(
     
 ):
     """
-    target: 感知目标
-    rgb_path: 彩色图路径
-    depth_path: 深度图.npy路径
-    pixels_to_world_func:嵌入转换函数（如 pixels_to_world_left/right）
-    agent_image_path: 若要单独指定传给VLM_agent的图片，可以用，否则为rgb_path
+    target: Perception target
+    rgb_path: Path to RGB image
+    depth_path: Path to depth image (.npy)
+    pixels_to_world_func: Pixel to world coordinate transformation function (e.g., pixels_to_world_left/right)
+    agent_image_path: If you want to specify an image to send to VLM_agent, you can use this, otherwise it will use rgb_path
     """
     img_path = agent_image_path if agent_image_path else rgb_path
     if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name, client)
@@ -376,7 +376,7 @@ def get_cam_world_points(
         if isinstance(points, tuple):
             points = [points]
         elif isinstance(points, list) and isinstance(points[0], int):
-            # 兼容像 [x, y] 这种格式
+            # Compatible with formats like [x, y]
             points = [tuple(points)]
         
         pixel_points = np.array(points, dtype=int)
@@ -393,26 +393,26 @@ def get_cam_world_points(
 
 def merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=False):
     """
-    对左点云用ICP配准到右点云，然后合并两部分。
-    world_points_r, world_points_l: list/ndarray, Nx3，右和左相机点云
-    threshold: ICP收敛距离
-    visualize: 是否弹窗预览点云
-    返回: merged_points, transformation (左对齐到右的变换矩阵)
+    Align the left point cloud to the right point cloud using ICP, and then merge the two parts.
+    world_points_r, world_points_l: list/ndarray, Nx3, right and left camera point clouds
+    threshold: ICP convergence distance
+    visualize: Whether to pop up a window to preview the point cloud
+    Returns: merged_points, transformation (transformation matrix from left to right)
     """
-    # 构建Open3D点云
+    # Build Open3D point clouds
     pcd_r = o3d.geometry.PointCloud()
     pcd_l = o3d.geometry.PointCloud()
     pcd_r.points = o3d.utility.Vector3dVector(np.array(world_points_r))
     pcd_l.points = o3d.utility.Vector3dVector(np.array(world_points_l))
-    
-    # 做ICP配准
+
+    # Perform ICP registration
     reg = o3d.pipelines.registration.registration_icp(
         pcd_l, pcd_r, threshold, np.eye(4),
         o3d.pipelines.registration.TransformationEstimationPointToPoint()
     )
     pcd_l.transform(reg.transformation)
-    
-    # 合并点云
+
+    # Merge point clouds
     merged_points = np.vstack([
         np.asarray(pcd_r.points),
         np.asarray(pcd_l.points)
@@ -420,12 +420,12 @@ def merge_points_icp(world_points_r, world_points_l, threshold=0.02, visualize=F
     if visualize:
         pcd_merged = o3d.geometry.PointCloud()
         pcd_merged.points = o3d.utility.Vector3dVector(merged_points)
-        o3d.visualization.draw_geometries([pcd_merged], window_name='ICP合并后点云')
+        o3d.visualization.draw_geometries([pcd_merged], window_name='ICP Merged Point Cloud')
     return merged_points, reg.transformation
 
 def execute_action_sequence(actions, vlm_client):
     """
-    串行执行动作序列，每一步等待其服务执行完且成功后才进行下一步。
+    Execute a sequence of actions serially, waiting for each service to complete successfully before proceeding to the next.
     """
   
     # photo and depth image paths
@@ -445,8 +445,8 @@ def execute_action_sequence(actions, vlm_client):
 
     #declare parameters for each action type
     move_target_point = None # perceived target point
-    target_max_z_point = None # z轴方向上的最高点
-    target_center_point = None # 质心点
+    target_max_z_point = None # highest point in z-axis
+    target_center_point = None # centroid point
     center_world_points = None # perceived image target point in world coordinates
     all_points_arr = None # all points in world coordinates
     all_colors_arr = None # all colors in world coordinates
@@ -465,12 +465,12 @@ def execute_action_sequence(actions, vlm_client):
     
     # state flags
     grasped_thing = ""
-    
-    success = True  # 用于跟踪每个动作的成功状态
+
+    success = True  # Used to track the success status of each action
 
     for i, action in enumerate(actions):
 
-        # 检查服务是否成功
+        # Check if the service was successful
         if not success:
             print(f"⛔ Aborting action sequence due to failure at step {i}.")
             break
@@ -500,7 +500,7 @@ def execute_action_sequence(actions, vlm_client):
             
             
             if act_type == "perceive":
-                success = False  # 重置成功状态
+                success = False  # Reset success status
                 if target ==  grasped_thing:
                     success = True
                     print(f"✅ Target '{target}' already grasped, skipping perception.")
@@ -578,12 +578,12 @@ def execute_action_sequence(actions, vlm_client):
                         all_world_points_l = all_world_points_l[mask_valid]
                         color_l = color_l[mask_valid]
 
-                        # 如果两边都有点云，使用ICP配准合并 
+                        # If both sides have point clouds, use ICP to align and merge
                         all_points, all_colors, T = filter_and_merge_icp_translation_only(
                             all_world_points_l, color_l, all_world_points_r, color_r
                         )           
 
-                        # # 合并点云举例
+                        # # Example of merging point clouds
                         # all_points = list(all_world_points_r) + list(all_world_points_l)
                         # all_colors = list(color_r) + list(color_l)
 
@@ -597,8 +597,8 @@ def execute_action_sequence(actions, vlm_client):
                         color_r = color_r[mask_valid]
 
                         print(f"World point in right camera: {all_world_points_r}, in left camera: None")
-                        
-                        # 如果只有右边有点云，直接使用右边的点云
+
+                        # If only the right side has point clouds, use the right side's point clouds directly
                         pcd_r = preprocess_pointcloud(all_world_points_r, color_r, voxel_size=0.005, nb_points=10, radius=0.02)
                         all_world_points_r = np.asarray(pcd_r.points)
                         color_r = np.asarray(pcd_r.colors)
@@ -616,7 +616,7 @@ def execute_action_sequence(actions, vlm_client):
 
                         print(f"World point in right camera: None, in left camera: {all_world_points_l}")
 
-                        # 如果只有左边有点云，直接使用左边的点云    
+                        # If only the left side has point clouds, use the left side's point clouds directly
                         pcd_l = preprocess_pointcloud(all_world_points_l, color_l, voxel_size=0.005, nb_points=10, radius=0.02)
                         all_world_points_l = np.asarray(pcd_l.points)
                         color_l = np.asarray(pcd_l.colors)
@@ -634,9 +634,9 @@ def execute_action_sequence(actions, vlm_client):
 
                         success = False
                         continue
-                    
-                
-                    # 计算质心
+
+
+                    # Calculate centroid
                     all_points_arr = np.array(all_points)
                     all_colors_arr = np.array(all_colors)
                     
@@ -650,24 +650,24 @@ def execute_action_sequence(actions, vlm_client):
                     
 
 
-                    # 计算中心点
+                    # Calculate center point
                     center_world_points = center_world_points[0]
                     print ("center_world_points:", center_world_points)
 
-                    # 计算质心
+                    # Calculate centroid
                     target_center_point = all_points_arr.mean(axis=0)
-                    print("质心：", target_center_point)
-                    
-                    # 计算z轴方向上的最高点
+                    print("Centroid:", target_center_point)
+
+                    # Calculate highest point in z-axis
                     max_z_index = np.argmax(all_points_arr[:,2])
                     target_max_z_point = all_points_arr[max_z_index]
-                    print("z轴方向上的最高点：", target_max_z_point)
-                    
-                    # 计算 move_target_point
-                    move_target_point = target_center_point.copy()
-                    move_target_point[2] += 0.4  # 提升0.4米
+                    print("Highest point in z-axis:", target_max_z_point)
 
-                    print("移动目标点：", move_target_point)
+                    # Calculate move_target_point
+                    move_target_point = target_center_point.copy()
+                    move_target_point[2] += 0.4  # Raise by 0.4 meters
+
+                    print("Move target point:", move_target_point)
 
                     move_params["move_x"] = float(move_target_point[0])
                     move_params["move_y"] = float(move_target_point[1])
@@ -682,10 +682,10 @@ def execute_action_sequence(actions, vlm_client):
                     # success = True
                 
             elif act_type == "move":
-                success = False  # 重置成功状态
+                success = False  # Reset success status
                 if target is  grasped_thing:
                     continue  
-                current_position = [0.0, 0.0, 0.0]  # 初始化当前位姿
+                current_position = [0.0, 0.0, 0.0]  # Initialize current position
 
                 current_position[0], current_position[1], current_position[2] = call_fk_service()
                 print(f"Current position: {current_position}")
@@ -700,7 +700,7 @@ def execute_action_sequence(actions, vlm_client):
                             {
                                 "x": float(current_position[0]),
                                 "y": float(current_position[1]),
-                                "z": float(0.5),  # 提升 to 0.5米
+                                "z": float(0.5),  # Raise to 0.5 meters
                                 "qx": 1.0,
                                 "qy": 0.0,
                                 "qz": 0.0,
@@ -709,7 +709,7 @@ def execute_action_sequence(actions, vlm_client):
                         )
                     except ValueError as e:
                         print(e)
-                    # time.sleep(3)  # 等待服务调用完成
+                    # time.sleep(3)  # Wait for service call to complete
                     while True:
                         if success:
                             print("✅ List action executed successfully.")
@@ -729,7 +729,7 @@ def execute_action_sequence(actions, vlm_client):
                             {
                                 "x": move_params["move_x"],
                                 "y": move_params["move_y"],
-                                "z":                    0.5,# to 0.5米
+                                "z":                    0.5,# Raise to 0.5 meters
                                 "qx": move_params["move_qx"],
                                 "qy": move_params["move_qy"],
                                 "qz": move_params["move_qz"],
@@ -738,7 +738,7 @@ def execute_action_sequence(actions, vlm_client):
                         )
                     except ValueError as e:
                         print(e)
-                    # time.sleep(3)  # 等待服务调用完成
+                    # time.sleep(3)  # Wait for service call to complete
                     while True:
                         if success:
                             print("✅ List action executed successfully.")
@@ -764,7 +764,7 @@ def execute_action_sequence(actions, vlm_client):
                     )
                 except ValueError as e:
                     print(e)
-                # time.sleep(3)  # 等待服务调用完成
+                # time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Move action executed successfully.")
@@ -773,7 +773,7 @@ def execute_action_sequence(actions, vlm_client):
                     #     print("❌ Move action failed, retrying...")
 
             # elif act_type == "grasp_flavoring":
-            #     success = False  # 重置成功状态
+            #     success = False  # Reset success status
             #     if target is  grasped_thing:
             #         continue 
                 
@@ -814,7 +814,7 @@ def execute_action_sequence(actions, vlm_client):
                 
 
             #     try:
-            #         # 检查所有值
+            #         # Check all values
             #         if any(v is None for v in grasp_params.values()):
             #             raise ValueError("Missing grasp parameters.")
             #         success = call_ros2_service(
@@ -848,12 +848,11 @@ def execute_action_sequence(actions, vlm_client):
             #         #     print("❌ Grasp flavoring action failed, retrying...")
 
             elif act_type == "grasp_otherthings":
-                success = False  # 重置成功状态
-                if target is  grasped_thing:
-                    continue 
-                print("execute grasp action")
+                success = False  # Reset success status
+                if target is grasped_thing:
+                    continue
+                print("Execute grasp action")
 
-                
                 # put the value into go_params by grasp strategy with points cloud or something else
                 if target == "spoon": 
                     grasp_params = {"x_prep": 0.406, "y_prep": -0.313, "z_prep": 0.57, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
@@ -896,7 +895,7 @@ def execute_action_sequence(actions, vlm_client):
                         print("Grasp parameters computed from OBB:", grasp_params)      
                 
                 try:
-                    # 检查所有 go_params 的值
+                    # Check all grasp_params values
                     if any(v is None for v in grasp_params.values()):
                         raise ValueError("Missing grasp parameters in go_params.")
                     success = call_ros2_service(
@@ -923,7 +922,7 @@ def execute_action_sequence(actions, vlm_client):
                     print(e)
                     
                     
-                # time.sleep(3)  # 等待服务调用完成
+                # time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Grasp other things action executed successfully.")
@@ -933,8 +932,8 @@ def execute_action_sequence(actions, vlm_client):
                         print("❌ Grasp other things action failed, retrying...")
                             
             elif act_type == "stir":
-                success = False  # 重置成功状态
-                print("execute stir action")
+                success = False  # Reset success status
+                print("Execute stir action")
                 # time.sleep(5)
                 # success = True
                 try:
@@ -952,7 +951,7 @@ def execute_action_sequence(actions, vlm_client):
                     })
                 except ValueError as e:
                     print(e)
-                time.sleep(3)  # 等待服务调用完成
+                time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Stir action executed successfully.")
@@ -961,13 +960,13 @@ def execute_action_sequence(actions, vlm_client):
                         print("❌ Stir action failed, retrying...")     
                 
             elif act_type == "reset":
-                success = False  # 重置成功状态
-                print("execute reset action")
+                success = False  # Reset success status
+                print("Execute reset action")
                 # time.sleep(5)
                 # success = True
                 success = call_ros2_service("/reset_service", "std_srvs/srv/Trigger", {})
-                
-                time.sleep(3)  # 等待服务调用完成
+
+                time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Reset action executed successfully.")
@@ -976,8 +975,8 @@ def execute_action_sequence(actions, vlm_client):
                         print("❌ Reset action failed, retrying...")
 
             elif act_type == "add":
-                success = False  # 重置成功状态
-                print("execute add action")
+                success = False  # Reset success status
+                print("Execute add action")
                 # time.sleep(5)
                 # success = True
                 
@@ -988,8 +987,8 @@ def execute_action_sequence(actions, vlm_client):
                         {"times": add_times})
                 except ValueError as e:
                     print(e)
-                    
-                time.sleep(3)  # 等待服务调用完成
+
+                time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Add action executed successfully.")
@@ -998,8 +997,8 @@ def execute_action_sequence(actions, vlm_client):
                         print("❌ Add action failed, retrying...")
                 
             elif act_type == "return_back":
-                success = False  # 重置成功状态
-                print("execute back_move action, moving back to original point")
+                success = False  # Reset success status
+                print("Execute back_move action, moving back to original point")
                 # time.sleep(5)
                 # success = True
                 print("=============================================================================================grasp_params:", grasp_params)
@@ -1025,7 +1024,7 @@ def execute_action_sequence(actions, vlm_client):
                 
 
                 try:
-                    # 检查 rb_params 是否有未赋值参数
+                    # Check if there are any unassigned parameters in rb_params
                     if any(v is None for v in rb_params.values()):
                         raise ValueError("Missing return_back parameters in rb_params.")
                         
@@ -1052,7 +1051,7 @@ def execute_action_sequence(actions, vlm_client):
                         )
                 except ValueError as e:
                     print(e)
-                time.sleep(3)  # 等待服务调用完成
+                time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Return back action executed successfully.")
@@ -1061,10 +1060,10 @@ def execute_action_sequence(actions, vlm_client):
                         print("❌ Return back action failed, retrying...")
                         
             elif act_type == "open":
-                success = False  # 重置成功状态
-                print("execute open action")
-                success = call_ros2_service("/open_service", "std_srvs/srv/Trigger", {})  
-                time.sleep(3)  # 等待服务调用完成
+                success = False  # Reset success status
+                print("Execute open action")
+                success = call_ros2_service("/open_service", "std_srvs/srv/Trigger", {})
+                time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Open action executed successfully.")
@@ -1073,10 +1072,10 @@ def execute_action_sequence(actions, vlm_client):
                         print("❌ Open action failed, retrying...")
 
             elif act_type == "close":
-                success = False  # 重置成功状态
-                print("execute close action")
+                success = False  # Reset success status
+                print("Execute close action")
                 success = call_ros2_service("/close_service", "std_srvs/srv/Trigger", {})
-                time.sleep(3)  # 等待服务调用完成
+                time.sleep(3)  # Wait for service call to complete
                 while True:
                     if success:
                         print("✅ Close action executed successfully.")
@@ -1088,15 +1087,15 @@ def execute_action_sequence(actions, vlm_client):
                 print(f"⚠️ Unknown action type: {act_type}")
                 success = False
 
-            time.sleep(0.5)  # 可选延迟
-        
+            time.sleep(0.5)  # Optional delay
+
         except Exception as e:
             print("❌ Exception inside execute_action_sequence:")
             traceback.print_exc()
             raise
         print("✅ Action sequence completed.")
 
-# ✅ 测试用例：手动构造动作序列
+# ✅ Test case: Manually construct action sequence
 if __name__ == "__main__":
     actions = [
         {"type": "perceive", "target": "tomato", "parameters": {}},
@@ -1112,11 +1111,11 @@ if __name__ == "__main__":
 
 
 
-# # 举例 your_msgs/srv/Move.srv
+# # Example your_msgs/srv/Move.srv
 # string target
 # ---
 # bool success
 # string message
 
-# 服务端必须返回：
+# Must return:
 # return Move.Response(success=True, message="Moved to apple.")

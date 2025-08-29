@@ -23,7 +23,7 @@ class CloseService(Node):
             JointState, '/joint_states',
             self.joint_state_cb,
             10,
-            callback_group=self.srv_group  # 可选，不写也行
+            callback_group=self.srv_group  # Optional
         )
         self.current_js = JointState()
         self.current_grasp_width = 0.08

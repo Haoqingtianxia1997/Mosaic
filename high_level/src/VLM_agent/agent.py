@@ -5,11 +5,11 @@ from src.mistral_ai.vlm import run_mistral_vlm
 
 def VLM_agent(user_prompt: str, image_path, name, client) -> list:
     """
-    启动 VLM Agent，处理视觉任务。
+    Start the VLM agent to process the user's prompt and image.
     """  
     print("🟢 Starting VLM Agent...")
-    if_find ,response, target_label, target_text = run_mistral_vlm(user_prompt, image_path, client)  # 调用 VLM 模型处理视觉任务
-    
+    if_find ,response, target_label, target_text = run_mistral_vlm(user_prompt, image_path, client)  # Call VLM model to process visual tasks
+
     if not if_find:
         print("❌ No target found at the moment.")
         return if_find, response, None, None, None

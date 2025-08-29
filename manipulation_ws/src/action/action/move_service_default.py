@@ -32,7 +32,7 @@ class MoveClient(Node):
         ik.avoid_collisions = True
 
         ps = PoseStamped()
-        ps.header.frame_id = 'fr3_link0'  # 或 "world"
+        ps.header.frame_id = 'fr3_link0'  # Or "world"
         x, y, z, qx, qy, qz, qw = self.pose_input
         ps.pose.position.x = x
         ps.pose.position.y = y

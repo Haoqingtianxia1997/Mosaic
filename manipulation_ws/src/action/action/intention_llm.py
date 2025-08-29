@@ -100,26 +100,25 @@ class IntentionLLM(Node):
         self.latest_gesture_labels = None
         self.latest_gaze_labels = None
         self.all_labels = None
-        
-        # 保存最近20个标签的历史记录
-        self.gesture_history = []  # 保存最近50个gesture_labels
-        self.gaze_history = []     # 保存最近50个gaze_labels
+
+        self.gesture_history = []  # Store the latest 50 gesture_labels
+        self.gaze_history = []     # Store the latest 50 gaze_labels
         self.max_history_size = 50
         
         self.get_logger().info('Intention LLM Node has been started.')
 
     def label_cb(self, msg):
-        # 添加到历史记录
+        # Add to history
         self.gesture_history.append(msg.gesture_labels)
         self.gaze_history.append(msg.gaze_labels)
-        
-        # 保持历史记录大小不超过20
+
+        # Keep history size within limit
         if len(self.gesture_history) > self.max_history_size:
             self.gesture_history.pop(0)
         if len(self.gaze_history) > self.max_history_size:
             self.gaze_history.pop(0)
-        
-        # 从历史记录中找到最新的非空标签
+
+        # Find the latest non-empty labels from history
         self.latest_gesture_labels = self._find_latest_non_empty(self.gesture_history)
         self.latest_gaze_labels = self._find_latest_non_empty(self.gaze_history)
         
@@ -127,10 +126,10 @@ class IntentionLLM(Node):
         self.get_logger().info(f"Latest non-empty gesture labels: {self.latest_gesture_labels}, Latest non-empty gaze labels: {self.latest_gaze_labels}")
     
     def _find_latest_non_empty(self, history_list):
-        """从历史记录中找到最新的非空标签"""
-        # 从最新的开始向前查找
+        """Find the latest non-empty labels from history"""
+        # Start searching from the latest
         for labels in reversed(history_list):
-            if labels and len(labels) > 0:  # 检查是否非空且不为空列表
+            if labels and len(labels) > 0:  # Check if non-empty and not empty list
                 return labels
         return None
 

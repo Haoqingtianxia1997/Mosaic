@@ -3,34 +3,34 @@
 intention_predict.py
 实时视频流：人体姿态 + 头部朝向 ROI + YOLO 目标检测 + 语音交互
 """
-import cv2                      # OpenCV 图像处理与摄像头
-import time                     # 时间函数
-import mediapipe as mp          # Google MediaPipe 姿态/分割
-import numpy as np              # 数值运算
-import sys, os                  # 系统相关
-from ultralytics import YOLO    # Ultralytics YOLOv8
-# from src.mistral_ai.label_analyzer import LabelAnalyzer  # 可选：LLM 标签分析
-from src.transcribe.tts import play_text_to_speech        # 文本转语音
-from src.transcribe.stt import VoiceTranscriber           # 语音转文本
+import cv2
+import time 
+import mediapipe as mp 
+import numpy as np 
+import sys, os 
+from ultralytics import YOLO # YOLOv8
+# from src.mistral_ai.label_analyzer import LabelAnalyzer  # Optional: LLM Analysis
+from src.transcribe.tts import play_text_to_speech        # Text-to-Speech
+from src.transcribe.stt import VoiceTranscriber           # Speech-to-Text
 from threading import Event
 NEW_TEXT_EVENT1 = Event()
 TRANS_FILE = "src/transcribe/transcription.txt"
 
 def intention_predict(model_path) -> None:
     """
-    主入口：打开摄像头，实时推理人体姿势、头部方向、目标检测并语音交互
+    Open camera, real-time inference of human pose, head direction, object detection, and voice interaction
     """
-    # 初始化语音转写器和 YOLOv8 模型
-    model_path = model_path if model_path else 'yolo11m.pt'  # 默认权重路径
+    # Initialize voice transcriber and YOLOv8 model
+    model_path = model_path if model_path else 'yolo11m.pt'  # Default weight path
     transcriber = VoiceTranscriber()
-    model = YOLO(model_path)               # 自己训练好的权重
+    model = YOLO(model_path)               # Custom trained weights
     label_times = {}                         # {label: last_seen_time}
-    window_seconds = 15                       # 标签保留时间窗口 (秒)
-    tts_interval = 30                        # 每次 TTS/STT 间隔 (秒)
-    detected_labels = set()                  # 当前窗口内检测到的标签
-    last_query_result = None                 # 上一次 STT 解析结果
+    window_seconds = 15                       # Label retention time window (seconds)
+    tts_interval = 30                        # Interval between TTS/STT (seconds)
+    detected_labels = set()                  # Labels detected in the current window
+    last_query_result = None                 # Last STT parsing result
 
-    # 初始化 MediaPipe Pose 与 SelfieSegmentation
+    # Initialize MediaPipe Pose and SelfieSegmentation
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(
         static_image_mode=False,
@@ -39,49 +39,49 @@ def intention_predict(model_path) -> None:
     )
     mp_selfie_segmentation = mp.solutions.selfie_segmentation
     selfie_segmentation = mp_selfie_segmentation.SelfieSegmentation(
-        model_selection=1      # 1=精度高但较慢；0=速度快鲁棒性高
+        model_selection=1      # 1= high accuracy but slow; 0= fast and robust
     )
 
-    # 打开默认摄像头 (索引 0)
+    # Open default camera (index 0)
     capture = cv2.VideoCapture(0)
-    # label_analyzer = LabelAnalyzer()       # 若需要 LLM 进一步分析
+    # label_analyzer = LabelAnalyzer()       # If LLM analysis is needed
 
-    tts_stt_in_progress = False              # 是否正在执行 TTS/STT
-    last_tts_time = 0                        # 上次 TTS 时间戳
+    tts_stt_in_progress = False              # Whether TTS/STT is in progress
+    last_tts_time = 0                        # Last TTS timestamp
 
-    # ===== 主循环：逐帧处理 =====
+    # ===== Main loop: process each frame =====
     while capture.isOpened():
-        ret, frame = capture.read()          # 读取一帧
-        if not ret:                          # 读取失败则退出
+        ret, frame = capture.read()          # Read a frame
+        if not ret:                          # If reading fails, exit
             break
 
-        current_time = time.time()           # 当前时间戳
-        h, w, _ = frame.shape                # 图像高、宽、通道
+        current_time = time.time()           # Current timestamp
+        h, w, _ = frame.shape                # Image height, width, channels
 
-        # 实时显示原始帧
+        # Real-time display of the original frame
         cv2.imshow('Head Pose + Local YOLO Detection', frame)
 
-        # 如果正在语音交互，暂停检测，只显示提示
+        # If voice interaction is in progress, pause detection and show a prompt
         if tts_stt_in_progress:
             cv2.putText(
                 frame, "Paused for TTS/STT...", (50, 200),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
             )
             cv2.imshow('Head Pose + Local YOLO Detection', frame)
-            if cv2.waitKey(1) & 0xFF == 27:  # ESC 退出
+            if cv2.waitKey(1) & 0xFF == 27:  # ESC to exit
                 break
-            continue                         # 跳到下一帧
+            continue                         # Skip to the next frame
 
-        # ---------- 1. 姿态与分割 ----------
+        # ---------- 1. Pose and Segmentation ----------
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pose_results = pose.process(rgb_frame)                # 姿态推理
-        seg_results = selfie_segmentation.process(rgb_frame)  # 人体分割
-        mask = seg_results.segmentation_mask > 0.5            # True=人体像素
+        pose_results = pose.process(rgb_frame)                # Pose inference
+        seg_results = selfie_segmentation.process(rgb_frame)  # Human segmentation
+        mask = seg_results.segmentation_mask > 0.5            # True=human pixels
         if not pose_results.pose_landmarks:
             print("No pose landmarks detected.")
-        # ---------- 2. 仅在检测到姿态时继续 ----------
+        # ---------- 2. Only continue if pose landmarks are detected ----------
         if pose_results.pose_landmarks:
-            # --------  关键点坐标 --------
+            # --------  Keypoint coordinates --------
             landmarks = pose_results.pose_landmarks.landmark
             nose      = landmarks[mp_pose.PoseLandmark.NOSE]
             left_ear  = landmarks[mp_pose.PoseLandmark.LEFT_EAR]
@@ -92,54 +92,54 @@ def intention_predict(model_path) -> None:
             right_ear_coords = (int(right_ear.x * w), int(right_ear.y * h))
             
 
-            # --------  头部方向向量 --------
-            ear_midpoint = (                           # 两耳中点
+            # --------  Head direction vector --------
+            ear_midpoint = (                           # Midpoint between ears
                 (left_ear_coords[0] + right_ear_coords[0]) // 2,
                 (left_ear_coords[1] + right_ear_coords[1]) // 2
             )
-            direction_vector = (                       # 鼻子指向向量
+            direction_vector = (                       # Nose direction vector
                 nose_coords[0] - ear_midpoint[0],
                 nose_coords[1] - ear_midpoint[1]
             )
 
-            # -------- 向量归一化 --------
+            # -------- Vector normalization --------
             norm = np.sqrt(direction_vector[0]**2 + direction_vector[1]**2)
-            vec_length_threshold = 15                  # 正视阈值 (像素)
-            if norm == 0:                              # 避免除零
+            vec_length_threshold = 15                  # Frontal threshold (pixels)
+            if norm == 0:                              # Avoid division by zero
                 continue
             unit_vector = (direction_vector[0] / norm,
                            direction_vector[1] / norm)
-            
-            # ---------- 3. 计算 ROI（头部朝向矩形） ----------
-            roi_length = 400                         # 采样线长度 (像素)
-            samples = 60                               # 采样点数
+
+            # ---------- 3. Calculate ROI (Head Pose Rectangle) ----------
+            roi_length = 400                         # ROI length (pixels)
+            samples = 60                               # Number of samples
             inside = 0  
-            roi_width = 100                            # ROI 宽度 (像素)
-            # ROI 中心点 = 鼻子沿朝向移动 roi_length/2
+            roi_width = 100                            # ROI width (pixels)
+            # ROI center = Nose position moved roi_length/2
             roi_center = (
                 int(nose_coords[0] + unit_vector[0] * roi_length * 3/ 4),
                 int(nose_coords[1] + unit_vector[1] * roi_length * 3/ 4)
             )
-            # ROI 长边向量 (dx, dy)  & 垂直方向向量
+            # ROI vectors
             dx = int(unit_vector[0] * roi_length / 4)
             dy = int(unit_vector[1] * roi_length / 4)
             perp_vector = (-unit_vector[1], unit_vector[0])   # 逆时针 90°
             px = int(perp_vector[0] * roi_width / 2)
             py = int(perp_vector[1] * roi_width / 2)
 
-            # ROI 四个顶点
+            # ROI 4 corners
             pt1 = (roi_center[0] - dx - px, roi_center[1] - dy - py)
             pt2 = (roi_center[0] + dx - px, roi_center[1] + dy - py)
             pt3 = (roi_center[0] + dx + px, roi_center[1] + dy + py)
             pt4 = (roi_center[0] - dx + px, roi_center[1] - dy + py)
 
-            # ----------  可视化 ----------
-            frame[mask] = (0, 255, 0)                  # 人体掩码涂绿色
+            # ----------  Visualization ----------
+            frame[mask] = (0, 255, 0)                  # Human area in green
             cv2.polylines(
                 frame, [np.array([pt1, pt2, pt3, pt4], np.int32)],
                 isClosed=True, color=(0, 255, 255), thickness=2
             )
-            # 头部方向线 & 关键点
+            # Head direction line & keypoints
             cv2.line(frame, nose_coords,
                      (int(nose_coords[0] + direction_vector[0] * 200),
                       int(nose_coords[1] + direction_vector[1] * 200)),
@@ -147,8 +147,8 @@ def intention_predict(model_path) -> None:
             cv2.circle(frame, nose_coords, 5, (0, 255, 0), -1)
             cv2.circle(frame, left_ear_coords, 5, (255, 0, 0), -1)
             cv2.circle(frame, right_ear_coords, 5, (255, 0, 0), -1)
-            
-            # -------- 条件①：面部正视摄像头 --------
+
+            # -------- Condition 1: Face Forward --------
             if norm < vec_length_threshold:
                 cv2.putText(
                     frame, "Face Forward: YOLO Skipped", (50, 80),
@@ -157,32 +157,31 @@ def intention_predict(model_path) -> None:
                 cv2.imshow('Head Pose + Local YOLO Detection', frame)
                 if cv2.waitKey(1) & 0xFF == 27:
                     break
-                continue                               # 跳过 YOLO
+                continue                               # Skip YOLO
 
-            # -------- 2.5 条件②：鼻子指向线仍在人体内 --------
-                               # 落在人体内计数
-            roi_length_check = 100            # 只取 40 cm（或像素 400）来判定即可
-            samples = 40                      # 采样点数
-            inside = 0                        # ← 每帧都要归零
+            # -------- Condition 2.5: Nose Direction Line Inside Body --------
+            # Count how many fall inside the human body
+            roi_length_check = 100            # Only take 40 cm (or pixels 400) for judgment
+            samples = 40                      # Number of samples
+            inside = 0                        # Reset count
 
-            for i in range(1, samples + 1):   # (0, 1] 等间距
+            for i in range(1, samples + 1):   # (0, 1] uniformly sample points
                 ratio = i / samples
                 sx = int(nose_coords[0] + unit_vector[0] * roi_length_check * ratio)
                 sy = int(nose_coords[1] + unit_vector[1] * roi_length_check * ratio)
                 if 0 <= sx < w and 0 <= sy < h and mask[sy, sx]:
                     inside += 1
 
-            # 若超过 70 % 的采样点在人体内 → 跳过 YOLO
+            # If more than 70% of the sample points are inside the human body → Skip YOLO
             if inside / samples > 0.7:
                 cv2.putText(frame, "Line Inside Body: YOLO Skipped",
                             (50, 110), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
                 cv2.imshow('Head Pose + Local YOLO Detection', frame)
-                if cv2.waitKey(1) & 0xFF == 27:  # ESC 可以提前退出
+                if cv2.waitKey(1) & 0xFF == 27:  # ESC can exit early
                     break
-                continue          # ← 直接进入 while 下一帧
-                     # 跳过 YOLO
-            
-            # ---------- 6. YOLO 全图推理 ----------
+                continue          # Skip YOLO
+
+            # ---------- 6. YOLO inference for whole image ----------
             results_yolo = model(frame, verbose=False)
 
             for r in results_yolo:
@@ -192,19 +191,19 @@ def intention_predict(model_path) -> None:
                     cls = int(box.cls[0].cpu().numpy())
                     label = model.names[cls]
 
-                    # 计算 bbox 中心点
+                    # Calculate bbox center point
                     cx = (x1 + x2) / 2
                     cy = (y1 + y2) / 2
                     center_point = (int(cx), int(cy))
 
-                    # 判断中心点是否在 ROI 区域内（朝向线构成的多边形）
+                    # Check if center point is inside ROI (polygon formed by direction line)
                     roi_poly = np.array([pt1, pt2, pt3, pt4], np.int32)
                     is_inside = cv2.pointPolygonTest(roi_poly, center_point, measureDist=False)
 
-                    if is_inside < 0:  # 不在 ROI 区域内
+                    if is_inside < 0:  # Not inside ROI
                         continue
 
-                    # ✅ 如果在 ROI 中，执行可视化和记录逻辑
+                    # ✅ If inside ROI, perform visualization and recording logic
                     label_times[label] = current_time
 
                     cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
@@ -213,17 +212,17 @@ def intention_predict(model_path) -> None:
                                 (0, 0, 255), 2)
 
 
-            # ---------- 7. 维护滑动窗口内标签 ----------
+            # ---------- 7. Maintain labels within sliding window ----------
             detected_labels = {
                 lbl for lbl, t in label_times.items()
                 if current_time - t <= window_seconds and lbl != 'person'
             }
             print("Appeared labels:", detected_labels)
 
-            # 如果需要 LLM 分析，可改用 label_analyzer.analyze_labels
+            # If LLM analysis is needed, you can use label_analyzer.analyze_labels
             cooking_labels = detected_labels
 
-            # ---------- 8. 绘制标签列表 ----------
+            # ---------- 8. Draw label list ----------
             if cooking_labels:
                 cooking_text = "Cooking Items: " + ", ".join(cooking_labels)
                 cv2.putText(frame, cooking_text, (50, 150),
@@ -233,13 +232,13 @@ def intention_predict(model_path) -> None:
         if cv2.waitKey(1) & 0xFF == 27: 
             break
 
-        # ---------- 10. TTS / STT 互动 ----------
+        # ---------- 10. TTS / STT interaction ----------
         if (current_time - last_tts_time > tts_interval) and detected_labels:
             tts_stt_in_progress = True
             cooking_list = list(detected_labels)
             cooking_str = ", ".join(cooking_list)
 
-            # ----- 10.1 仅一个物体 -----
+            # ----- 10.1 Only one object -----
             if len(cooking_list) == 1:
                 tts_text = f"Are you looking for {cooking_str}?"
                 play_text_to_speech(tts_text, language='en')
@@ -254,7 +253,7 @@ def intention_predict(model_path) -> None:
                 else:
                     last_query_result = None
 
-            # ----- 10.2 多个物体 -----
+            # ----- 10.2 Multiple objects -----
             else:
                 tts_text = f"There are {cooking_str}. What do you want?"
                 play_text_to_speech(tts_text, language='en')
@@ -280,20 +279,20 @@ def intention_predict(model_path) -> None:
                     last_query_result = None
 
             print(last_query_result)
-            # ✅ 写入 transcription.txt（让主线程能读到）
+            # ✅ Write to transcription.txt (so that the main thread can read it)
             with open(TRANS_FILE, "w", encoding="utf-8") as f:
                 f.write(last_query_result)
 
-        # ✅ 通知主线程触发 LLM+TTS
+        # ✅ Notify main thread to trigger LLM+TTS
         NEW_TEXT_EVENT1.set()
 
-        # ✅ 可选：防止刷屏
+        # ✅ Optional: Prevent screen flooding
         time.sleep(1)
-    # ===== 循环结束，释放资源 =====
+    # ===== End of loop, release resources =====
     capture.release()
     cv2.destroyAllWindows()
 
 
-# ---------------- 主程序入口 ----------------
+# ---------------- Main program entry ----------------
 if __name__ == "__main__":
     intention_predict(None)

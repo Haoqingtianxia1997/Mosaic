@@ -10,38 +10,38 @@ from geometry_msgs.msg import Vector3
 class PandaMotionPlanner(Node):
     def __init__(self):
         super().__init__('panda_motion_planner')
-        
-        # 创建服务客户端
+
+        # Create service client
         self.motion_plan_client = self.create_client(
             GetMotionPlan, 
             '/plan_kinematic_path'
         )
         
         while not self.motion_plan_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('等待运动规划服务...')
-        
-        self.get_logger().info('Panda运动规划节点已启动!')
+            self.get_logger().info('Waiting for motion planning service...')
+
+        self.get_logger().info('Panda motion planning node has started!')
 
     def plan_to_joints(self, target_joints):
         """
-        规划到目标关节位置
-        target_joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7] - 7个关节角度
+        Plan to the target joint positions
+        target_joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7] - 7 joint angles
         """
         if len(target_joints) != 7:
-            self.get_logger().error('Panda机械臂需要7个关节角度!')
+            self.get_logger().error('Panda robot requires 7 joint angles!')
             return False
             
         request = GetMotionPlan.Request()
         motion_plan_request = MotionPlanRequest()
-        
-        # 1. 设置工作空间参数（根据你的实际参数）
+
+        # 1. Set workspace parameters (based on your actual parameters)
         workspace = WorkspaceParameters()
         workspace.header.frame_id = "panda_link0"
         workspace.min_corner = Vector3(x=-1.0, y=-1.0, z=-1.0)
         workspace.max_corner = Vector3(x=1.0, y=1.0, z=1.0)
         motion_plan_request.workspace_parameters = workspace
-        
-        # 2. 设置起始状态（当前状态）
+
+        # 2. Set start state (current state)
         start_state = RobotState()
         start_state.joint_state = JointState()
         start_state.joint_state.header.frame_id = "panda_link0"
@@ -56,7 +56,7 @@ class PandaMotionPlanner(Node):
             'panda_finger_joint1',
             'panda_finger_joint2'
         ]
-        # 当前关节位置（你可以从实际机器人获取，这里使用默认值）
+        # Current joint positions (you can get this from the actual robot, using default values here)
         current_positions = [
             0.9719375531084352,
             -0.47425465226857394,
@@ -73,12 +73,12 @@ class PandaMotionPlanner(Node):
         start_state.joint_state.effort = []
         start_state.is_diff = False
         motion_plan_request.start_state = start_state
-        
-        # 3. 设置目标关节约束
+
+        # 3. Set goal joint constraints
         goal_constraints = Constraints()
         goal_constraints.name = ''
-        
-        # Panda机械臂关节名称
+
+        # Panda robot joint names
         panda_joint_names = [
             'panda_joint1',
             'panda_joint2',
@@ -88,22 +88,22 @@ class PandaMotionPlanner(Node):
             'panda_joint6',
             'panda_joint7'
         ]
-        
-        # 为每个关节设置目标位置
+
+        # Set goal positions for each joint
         for joint_name, target_angle in zip(panda_joint_names, target_joints):
             joint_constraint = JointConstraint()
             joint_constraint.joint_name = joint_name
             joint_constraint.position = target_angle
-            joint_constraint.tolerance_above = 0.0001  # 与你的实际参数一致
+            joint_constraint.tolerance_above = 0.0001  # Consistent with your actual parameters
             joint_constraint.tolerance_below = 0.0001
             joint_constraint.weight = 1.0
             goal_constraints.joint_constraints.append(joint_constraint)
         
         motion_plan_request.goal_constraints = [goal_constraints]
-        
-        # 4. 设置其他参数（根据你的实际参数）
+
+        # 4. Set other parameters (based on your actual parameters)
         motion_plan_request.pipeline_id = "ompl"
-        motion_plan_request.planner_id = ""  # 空字符串使用默认规划器
+        motion_plan_request.planner_id = ""  # Empty string uses default planner
         motion_plan_request.group_name = "panda_arm"
         motion_plan_request.num_planning_attempts = 10
         motion_plan_request.allowed_planning_time = 5.0
@@ -113,28 +113,28 @@ class PandaMotionPlanner(Node):
         motion_plan_request.max_cartesian_speed = 0.0
         
         request.motion_plan_request = motion_plan_request
-        
-        # 调用服务
-        self.get_logger().info(f'规划到目标位置: {target_joints}')
+
+        # Call service
+        self.get_logger().info(f'Planning to target position: {target_joints}')
         future = self.motion_plan_client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
         
         if future.result() is not None:
             response = future.result()
             if response.motion_plan_response.error_code.val == 1:  # SUCCESS
-                self.get_logger().info('运动规划成功!')
-                self.get_logger().info(f'规划时间: {response.motion_plan_response.planning_time}s')
+                self.get_logger().info('Motion planning succeeded!')
+                self.get_logger().info(f'Planning time: {response.motion_plan_response.planning_time}s')
                 return True
             else:
-                self.get_logger().error(f'规划失败，错误代码: {response.motion_plan_response.error_code.val}')
+                self.get_logger().error(f'Planning failed, error code: {response.motion_plan_response.error_code.val}')
                 return False
         else:
-            self.get_logger().error('服务调用失败')
+            self.get_logger().error('Service call failed')
             return False
 
     def get_current_joint_positions(self):
         """
-        获取当前关节位置（示例，实际中你可能需要从/joint_states话题获取）
+        Get current joint positions (example, you may need to get this from /joint_states topic in practice)
         """
         return [
             0.9719375531084352,
@@ -149,8 +149,8 @@ class PandaMotionPlanner(Node):
 def main():
     rclpy.init()
     planner = PandaMotionPlanner()
-    
-    # 示例1：使用你话题中的目标位置
+
+    # Example 1: Use target positions from your topic
     target_positions_1 = [
         0.91168879074049,
         -0.6356682041223909,
@@ -160,21 +160,21 @@ def main():
         1.9671265833791591,
         0.8318783715901764
     ]
-    
-    # 示例2：另一个位置
+
+    # Example 2: Another position
     target_positions_2 = [0.0, 0.0, 0.0, -1.57, 0.0, 1.57, 0.0]  # Home position
-    
-    # 执行规划
-    print("规划到位置1...")
+
+    # Execute planning
+    print("Planning to position 1...")
     if planner.plan_to_joints(target_positions_1):
-        planner.get_logger().info('位置1规划成功!')
-    
-    # 等待一下
+        planner.get_logger().info('Position 1 planning succeeded!')
+
+    # Wait a moment
     rclpy.spin_once(planner, timeout_sec=2.0)
-    
-    print("规划到位置2...")
+
+    print("Planning to position 2...")
     if planner.plan_to_joints(target_positions_2):
-        planner.get_logger().info('位置2规划成功!')
+        planner.get_logger().info('Position 2 planning succeeded!')
     
     planner.destroy_node()
     rclpy.shutdown()

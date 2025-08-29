@@ -42,7 +42,7 @@ class Intention():
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
-            refine_landmarks=True,  # 更精准瞳孔等
+            refine_landmarks=True,  # More accurate pupil detection, etc.
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
@@ -71,12 +71,12 @@ class Intention():
     def get_hand_pose(self, rgb_msg, depth_msg, T_wc, camera_intrinsics):
         """
         camera_intrinsics: (fx, fy, cx, cy)
-        T_wc: 4x4 世界坐标系变换矩阵（world ← camera）
+        T_wc: 4x4 Transformation matrix (world ← camera)
         """
         fx, fy, cx, cy = camera_intrinsics
 
         rgb = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
-        depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')  # 单通道 float32 (米)
+        depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')  # Single-channel float32 (meters)
 
         h, w = depth.shape
 
@@ -95,7 +95,7 @@ class Intention():
         u1, v1 = int(index_mcp.x * w), int(index_mcp.y * h)
         u2, v2 = int(index_tip.x * w), int(index_tip.y * h)
 
-        # 边界判断
+        # Boundary check
         if not (0 <= u1 < w and 0 <= v1 < h and 0 <= u2 < w and 0 <= v2 < h):
             print(f"⚠️ finger points out of bounds")
             return None, None 
@@ -104,10 +104,10 @@ class Intention():
         z2 = float(depth[v2, u2])
 
         if z1 <= 0 or z2 <= 0:
-            print(f"⚠️ 食指关键点深度异常: z1={z1}, z2={z2}")
-            return None, None 
+            print(f"⚠️ index finger depth abnormal: z1={z1}, z2={z2}")
+            return None, None
 
-        # 相机坐标系中反投影
+        # Camera coordinate system back-projection
         x1 = (u1 - cx) * z1 / fx
         y1 = (v1 - cy) * z1 / fy
         p1_cam = np.array([x1, y1, z1, 1.0])
@@ -116,13 +116,13 @@ class Intention():
         y2 = (v2 - cy) * z2 / fy
         p2_cam = np.array([x2, y2, z2, 1.0])
 
-        # 变换到世界坐标系
+        # Transform to world coordinate system
         origin = (T_wc @ p1_cam)[:3]
         tip = (T_wc @ p2_cam)[:3]
 
         direction = tip - origin
         if np.linalg.norm(direction) < 1e-6:
-            print("⚠️ 食指方向长度过短")
+            print("⚠️ index finger direction length too short")
             return None, None
 
         direction /= np.linalg.norm(direction)
@@ -136,13 +136,13 @@ class Intention():
         h, w = img.shape[:2]
         fx, fy, cx, cy = cam_intrinsics
 
-        # step1: face mesh检测
+        # step1: face mesh detection
         face_result = self.face_mesh.process(img_rgb)
         if not face_result.multi_face_landmarks:
             return None, None
         face_landmarks = face_result.multi_face_landmarks[0]
 
-        # step2: 双眼中心关键点（33, 263为左右眼球中心）
+        # step2: Eye center keypoints (33, 263 for left and right eye centers)
         left_eye = face_landmarks.landmark[33]
         right_eye = face_landmarks.landmark[263]
       
@@ -150,7 +150,7 @@ class Intention():
         v = int((left_eye.y + right_eye.y) / 2 * h)
 
 
-        # step3: 反投影Z
+        # step3: Back-projection Z
         depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')
         if 0 <= v < depth.shape[0] and 0 <= u < depth.shape[1] and not np.isnan(depth[v, u]).any():
             z = float(depth[v, u])/1000.0
@@ -181,9 +181,9 @@ class Intention():
         # # test point position
         # sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.005)
         # sphere.translate(test_point := cam_origin_c)
-        # sphere.paint_uniform_color([1, 0, 0])  # 红色
+        # sphere.paint_uniform_color([1, 0, 0])  # Red
 
-        # # 可视化
+        # # Visualization
         # o3d.visualization.draw_geometries([world_frame, sphere, pcd],
         #                                 window_name="ZED2 PointCloud with World & Camera Frame")
 
@@ -193,7 +193,7 @@ class Intention():
 
 
 
-        # step4: L2CSNet gaze方向
+        # step4: L2CSNet gaze direction
         results = self.gaze_pipeline.step(img)
         if results.pitch.shape[0] == 0:
             return None, None
@@ -213,14 +213,14 @@ class Intention():
             else:
                 self.pitch = self.ema_alpha * pitch + (1 - self.ema_alpha) * self.pitch
                 self.yaw=  self.ema_alpha * yaw + (1 - self.ema_alpha) * self.yaw
-            
-        # 欧拉角→相机系单位向量
+
+        # Euler angles → Camera coordinate system unit vector
         gx = -np.cos(self.pitch) * np.sin(self.yaw)
         gy = - np.sin(self.pitch)
         gz = -np.cos(self.pitch) * np.cos(self.yaw)
         gaze_vec_c = np.array([gx, gy, gz])
 
-        # step5: 转到世界系
+        # step5: Transform to world coordinate system
         R_wc = T_wc[:3, :3]
         t_wc = T_wc[:3, 3]
         gaze_vec_w = R_wc @ gaze_vec_c
@@ -271,7 +271,7 @@ class Intention():
 
     def update_stable_point(self, pts_deque, intersect, window_sec, avg_last_n, outlier_thresh, outlier_count):
         """
-        判稳队列: 传入 deque、当前交点、窗口参数，自动更新，返回 stable/last_output/队列/基准等
+        Stability queue: Pass in deque, current intersection point, window parameters, automatically update, return stable/last_output/queue/base, etc.
         """
         now = time.time()
         stable = None
@@ -288,13 +288,13 @@ class Intention():
                 last_output = mean_pos.copy()
                 base = None
             else:
-                # 维护基准点和离群检测
+                # Maintain base point and outlier detection
                 if len(pts_deque) > 0:
                     base = pts_deque[0][0].copy()
                     outlier_cnt = sum(np.linalg.norm(pt - base) > outlier_thresh for pt, _ in pts_deque)
                     if outlier_cnt >= outlier_count:
                         base = None
-            # 清理过期点
+            # Clean up expired points
             while pts_deque and now - pts_deque[0][1] > window_sec:
                 pts_deque.popleft()
         else:
@@ -317,7 +317,7 @@ class Intention():
     #     x1, y1 = max(u - half, 0), max(v - half, 0)
     #     x2, y2 = min(u + half, w-1), min(v + half, h-1)
 
-    #     # 画 ROI 框
+    #     # Draw ROI box
     #     cv2.rectangle(img, (x1, y1), (x2, y2), (0,255,255), 2)
     #     roi = img[y1:y2, x1:x2]
     #     labels = []
@@ -353,7 +353,7 @@ class Intention():
         x1, y1 = max(u - half, 0), max(v - half, 0)
         x2, y2 = min(u + half, w-1), min(v + half, h-1)
 
-        # 画 ROI 框
+        # Draw ROI box
         cv2.rectangle(img, (x1, y1), (x2, y2), (0,255,255), 2)
         roi = img[y1:y2, x1:x2]
         labels = []
@@ -364,7 +364,7 @@ class Intention():
             if result.boxes.shape[0]:
                 for box in result.boxes:
                     bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
-                    # 检查框的中心点是否在ROI内
+                    # Check if the center point of the box is within the ROI
                     center_x = (bx1 + bx2) // 2
                     center_y = (by1 + by2) // 2
                     if x1 <= center_x <= x2 and y1 <= center_y <= y2:

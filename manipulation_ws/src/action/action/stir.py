@@ -30,7 +30,7 @@ class StirService(Node):
             'move_service', 
             callback_group=self.srv_group)
         while not self.move_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('等待 move_service 可用...')
+            self.get_logger().info('Wait for move_service ...')
 
         
         self.cartesian_client = self.create_client(
@@ -61,24 +61,24 @@ class StirService(Node):
 
     def stir_cb(self, req: Stir.Request, res: Stir.Response):
         if not self.current_js.name:
-            self.get_logger().warn('joint_states 未就绪，忽略本次请求')
+            self.get_logger().warn('joint_states not ready, ignoring request')
             res.success = False
             return res
-        
-        # 先插入到初始点
+
+        # Insert to initial point
         move_req = Move.Request()
         move_req.x = req.center_x  
         move_req.y = req.center_y
-        move_req.z = req.center_z - req.move_down_offset  # 插入深度
-        move_req.qx =  1.0
-        move_req.qy =  0.0
-        move_req.qz =  0.0
-        move_req.qw =  0.0
+        move_req.z = req.center_z - req.move_down_offset  # Insert depth
+        move_req.qx = 1.0
+        move_req.qy = 0.0
+        move_req.qz = 0.0
+        move_req.qw = 0.0
 
-        move_res = self.move_client.call(move_req)  # 直接同步，直到有结果
-        
+        move_res = self.move_client.call(move_req)  # Direct synchronous call until result is available
+
         if not move_res or not move_res.success:
-            self.get_logger().error('Move Service 调用失败！')
+            self.get_logger().error('Move Service call failed!')
             res.success = False
             return res 
 
@@ -105,9 +105,9 @@ class StirService(Node):
             waypoints.append(pose)
         waypoints.append(waypoints[0])
 
-        # 当前累计搅拌时间
+        # Current accumulated stirring time
         accumulated_time = 0.0
-        buffer = 0.05   # 每圈缓冲
+        buffer = 0.05   # Buffer for each circle
         robot_state = RobotState()
         robot_state.joint_state = self.current_js
 
@@ -134,9 +134,9 @@ class StirService(Node):
 
             traj = cartesian_res.solution.joint_trajectory
             traj_duration = traj.points[-1].time_from_start.sec + traj.points[-1].time_from_start.nanosec * 1e-9
-            # 如果执行这一圈后就会超时，那就截断最后一圈
+            # If executing this circle will time out, truncate the last circle
             if accumulated_time + traj_duration > req.stir_time:
-                # 只保留需要的那部分
+                # Keep only the required part
                 allowed_time = req.stir_time - accumulated_time
                 new_points = []
                 for pt in traj.points:
@@ -146,20 +146,20 @@ class StirService(Node):
                     else:
                         break
                 if len(new_points) < 2:
-                    self.get_logger().error("stir_time太短，轨迹点不足")
+                    self.get_logger().error("stir_time too small, cannot execute even one point of the trajectory!")
                     res.success = False
                     return res
                 traj.points = new_points
-                traj_duration = allowed_time  # 最后一圈只执行到指定时间
+                traj_duration = allowed_time  # Last circle only executes to specified time
 
             self.traj_pub.publish(traj)
-            self.get_logger().info(f"等待{traj_duration:.2f}s，执行搅拌轨迹...")
+            self.get_logger().info(f"Wait for {traj_duration:.2f}s, executing stirring trajectory...")
             time.sleep(traj_duration + buffer)
             accumulated_time += traj_duration
-            # 设为最新的起始点
+            # Set as latest starting point
             robot_state.joint_state = self.current_js
 
-        # 搅拌完成后，回到初始位置
+        # Stirring complete, return to initial position
         move_req = Move.Request()
         move_req.x = req.center_x
         move_req.y = req.center_y
@@ -171,12 +171,12 @@ class StirService(Node):
 
         move_res = self.move_client.call(move_req)
         if not move_res or not move_res.success:
-            self.get_logger().error('Move Service 调用失败！')
+            self.get_logger().error('Move Service call failed!')
             res.success = False
             return res 
         
         res.success = True
-        self.get_logger().info('搅拌完成！')
+        self.get_logger().info('Stirring complete!')
         return res
 
 

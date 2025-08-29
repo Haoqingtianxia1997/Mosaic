@@ -8,7 +8,7 @@ import cv2
 # from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_right, world_to_pixels_left, world_to_pixels_right
 
 def call_ros2_service(service_name, service_type, args_dict):
-    # 把字典转成一行的 YAML 字符串
+    # Dict to YAML string
     arg_str = yaml.dump(args_dict, default_flow_style=True, sort_keys=False).strip()
     cmd = [
         "ros2", "service", "call",

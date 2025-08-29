@@ -115,12 +115,12 @@ class PersistentOpen3DViewer:
             # update arrows
             while not self.arrow_queue.empty():
                 directions, origins = self.arrow_queue.get()
-                # 删除所有旧箭头
+                # Delete old arrows
                 for arr in self.current_arrows:
                     self.vis.remove_geometry(arr)
                 self.current_arrows = []
 
-                # 判断是否批量
+                # Check if batch
                 if isinstance(directions, list) and isinstance(origins, list):
                     for d, o in zip(directions, origins):
                         arr = self._create_arrow(d, o)
@@ -133,7 +133,7 @@ class PersistentOpen3DViewer:
                         self.vis.add_geometry(arr)
                         self.current_arrows.append(arr)
 
-            # update intersect（不变）
+            # update intersect (no change)
             while not self.intersect_queue.empty():
                 pt = self.intersect_queue.get()
                 if hasattr(self, "current_intersect") and self.current_intersect:

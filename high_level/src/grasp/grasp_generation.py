@@ -61,32 +61,32 @@ class GraspGeneration:
         # sample the position in the bounding box
         for idx in range(num_grasps):
             rotated_coords = np.zeros(3)
-            
-            # 确定长轴和短轴在旋转坐标系中的索引
+
+            # Index for long axis and short axis
             if x_size < y_size:
-                # y是长轴，x是短轴
+                # y is long axis, x is short axis
                 long_axis_idx = 1
                 short_axis_idx = 0
             else:
-                # x是长轴，y是短轴
+                # x is long axis, y is short axis
                 long_axis_idx = 0
                 short_axis_idx = 1
-            
-            # 长轴方向使用正态分布采样（中心偏置）
+
+            # Long axis uses normal distribution sampling (center biased)
             long_axis_center = (min_point_rotated[long_axis_idx] + max_point_rotated[long_axis_idx]) / 2
             long_axis_range = max_point_rotated[long_axis_idx] - min_point_rotated[long_axis_idx]
-            # 使用正态分布，标准差为范围的1/9
+            # Use normal distribution with standard deviation as 1/9 of the range
             long_axis_std = long_axis_range / 9
             rotated_coords[long_axis_idx] = np.clip(
                 np.random.normal(long_axis_center, long_axis_std),
                 min_point_rotated[long_axis_idx],
                 max_point_rotated[long_axis_idx]
             )
-            
-            # 短轴方向保持均匀分布采样
+
+            # Short axis uses uniform distribution sampling
             rotated_coords[short_axis_idx] = np.random.uniform(min_point_rotated[short_axis_idx], max_point_rotated[short_axis_idx])
-            
-            # z轴方向保持均匀分布采样
+
+            # Z axis uses uniform distribution sampling
             rotated_coords[2] = np.random.uniform(min_point_rotated[2], max_point_rotated[2])
             
             # convert the sampled point from the rotated coordinate system to the world coordinate system
@@ -114,12 +114,12 @@ class GraspGeneration:
             # ensure the coordinate system direction is correct
             if np.dot(np.cross(grasp_x_axis, grasp_y_axis), grasp_z_axis) < 0:
                 grasp_y_axis = -grasp_y_axis
-            
-            # 绕Z轴进行正负10度的随机旋转
-            rotation_angle = np.random.uniform(-10, 10)  # 均匀采样 -10 到 +10 度
+
+            # Random rotation around Z axis by ±10 degrees
+            rotation_angle = np.random.uniform(-10, 10)  # Uniform sampling from -10 to +10 degrees
             rotation_rad = np.radians(rotation_angle)
-            
-            # 构建绕Z轴的旋转矩阵
+
+            # Construct rotation matrix around Z axis
             cos_theta = np.cos(rotation_rad)
             sin_theta = np.sin(rotation_rad)
             rotation_z = np.array([
@@ -127,12 +127,12 @@ class GraspGeneration:
                 [sin_theta, cos_theta, 0],
                 [0, 0, 1]
             ])
-            
-            # 应用旋转到X轴和Y轴（Z轴保持不变）
+
+            # Apply rotation to X axis and Y axis (Z axis remains unchanged)
             grasp_x_axis = rotation_z @ grasp_x_axis
             grasp_y_axis = rotation_z @ grasp_y_axis
-    
-            # build the rotation matrix
+
+            # Build the rotation matrix
             R = np.column_stack((grasp_x_axis, grasp_y_axis, grasp_z_axis))
             grasp_center = grasp_center - 0.2 * grasp_z_axis
             # # save the rotation matrix for visualization
@@ -221,11 +221,11 @@ class GraspGeneration:
             if np.dot(np.cross(grasp_x_axis, grasp_y_axis), grasp_z_axis) < 0:
                 grasp_y_axis = -grasp_y_axis
 
-            # 生成 [-80°, -45°] 范围内的随机角度（单位：弧度）
+            # Random tilt by ±0 degrees around the grasp_y_axis
             theta_deg = np.random.uniform(-0, 0)
             theta_rad = np.radians(theta_deg)
 
-            # 绕 grasp_y_axis 的旋转矩阵（Rodrigues 公式）
+            # Rotation matrix around grasp_y_axis (Rodrigues formula)
             def rodrigues_rotation_matrix(axis, theta):
                 axis = axis / np.linalg.norm(axis)
                 K = np.array([
@@ -239,11 +239,11 @@ class GraspGeneration:
 
             R_tilt = rodrigues_rotation_matrix(grasp_y_axis, theta_rad)
 
-            # 应用额外旋转：绕 grasp_y_axis 旋转 grasp_x/z
+            # Apply additional rotation: rotate grasp_x_axis / grasp_z_axis around grasp_y_axis
             grasp_x_axis = R_tilt @ grasp_x_axis
             grasp_z_axis = R_tilt @ grasp_z_axis
 
-            # # build the rotation matrix
+            # # Build the rotation matrix
             # R = np.column_stack((grasp_x_axis, grasp_y_axis, grasp_z_axis))
 
             grasp_center = grasp_center - 0.2 * grasp_z_axis
@@ -505,10 +505,10 @@ class GraspGeneration:
         rot_world = Rotation.from_matrix(R_mat)
         euler_world = rot_world.as_euler('xyz', degrees=True)
 
-        # 用scipy直接转四元数（保持[x,y,z,w]顺序与pybullet一致）
+        # Transform to quaternion using scipy
         pose2_orn = rot_world.as_quat()
 
-        # 计算前置抓取位姿（在z轴方向上后退0.2米）
+        # Compute pre-grasp pose (20 cm back along the Z axis)
         z_axis = R_mat[:, 2]
         pose1_pos = ee_target_pos - 0.2 * z_axis
         pose1_orn = pose2_orn
@@ -526,7 +526,7 @@ class GraspGeneration:
             print("Error: Cannot merge point clouds, grasping terminated")
             return None, None, None, None
         
-        # 如果是 numpy，转为 open3d 点云
+        # If input is numpy array, convert to Open3D point cloud
         if isinstance(merged_pcd, np.ndarray):
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(merged_pcd)

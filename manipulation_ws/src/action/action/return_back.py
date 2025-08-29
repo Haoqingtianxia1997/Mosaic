@@ -73,7 +73,7 @@ class ReturnBackService(Node):
         
     def grasp_flavoring_cb(self, request, response):
         if not self.current_js.name:
-            self.get_logger().warn('joint_states 未就绪，忽略本次请求')
+            self.get_logger().warn('joint_states not ready!')
             response.success = False
             return response
 
@@ -90,7 +90,7 @@ class ReturnBackService(Node):
         move_prep_res = self.move_client.call(move_prep_req)
         
         if not move_prep_res or not move_prep_res.success:
-            self.get_logger().error('Move Service 调用失败！')
+            self.get_logger().error('Move Service call failed!')
             response.success = False
             return response
         
@@ -107,7 +107,7 @@ class ReturnBackService(Node):
         move_place_res = self.cartesian_client.call(move_place_req)
 
         if not move_place_res or not move_place_res.success:
-            self.get_logger().error('Move Cartesian Service 调用失败！')
+            self.get_logger().error('Move Cartesian Service call failed!')
             response.success = False
             return response
         
@@ -135,7 +135,7 @@ class ReturnBackService(Node):
         move_back_res = self.cartesian_client.call(move_back_req)
 
         if not move_back_res or not move_back_res.success:
-            self.get_logger().error('Move Cartesian Service 调用失败！')
+            self.get_logger().error('Move Cartesian Service call failed!')
             response.success = False
             return response
         

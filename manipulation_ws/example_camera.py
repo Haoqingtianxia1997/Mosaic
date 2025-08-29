@@ -14,16 +14,16 @@ class RGBDepthSaver(Node):
         super().__init__('rgb_depth_saver')
 
         self.bridge = CvBridge()
-        # 分别记录左右相机的上次保存时间
+        # Record last saved time for each camera
         self.last_saved_time_r_ = 0
         self.last_saved_time_l_ = 0
         self.last_saved_time_rgbd_ = 0
 
-        # 创建保存目录
+        # Create save directory
         self.output_dir = os.path.join(os.getcwd(), 'saved_images')
         os.makedirs(self.output_dir, exist_ok=True)
 
-        # 订阅左右相机的 RGB 和 Depth 图像
+        # Subscribe to RGB and Depth images from left and right cameras
         self.r_rgb_sub = Subscriber(self, Image, '/zedr/zed_node/rgb/image_rect_color')
         self.r_depth_sub = Subscriber(self, Image, '/zedr/zed_node/depth/depth_registered')
         self.l_rgb_sub = Subscriber(self, Image, '/zedl/zed_node/rgb/image_rect_color')
@@ -31,7 +31,7 @@ class RGBDepthSaver(Node):
 
         self.rgbd = Subscriber(self, RGBD, '/camera/camera/rgbd')
 
-        # 分别为左右相机设置同步器
+        # Create synchronizers for left and right cameras
         self.ts_right = ApproximateTimeSynchronizer([self.r_rgb_sub, self.r_depth_sub], queue_size=10, slop=0.1)
         self.ts_right.registerCallback(self.callback_right)
 
@@ -56,24 +56,24 @@ class RGBDepthSaver(Node):
 
     def save_images(self, rgb_msg, depth_msg, prefix=''):
         current_time = time.time()
-        # 每10秒保存一次，左右相机分别计时
+        # Save every 10 seconds for each camera
         last_saved_attr = f'last_saved_time_{prefix}'
         last_saved = getattr(self, last_saved_attr)
         if current_time - last_saved >= 1.0:
             try:
-                # 转换为 OpenCV 图像
+                # Convert to OpenCV images
                 rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
                 depth_image = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
 
-                # 构建文件路径（无时间戳，始终覆盖）
+                # Construct file paths (no timestamp, always overwrite)
                 rgb_path = os.path.join(self.output_dir, f'{prefix}rgb.png')
                 depth_vis_path = os.path.join(self.output_dir, f'{prefix}depth.png')
                 depth_raw_path = os.path.join(self.output_dir, f'{prefix}depth.npy')
 
-                # 保存 RGB 图像
+                # Save RGB image
                 cv2.imwrite(rgb_path, rgb_image)
 
-                # 保存原始深度图（float32）
+                # Save raw depth image (float32)
                 np.save(depth_raw_path, depth_image)
 
                 if prefix == 'rgbd_':
@@ -81,7 +81,7 @@ class RGBDepthSaver(Node):
                     cv2.imwrite(depth_vis_path, depth_image)
                     
                 else:
-                    # 保存可视化深度图（归一化后转为 uint8）
+                    # Save visualized depth image (normalize and convert to uint8)
                     depth_image_clipped = np.clip(depth_image, 0, 3.0)
                     depth_vis = cv2.normalize(depth_image_clipped, None, 0, 255, cv2.NORM_MINMAX)
                     depth_vis = depth_vis.astype('uint8')

@@ -493,7 +493,7 @@ test_point = np.array([0.3, -0.2, 0.2])
 
 rot = R.from_euler('xyz', [roll, pitch, yaw])
 # rot = R.from_quat([qx, qy, qz, qw])
-# 生成像素网格
+# Generate pixel grid
 u, v = np.meshgrid(np.arange(width), np.arange(height))
 z = depth_img
 print(fx, fy, cx, cy)
@@ -516,7 +516,7 @@ T_extrinsics[:3, 3] = translation
 
 T_total = T_extrinsics 
 
-# 同质坐标
+# Homogeneous coordinates
 points_cam_hom = np.concatenate([points_cam, np.ones((points_cam.shape[0], 1))], axis=1)
 points_world_hom = (T_total @ points_cam_hom.T).T
 
@@ -547,27 +547,27 @@ points_world_hom = (T_total @ points_cam_hom.T).T
 points_world = points_world_hom[:, :3]
 
 
-# 点云上色
+# Point cloud coloring
 rgb_flat = rgb_img.reshape(-1, 3)
 colors = rgb_flat[mask] / 255.0
 
-# 创建点云对象
+# Create point cloud object
 pcd = o3d.geometry.PointCloud()
 pcd.points = o3d.utility.Vector3dVector(points_world)
 pcd.colors = o3d.utility.Vector3dVector(colors)
 
-# 创建世界坐标系原点
+# Create world coordinate frame
 world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
 
-# 创建相机坐标系原点
+# Create camera coordinate frame
 camera_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
 camera_frame.transform(T_total)
 
 # test point position
 sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.005)
 sphere.translate(test_point)
-sphere.paint_uniform_color([1, 0, 0])  # 红色
+sphere.paint_uniform_color([1, 0, 0])  # Red
 
-# 可视化
+# Visualize
 o3d.visualization.draw_geometries([pcd, world_frame, camera_frame, sphere],
                                   window_name="ZED2 PointCloud with World & Camera Frame")

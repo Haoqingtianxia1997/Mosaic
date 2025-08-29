@@ -18,17 +18,17 @@ from realsense2_camera_msgs.msg import RGBD
 
 def create_Twc_from_quaternion(translation: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
     """
-    生成从相机坐标系到世界坐标系的齐次变换矩阵 T_wc。
+    Generate a homogeneous transformation matrix T_wc from camera coordinates to world coordinates.
 
     Args:
-        translation: np.array([x, y, z]) 相机在世界坐标系中的位置
-        quaternion:  np.array([x, y, z, w]) 相机姿态，四元数（world ← camera）
+        translation: np.array([x, y, z]) The position of the camera in the world coordinate system.
+        quaternion:  np.array([x, y, z, w]) The orientation of the camera as a quaternion (world ← camera).
 
     Returns:
-        T_wc: 4x4 np.ndarray 齐次变换矩阵
+        T_wc: 4x4 np.ndarray homogeneous transformation matrix
     """
-    assert translation.shape == (3,), "translation 应为形如 (3,) 的向量"
-    assert quaternion.shape == (4,), "quaternion 应为形如 (4,) 的向量"
+    assert translation.shape == (3,), "translation must be a vector of shape (3,)"
+    assert quaternion.shape == (4,), "quaternion must be a vector of shape (4,)"
 
     rot = R.from_quat(quaternion)
     R_wc = rot.as_matrix()
@@ -82,8 +82,8 @@ class HandDetectionWithPointCloudNode(Node):
         self.create_subscription(Image, '/zedr/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'right', 'depth'), 10)
 
 
-        self.get_logger().info("🖐️ 手部检测 + 点云可视化节点已启动")
-        
+        self.get_logger().info("🖐️ Hand detection + point cloud visualization node started")
+
         self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.11261126, -0.50195948, 0.55795671]), quaternion = np.array([0.81395177, -0.40028226, -0.07631803, -0.41404371]))
         self.intrinsics_l = (1060.0899658203125, 1059.0899658203125, 958.9099731445312, 561.5670166015625)
 
@@ -95,10 +95,10 @@ class HandDetectionWithPointCloudNode(Node):
         self.intrinsics_f = (910.5794677734375, 910.5794677734375, 643.673583984375, 367.935546875)
 
         # finger detection
-        self.finger_pts = deque()    # 存交点与时间戳
+        self.finger_pts = deque()    # Store intersection points and timestamps
         self.finger_base = None
         self.finger_last_output = None
-        self.finger_stable_pos = None   # 当前窗口的稳定输出
+        self.finger_stable_pos = None   # Current window's stable output
 
         # gaze detection
         self.gaze_pts = deque()

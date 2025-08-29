@@ -22,21 +22,21 @@ def run_mistral_llm(client):
 
     subtasks = re.sub(r':\s*None', ': ""', str(subtasks))
 
-    # 新的安全提取方式
+    # safe extraction method
     response, json_blocks = safe_extract_json_and_response_for_llm(str(subtasks))
 
     if not response:
         print("❌ No response from LLM. Please try again.")
         return False
 
-    # 保存 response 文本
+    # Save response text
     Path("./src/mistral_ai/scripts/llm_script.txt").write_text(response, encoding="utf-8")
 
     print("🤖 LLM Response:")
     print(">>> Subtask list:\n", response)
     print(">>> JSON:\n", json.dumps(json_blocks[0], indent=2, ensure_ascii=False) if json_blocks else "None")
 
-    # 保存 JSON 动作结构
+    # Save JSON action structure
     if json_blocks:
         with open("./src/mistral_ai/scripts/llm_script.json", "w", encoding="utf-8") as jf:
             json.dump(json_blocks[0], jf, ensure_ascii=False, indent=2)
@@ -52,17 +52,17 @@ def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_se
             example=intention_example,
             assistant_prompt=intention_assistant_prompt
         )
-        print(f"第{i+1}次尝试，LLM返回内容：{subtasks}")
-        if subtasks:  # 有内容就继续后面逻辑
+        print(f"Attempt {i+1}, LLM output: {subtasks}")
+        if subtasks:  # If there is content, continue with the next logic
             break
-        print(f"LLM没返回内容，第{i+1}次重试，等待{wait_sec}秒...")
+        print(f"LLM did not return content, retrying {i+1} time(s), waiting {wait_sec} seconds...")
         time.sleep(wait_sec)
     else:
-        raise RuntimeError("LLM一直没返回内容，超出最大重试次数")
-    
+        raise RuntimeError("LLM did not return content, exceeded maximum retry attempts")
+
     subtasks = re.sub(r':\s*None', ': ""', str(subtasks))
 
-    # 新的安全提取方式
+    # Safe extraction method
     response, content, json_blocks = safe_extract_json_and_response_for_intention_llm(str(subtasks))
 
     print("🤖 LLM Response:")

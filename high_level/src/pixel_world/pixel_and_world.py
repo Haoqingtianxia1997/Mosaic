@@ -1,8 +1,8 @@
 """
 reproject_to_world.py
 =====================
-读取 ZED2 的 depth.npy + rgb.png，
-把整幅深度图投射成带颜色的点云并可视化。
+Read depth.npy + rgb.png from ZED2,
+project the entire depth image to a colored point cloud and visualize it.
 """
 
 import numpy as np
@@ -11,18 +11,17 @@ import cv2
 from dataclasses import dataclass
 from scipy.spatial.transform import Rotation as R
 
-# ---------- 通用相机模型 ----------
+# ---------- Camera intrinsics & extrinsics ----------
 @dataclass
 class CameraModel:
     fx: float
     fy: float
     cx: float
     cy: float
-    R_wc: np.ndarray   # 3×3，摄像机→世界旋转
-    t_wc: np.ndarray   # (3,)  摄像机→世界平移
+    R_wc: np.ndarray   # 3×3, camera→world rotation
+    t_wc: np.ndarray   # (3,)  camera→world translation
 
-#TODO extrinsics are wrong, need to be fixed
-# ---------- 左 / 右 相机参数 ----------
+# ---------- Left / Right Camera Parameters ----------
 left_cam = CameraModel(
     fx=1060.0899658203125,
     fy=1059.0899658203125,
@@ -68,23 +67,23 @@ gaze_cam = CameraModel(
                    0.82295671])
 )
 
-# ---------- 像素 → 世界 ----------
+# ---------- Pixel to World ----------
 def pixels_to_world(pixels, depths, cam: CameraModel, rgb_img=None):
     """
     pixels : (..., 2)  (u, v)
-    depths : (...)     单位米
-    rgb_img: H×W×3 (uint8, RGB)，若给则返回颜色
+    depths : (...)  meters
+    rgb_img: H×W×3 (uint8, RGB), return colors if given
     """
     px = np.asarray(pixels)[..., 0]
     py = np.asarray(pixels)[..., 1]
     z  = np.asarray(depths)
 
-    # 像素 → 相机坐标
+    # pixel → camera
     x = (px - cam.cx) * z / cam.fx
     y = (py - cam.cy) * z / cam.fy
     cam_pts = np.stack((x, y, z), axis=-1)       # (..., 3)
 
-    # 相机 → 世界
+    # camera → world
     world_pts = cam_pts @ cam.R_wc.T + cam.t_wc   # (..., 3)
 
     if rgb_img is not None:
@@ -101,20 +100,20 @@ def pixels_to_world(pixels, depths, cam: CameraModel, rgb_img=None):
 def world_to_pixels(points_world, cam: CameraModel, return_depth=False,
                     image_size: tuple[int, int] = None):
     """
-    将世界坐标点投影回像素坐标
+    Project world coordinates back to pixel coordinates
 
-    参数:
-        points_world : (..., 3) 世界坐标点
+    Args:
+        points_world : (..., 3) world coordinates
         cam : CameraModel
-        return_depth : 是否返回相机坐标系下的 z 值
-        image_size : (宽, 高)，用于检测越界。若为 None，则不检查
+        return_depth : whether to return the z value in camera coordinates
+        image_size : (width, height), used for boundary checking. If None, no checking is performed
 
-    返回:
-        pixels : (..., 2) 像素坐标 (u, v)
-        [可选] depth_z : (...) 相机坐标系下的深度
+    Returns:
+        pixels : (..., 2) pixel coordinates (u, v)
+        [Optional] depth_z : (...) depth in camera coordinates
     """
     pw = np.asarray(points_world)
-    pc = (pw - cam.t_wc) @ cam.R_wc  # 世界 → 相机
+    pc = (pw - cam.t_wc) @ cam.R_wc  # world → camera
 
     x, y, z = pc[..., 0], pc[..., 1], pc[..., 2]
     z = np.where(z < 1e-6, 1e-6, z)
@@ -133,7 +132,7 @@ def world_to_pixels(points_world, cam: CameraModel, return_depth=False,
     return pixels, None
 
 
-# 包装：左右相机
+# Wrapper
 def pixels_to_world_left(pixels, depths, rgb_img=None):
     return pixels_to_world(pixels, depths, left_cam, rgb_img)
 

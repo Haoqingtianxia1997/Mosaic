@@ -73,8 +73,8 @@ if __name__ == '__main__':
 
             # Process frame
             results = gaze_pipeline.step(frame)
-            
-            # 打印 pitch 和 yaw（以度为单位）
+
+            # print pitch and yaw in degrees
             for i in range(results.pitch.shape[0]):
                 pitch = results.pitch[i] * 180.0 / np.pi
                 yaw = results.yaw[i] * 180.0 / np.pi
