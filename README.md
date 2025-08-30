@@ -59,7 +59,7 @@ chmod +x launch.sh
 ./launch.sh
 ```
 Tmux is used to manage all the necessary components. Use Ctrl + b then a number in 0~7 to switch among all the sessions.
-
+Switch to high_level(number 7) then press S to give voice command.
 To close the multiplexer(first detach with Ctrl+b then d) : 
 ```bash
 tmux kill-session -t mosaic
