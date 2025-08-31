@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source /opt/ros/humble/setup.bash
-source ~/manipulation_ws/install/setup.bash
+source ~/mosaic/manipulation_ws/install/setup.bash
 
 sudo iptables -I INPUT 1 -s 192.168.2.55 -j ACCEPT
 
@@ -29,9 +29,6 @@ tmux new-window -t $SESSION:5 -n intent_detect "bash -c 'cd $SCRIPT_DIR/manipula
 
 # session 7: intention llm
 tmux new-window -t $SESSION:6 -n intent_llm "bash -c 'cd $SCRIPT_DIR/manipulation_ws && python3 src/action/action/intention_llm.py'"
-
-# session 8: high level main
-tmux new-window -t $SESSION:7 -n high_level "bash -c 'cd $SCRIPT_DIR/high_level && python3 1.main.py'"
 
 # Attach to the tmux session
 tmux attach -t $SESSION

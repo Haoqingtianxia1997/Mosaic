@@ -75,7 +75,7 @@ GENERAL RULES
 • A add action must include its "add_times" parameter.
 • The robot cannot grasp raw materials directly (e.g. "salt"). It must operate on
   containers such as "salt bottle", "pepper bottle", etc.  
-• Always perceive an object before grasping it if its location is not certain.  
+• Always perceive an object and move to it before grasping it if its location is not certain.  
 • Output **only** valid JSON — no markdown, no explanations, no commentary.
 • If there're multiple actions, e.g. "give me the salt and then give me the pepper", 
 you should do "reset" first after "give me the salt" before "give me the pepper". Or 

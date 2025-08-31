@@ -57,6 +57,9 @@ Our code is divided into two parts: high level and low level(manipulation_ws). F
 ```bash
 chmod +x launch.sh
 ./launch.sh
+
+cd high_level
+python3 1.main.py
 ```
 Tmux is used to manage all the necessary components. Use Ctrl + b then a number in 0~7 to switch among all the sessions.
 Switch to high_level(number 7) then press S to give voice command.

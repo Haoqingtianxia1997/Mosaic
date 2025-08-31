@@ -1,0 +1,124 @@
+{
+  "response": "Sure, I’ll put the tomato in, add salt twice, and then stir for 20 seconds.",
+  "actions": [
+    {
+      "type": "perceive",
+      "target": "tomato",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "tomato",
+      "parameters": {}
+    },
+    {
+      "type": "grasp_otherthings",
+      "target": "tomato",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "open",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "grasp_otherthings",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "add",
+      "target": "soup pot",
+      "parameters": {
+        "add_times": "2"
+      }
+    },
+    {
+      "type": "return_back",
+      "target": "salt bottle",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "grasp_otherthings",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "soup pot",
+      "parameters": {}
+    },
+    {
+      "type": "stir",
+      "target": "soup pot",
+      "parameters": {
+        "stir_time": 20
+      }
+    },
+    {
+      "type": "return_back",
+      "target": "spoon",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    }
+  ]
+}
