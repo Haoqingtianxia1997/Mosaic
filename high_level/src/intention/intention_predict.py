@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 intention_predict.py
-实时视频流：人体姿态 + 头部朝向 ROI + YOLO 目标检测 + 语音交互
+
 """
 import cv2
 import time 
