@@ -1,0 +1,6 @@
+# Request
+---
+# Response
+bool success
+bool grasp_success
+string message

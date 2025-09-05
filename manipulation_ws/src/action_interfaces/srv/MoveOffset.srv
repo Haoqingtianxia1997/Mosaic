@@ -1,0 +1,4 @@
+float64 delta
+string direction
+---
+bool success

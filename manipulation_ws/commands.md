@@ -157,6 +157,12 @@ ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.434, y_
 ros2 service call /grasp_service action_interfaces/srv/Grasp "{x_prep: 0.27, y_prep: 0.561, z_prep: 0.523, qx_prep: 0.725, qy_prep: 0.688, qz_prep: 0.023, qw_prep: -0.007, x_grasp: 0.27, y_grasp: 0.561, z_grasp: 0.223, qx_grasp: 0.725, qy_grasp: 0.688, qz_grasp: 0.023, qw_grasp: -0.007}"
 ```
 
+grasp detection:
+```bash
+ros2 run action grasp_detection
+
+ros2 service call /grasp_detection_service action_interfaces/srv/GraspDetect
+```
 return_back:
 ```bash
 ros2 run action return_back

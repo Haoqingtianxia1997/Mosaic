@@ -63,6 +63,10 @@ class ActionExecutor:
         self.stir_time = 30
         self.add_times = 2
         
+        # Action move offset
+        self.delta = 0.0
+        self.direction = None
+
         # State flags
         self.grasped_thing = ""
         self.success = True
@@ -99,7 +103,17 @@ class ActionExecutor:
                     if params["add_times"] is not None:
                         self.add_times = params["add_times"]
                         print(f"🔧 Add times: {self.add_times}")
-                
+
+                if "delta" in params:
+                    if params["delta"] is not None:
+                        self.delta = params["delta"]
+                        print(f"🔧 Delta: {self.delta}")
+
+                if "direction" in params:
+                    if params["direction"] is not None:
+                        self.direction = params["direction"]
+                        print(f"🔧 Direction: {self.direction}")
+
                 if act_type == "perceive":
                     self.action_perceive(vlm_client)
                     
@@ -126,7 +140,18 @@ class ActionExecutor:
 
                 elif act_type == "close":
                     self.action_close()
-                
+
+                elif act_type == "grasp_detection":
+                    self.action_grasp_detection()
+
+                elif act_type == "get_grasps":
+                    self.get_grasps()   
+
+                elif act_type == "move_offset":
+                    self.action_move_offset()
+
+                elif act_type == "get_objects_pos":
+                    self.get_object_pos(vlm_client, self.target)
                 else:
                     print(f"⚠️ Unknown action type: {act_type}")
                     self.success = False
@@ -447,8 +472,8 @@ class ActionExecutor:
                 visualize_obb_and_center(self.all_points_arr, self.all_colors_arr, obb_corners, center)
 
                 grasp_generator = GraspGeneration(center, rotation_matrix)
-                pose1_pos, pose1_orn, pose2_pos, pose2_orn = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')    
-                
+                pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')
+
                 if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
                     print("❌ Failed to compute grasp poses from OBB.")
                     self.success = False
@@ -666,17 +691,84 @@ class ActionExecutor:
             else:
                 print("❌ Close action failed, retrying...")
 
+    def action_grasp_detection(self):
+        """Detect if the robot has successfully grasped an object.
+        Updates self.success.
+        """
+        self.success = False  # Reset success status
+        print("Execute grasp detection action")
+        self.success = call_ros2_service("/grasp_detection_service", "action_interfaces/srv/GraspDetect", {})
+        time.sleep(3)  # Wait for service call to complete
+        while True:
+            if self.success:
+                print("✅ Grasp detection action executed successfully.")
+                break
+            else:
+                print("❌ Grasp detection action failed, retrying...")
 
+    def get_grasps(self):
+        """
+        Given a point cloud, compute and return the best grasp poses using OBB and GraspGeneration.
+        Args:
+            all_points_arr: ndarray of shape (N, 3), perceived point cloud in world coordinates
+            all_colors_arr: ndarray of shape (N, 3), colors corresponding to the point cloud
+        Returns:
+            best_pose: list of [pose1_pos, pose1_orn, pose2_pos, pose2_orn]
+            top_10_grasps: list of top 10 grasps
+            valid_grasps: list of valid grasps
+        Raises:
+            ValueError: If point cloud is empty or invalid.
+        """
+        try:
+            if self.all_points_arr is None or len(self.all_points_arr) == 0:
+                raise ValueError("Point cloud is empty or None.")
+        except ValueError as e:
+            print(e)
+            return None, None, None
 
+        _, rotation_matrix, center = compute_obb(self.all_points_arr)
+        grasp_generator = GraspGeneration(center, rotation_matrix)
+        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')
+        best_pose = [pose1_pos, pose1_orn, pose2_pos, pose2_orn]
+        print("Best grasp pose:", best_pose)
+        print("Top 10 grasps:", top_10_grasps)
+        print("Valid grasps:", valid_grasps)
+        return best_pose, top_10_grasps, valid_grasps
+    
+    def action_move_offset(self):
+        """Move the robot's end effector by a small offset.
+        Updates self.success.
+        """
+        self.success = False  # Reset success status
+        print("Execute move offset action")
+        self.success = call_ros2_service("/move_offset_service", "action_interfaces/srv/MoveOffset", {"delta": self.delta, "direction": self.direction})
+        time.sleep(3)  # Wait for service call to complete
+        while True:
+            if self.success:
+                print("✅ Move offset action executed successfully.")
+                break
+            else:
+                print("❌ Move offset action failed, retrying...")
 
-
-
-
-
-
-
-
-
+    def get_object_pos(self, vlm_client, object_name):
+        """Get the position of a specified object using the VLM client.
+        
+        Args:
+            object_name (str): The name of the object to locate.
+        
+        Returns:
+            position (tuple): The (x, y, z) coordinates of the object.
+        
+        Raises:
+            ValueError: If the object cannot be located.
+        """
+        if vlm_client is None:
+            raise ValueError("VLM client is not initialized.")
+        
+        self.target = object_name
+        self.action_perceive(vlm_client)
+        print(f"center_world_points: {self.center_world_points}")
+        return self.center_world_points
 
 
 

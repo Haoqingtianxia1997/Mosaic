@@ -10,6 +10,8 @@ class GraspGeneration:
     def __init__(self, bbox_center, bbox_rotation_matrix):
         self.bbox_center = bbox_center
         self.bbox_rotation_matrix = bbox_rotation_matrix
+        self.valid_grasps_list = []
+        self.top_10_grasps = []
 
     def sample_grasps_state(
         self,
@@ -624,15 +626,24 @@ class GraspGeneration:
                     visualize_rays=False
                 )
                 
-                if valid_grasp and grasp_quality > highest_quality:
-                    highest_quality = grasp_quality
-                    best_grasp = pose
-                    best_grasp_mesh = grasp_mesh
-                    print(f"Found better grasp, quality: {grasp_quality}")
+                if valid_grasp:
+                    # Store valid grasp with quality score
+                    self.valid_grasps_list.append((grasp_quality, pose, grasp_mesh))
+                    
+                    if grasp_quality > highest_quality:
+                        highest_quality = grasp_quality
+                        best_grasp = pose
+                        best_grasp_mesh = grasp_mesh
+                        print(f"Found better grasp, quality: {grasp_quality}")
         
+        # Sort valid grasps by quality (descending) and get top 10
+        self.valid_grasps_list.sort(key=lambda x: x[0], reverse=True)
+        self.top_10_grasps = self.valid_grasps_list[:10]
+        top_10_grasps = self.compute_top_10_grasp_poses()
+
         if best_grasp is None:
             print("No valid grasp found!")
-            return None, None, None, None
+            return None, None, None, None, None, None
         
         print(f"\nFound best grasp, quality score: {highest_quality}")
         
@@ -657,4 +668,30 @@ class GraspGeneration:
             # Call visualization function
             visualize_3d_objs(vis_meshes)
 
-        return pose1_pos, pose1_orn, pose2_pos, pose2_orn
+        return pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, self.valid_grasps_list
+    
+    def compute_top_10_grasp_poses(self):
+        """
+        Compute prep_pose for the top 10 grasps using compute_grasp_poses function
+        
+        Returns:
+            list: List of tuples containing (quality, prep_pose_pos, prep_pose_orn, grasp_pose_pos, grasp_pose_orn) for top 10 grasps
+        """
+        if len(self.top_10_grasps) == 0:
+            print("No top 10 grasps available.")
+            return None
+
+        top_10_poses = []
+        
+        for _, pose, _ in self.top_10_grasps:
+            # Compute grasp poses using the existing function
+            pose1_pos, pose1_orn, pose2_pos, pose2_orn = self.compute_grasp_poses(pose)
+            # Store prep pose (pose1), and final grasp pose (pose2)
+            top_10_poses.append({
+                'prep_pose_pos': pose1_pos,
+                'prep_pose_orn': pose1_orn,
+                'grasp_pose_pos': pose2_pos,
+                'grasp_pose_orn': pose2_orn
+            })
+        
+        return top_10_poses

@@ -77,6 +77,20 @@ def generate_launch_description():
             output='screen',
         ),
 
+        Node(
+            package='action',
+            executable='grasp_detection',
+            name='grasp_detection_node',
+            output='screen',
+        ),
+
+        Node(
+            package='action',
+            executable='move_offset',
+            name='move_offset_node',
+            output='screen',
+        ),
+
         # ExecuteProcess(
         #     cmd=[
         #         '/home/mosaic/miniconda3/envs/mosaic/bin/python',
