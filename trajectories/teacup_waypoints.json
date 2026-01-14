@@ -1,0 +1,119 @@
+{
+  "object_name": "teacup",
+  "task": "Pick up the cup by the handle and lift it 20cm upward, then move it to a new location",
+  "num_waypoints": 8,
+  "waypoints": [
+    {
+      "position": [
+        0.7477415264474381,
+        0.2786786828568041,
+        0.05331613848161611
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "open",
+      "description": "Start: Safe approach position from side at height 0.053m"
+    },
+    {
+      "position": [
+        0.5977415264474382,
+        0.2786786828568041,
+        0.05331613848161611
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "open",
+      "description": "Pre-grasp: Approaching handle"
+    },
+    {
+      "position": [
+        0.5477415264474381,
+        0.2786786828568041,
+        0.05331613848161611
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "open",
+      "description": "Grasp: AT handle surface (radius=0.035m from center)"
+    },
+    {
+      "position": [
+        0.5477415264474381,
+        0.2786786828568041,
+        0.05331613848161611
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "close",
+      "description": "Close gripper on handle"
+    },
+    {
+      "position": [
+        0.5477415264474381,
+        0.2786786828568041,
+        0.2533161384816161
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "close",
+      "description": "Lift cup upward by 20cm"
+    },
+    {
+      "position": [
+        0.6977415264474381,
+        0.4286786828568041,
+        0.2533161384816161
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "close",
+      "description": "Move to new location while lifted"
+    },
+    {
+      "position": [
+        0.6977415264474381,
+        0.4286786828568041,
+        0.05331613848161611
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "close",
+      "description": "Lower to original height"
+    },
+    {
+      "position": [
+        0.6977415264474381,
+        0.4286786828568041,
+        0.05331613848161611
+      ],
+      "orientation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "gripper_state": "open",
+      "description": "End: Same height as start (0.053m), but moved to new XY location"
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "object_name": "bowl",
+  "task": "Grasp the bowl at the RIM EDGE from the side (where humans naturally hold bowls - at the opening edge, NOT at the dome bottom). The rim contact point is at center + horizontal_offset * radius, where center is at the opening plane. Lift 15cm upward and move to new location.",
+  "num_waypoints": 8,
+  "waypoints": [
+    {
+      "position": [
+        0.3076672673271205,
+        -0.0018215485907353765,
+        0.08808884046176749
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Start: Safe approach position from side at height 0.088m"
+    },
+    {
+      "position": [
+        0.1576672673271205,
+        -0.0018215485907353765,
+        0.08808884046176749
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Pre-grasp: Approaching rim edge"
+    },
+    {
+      "position": [
+        0.10766726732712051,
+        -0.0018215485907353765,
+        0.03808884046176749
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Grasp: AT rim edge (radius=0.108m from center)"
+    },
+    {
+      "position": [
+        0.10766726732712051,
+        -0.0018215485907353765,
+        0.03808884046176749
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Close gripper on rim edge"
+    },
+    {
+      "position": [
+        0.10766726732712051,
+        -0.0018215485907353765,
+        0.1880888404617675
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Lift bowl upward"
+    },
+    {
+      "position": [
+        0.3076672673271205,
+        0.1481784514092646,
+        0.1880888404617675
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Move to new location while lifted"
+    },
+    {
+      "position": [
+        0.3076672673271205,
+        0.1481784514092646,
+        0.08808884046176749
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Lower to original height"
+    },
+    {
+      "position": [
+        0.4576672673271205,
+        0.1481784514092646,
+        0.08808884046176749
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "End: Same height as start (0.088m), but moved to new XY location"
+    }
+  ]
+}

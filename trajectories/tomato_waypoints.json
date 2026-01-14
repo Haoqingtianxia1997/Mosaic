@@ -1,0 +1,119 @@
+{
+  "object_name": "tomato",
+  "task": "Grasp the tomato from the top and lift it gently upward, then place it at a different location",
+  "num_waypoints": 8,
+  "waypoints": [
+    {
+      "position": [
+        0.000381228912770204,
+        -0.0005386157871417295,
+        0.10808474431603181
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Start: Safe approach position above tomato at height 0.108m"
+    },
+    {
+      "position": [
+        0.000381228912770204,
+        -0.0005386157871417295,
+        0.1018002282236799
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Pre-grasp: Approaching top surface of tomato"
+    },
+    {
+      "position": [
+        0.000381228912770204,
+        -0.0005386157871417295,
+        0.05180022822367989
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Grasp: AT top surface of tomato"
+    },
+    {
+      "position": [
+        0.000381228912770204,
+        -0.0005386157871417295,
+        0.05180022822367989
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Close gripper around tomato"
+    },
+    {
+      "position": [
+        0.000381228912770204,
+        -0.0005386157871417295,
+        0.20180022822367988
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Lift tomato upwards"
+    },
+    {
+      "position": [
+        0.20038122891277022,
+        0.14946138421285826,
+        0.20180022822367988
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Move to new location while lifted"
+    },
+    {
+      "position": [
+        0.20038122891277022,
+        0.14946138421285826,
+        0.05180022822367989
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Lower tomato to original grasp height"
+    },
+    {
+      "position": [
+        0.20038122891277022,
+        0.14946138421285826,
+        0.10808474431603181
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "End: Same height as start (0.108m), moved to new XY location"
+    }
+  ]
+}

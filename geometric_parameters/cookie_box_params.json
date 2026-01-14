@@ -1,0 +1,28 @@
+{
+  "object_name": "cookie_box",
+  "subtask": null,
+  "selected_primitives": {
+    "component": [
+      "box"
+    ]
+  },
+  "point_cloud_paths": [
+    "point_cloud\\cookie_box.ply"
+  ],
+  "num_points": 1200,
+  "parameters": {
+    "component_0": {
+      "type": "box",
+      "center": [
+        0.0,
+        0.0,
+        0.04023660452591979
+      ],
+      "dimensions": [
+        0.153,
+        0.10200000000000001,
+        0.08111732676712363
+      ]
+    }
+  }
+}

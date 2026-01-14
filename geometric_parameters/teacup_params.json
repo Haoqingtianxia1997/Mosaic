@@ -1,0 +1,30 @@
+{
+  "object_name": "teacup",
+  "subtask": null,
+  "selected_primitives": {
+    "component": [
+      "cylinder"
+    ]
+  },
+  "point_cloud_paths": [
+    "point_cloud\\teacup.ply"
+  ],
+  "num_points": 1275,
+  "parameters": {
+    "component_0": {
+      "type": "cylinder",
+      "center": [
+        0.5128707412430444,
+        0.2786786828568041,
+        0.05331613848161611
+      ],
+      "radius": 0.034870785204393726,
+      "height": 0.08597257473249452,
+      "axis": [
+        0.22690922686343973,
+        -0.46018672000008387,
+        0.8583358232648807
+      ]
+    }
+  }
+}

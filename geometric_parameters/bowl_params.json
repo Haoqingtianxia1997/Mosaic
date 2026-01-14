@@ -1,0 +1,29 @@
+{
+  "object_name": "bowl",
+  "subtask": null,
+  "selected_primitives": {
+    "component": [
+      "hemisphere"
+    ]
+  },
+  "point_cloud_paths": [
+    "point_cloud\\bowl.ply"
+  ],
+  "num_points": 1500,
+  "parameters": {
+    "component_0": {
+      "type": "hemisphere",
+      "center": [
+        2.3160884078665678e-07,
+        -0.0018215485907353765,
+        0.03808884046176749
+      ],
+      "radius": 0.10766703571827972,
+      "axis": [
+        0,
+        0,
+        1
+      ]
+    }
+  }
+}

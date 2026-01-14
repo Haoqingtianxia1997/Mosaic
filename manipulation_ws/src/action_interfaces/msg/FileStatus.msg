@@ -1,2 +1,0 @@
-bool changed
-string content

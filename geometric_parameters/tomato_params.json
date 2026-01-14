@@ -1,0 +1,28 @@
+{
+  "object_name": "tomato",
+  "subtask": null,
+  "selected_primitives": {
+    "component": [
+      "ellipsoid"
+    ]
+  },
+  "point_cloud_paths": [
+    "point_cloud\\tomato.ply"
+  ],
+  "num_points": 1800,
+  "parameters": {
+    "component_0": {
+      "type": "ellipsoid",
+      "center": [
+        0.000381228912770204,
+        -0.0005386157871417295,
+        0.008084744316031803
+      ],
+      "radii": [
+        0.04277209249829337,
+        0.043920959661371405,
+        0.04371548390764809
+      ]
+    }
+  }
+}

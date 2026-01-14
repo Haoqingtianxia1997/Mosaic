@@ -1,0 +1,91 @@
+{
+  "object_name": "laptop",
+  "task": "Push the laptop screen to fold the screen over the keyboard",
+  "num_waypoints": 6,
+  "waypoints": [
+    {
+      "position": [
+        -0.0004104585458583193,
+        -0.015244887992938896,
+        0.16604663538652548
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Start: Safe approach position at height 0.166m"
+    },
+    {
+      "position": [
+        -0.0004121087033786864,
+        -0.016678941655095474,
+        0.11851692791764458
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Pre-grasp: Approaching screen surface"
+    },
+    {
+      "position": [
+        -0.0004121087033786864,
+        -0.016678941655095474,
+        0.06851692791764458
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Grasp: AT screen top surface (contact point)"
+    },
+    {
+      "position": [
+        -0.0003832231478143828,
+        0.00842377504264263,
+        0.025275133551339868
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Manipulation: Push screen"
+    },
+    {
+      "position": [
+        -0.0004121087033786864,
+        -0.016678941655095474,
+        0.11851692791764458
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Return to safe height"
+    },
+    {
+      "position": [
+        0.1995895414541417,
+        0.13475511200706108,
+        0.16604663538652548
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "End: Same height as start (0.166m), different XY location"
+    }
+  ]
+}

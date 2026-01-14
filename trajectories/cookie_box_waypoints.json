@@ -1,0 +1,105 @@
+{
+  "object_name": "cookie_box",
+  "task": "Grasp the box from the sides and slide it forward 30cm",
+  "num_waypoints": 7,
+  "waypoints": [
+    {
+      "position": [
+        -0.2765,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Start: Safe approach position from side at height 0.040m"
+    },
+    {
+      "position": [
+        0.026499999999999996,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Pre-grasp: Approaching side of box"
+    },
+    {
+      "position": [
+        0.0765,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "Grasp: At side surface of box"
+    },
+    {
+      "position": [
+        0.0765,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Close gripper on box"
+    },
+    {
+      "position": [
+        0.3765,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Slide box forward by 30cm"
+    },
+    {
+      "position": [
+        0.3765,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "close",
+      "description": "Maintain height after sliding"
+    },
+    {
+      "position": [
+        0.5265,
+        0.0,
+        0.04023660452591979
+      ],
+      "orientation": [
+        0,
+        0,
+        0
+      ],
+      "gripper_state": "open",
+      "description": "End: Same height as start (0.040m), moved to new XY location"
+    }
+  ]
+}
