@@ -19,14 +19,13 @@
 # cx = 958.9099731445312
 # cy = 561.5670166015625
 # # zedl extrinsics
-# translation = np.array([0.11261126, -0.50195948, 0.55795671])
-# qx = 0.81395177
-# qy = -0.40028226
-# qz = -0.07631803
-# qw = -0.41404371
-# roll = -2.38206340
-# pitch = 0.47316643
-# yaw = -0.72222115
+
+# translation = np.array([0.08738127, -0.48562742,  0.55433431])
+
+# qx = 0.83715593
+# qy = -0.37772623
+# qz = 0.15412896
+# qw = -0.36433106
 
 # test_point = np.array([0.3, -0.2, 0.2])
 
@@ -439,55 +438,53 @@ from math import radians
 
 
 # left image load
-depth_img = np.load('/home/mosaic/image_cache/saved_images/l_depth.npy')
-height, width = depth_img.shape
-rgb_img = cv2.cvtColor(cv2.imread('/home/mosaic/image_cache/saved_images/l_rgb.png'), cv2.COLOR_BGR2RGB)
-
-# zedl cam intrinsics
-fx = 1060.0899658203125
-fy = 1059.0899658203125
-cx = 958.9099731445312
-cy = 561.5670166015625
-# zedl extrinsics
-translation = np.array([0.11761126, -0.49695948, 0.55795671])
-# translation = np.array([0.11261126 + 0.005, -0.50195948 + 0.005, 0.55795671])
-qx = 0.81395177
-qy = -0.40028226
-qz = -0.07631803
-qw = -0.41404371
-roll = -2.372063405541288
-pitch = 0.5331664258453963
-yaw = -0.7102211666314453
-
-test_point = np.array([0.3, -0.2, 0.2])
-
-
-
-
-
-
-
-# # right image load
-# depth_img = np.load('./saved_images/r_depth.npy')
+# depth_img = np.load('/home/mosaic/mosaic/manipulation_ws/saved_images/l_depth.npy')
 # height, width = depth_img.shape
-# rgb_img = cv2.cvtColor(cv2.imread('./saved_images/r_rgb.png'), cv2.COLOR_BGR2RGB)
+# rgb_img = cv2.cvtColor(cv2.imread('/home/mosaic/mosaic/manipulation_ws/saved_images/l_rgb.png'), cv2.COLOR_BGR2RGB)
 
-# # zedr cam intrinsics
-# fx = 1059.9764404296875
-# fy = 1059.9764404296875
-# cx = 963.07568359375
-# cy = 522.3530883789062
-# # zedr extrinsics
-# translation = [0.903701253331141, 0.439249176547482, 0.598645500102408]
-# qx = -0.404974467935380
-# qy = -0.808551385290863
-# qz = 0.425767747250020
-# qw = 0.031018753461827
-# roll  = -2.298360156012407
-# pitch = 0.299130700579650
-# yaw   = 2.347883188101515
+# # zedl cam intrinsics
+# fx = 1060.0899658203125
+# fy = 1059.0899658203125
+# cx = 958.9099731445312
+# cy = 561.5670166015625
+# # zedl extrinsics
+# translation = np.array([0.08738127, -0.48562742,  0.55433431])
+# # translation = np.array([0.11261126 + 0.005, -0.50195948 + 0.005, 0.55795671])
+# qx = 0.83715593
+# qy = -0.37772623
+# qz = 0.15412896
+# qw = -0.36433106
+# rot_quat = R.from_quat([qx, qy, qz, qw])
+# roll, pitch, yaw = rot_quat.as_euler('xyz')
 
-# test_point = np.array([0.7, 0.0, 0.2])
+# test_point = np.array([0.4, -0.2, 0.2])
+
+
+
+
+
+
+
+# right image load
+depth_img = np.load('/home/mosaic/mosaic/manipulation_ws/saved_images/r_depth.npy')
+height, width = depth_img.shape
+rgb_img = cv2.cvtColor(cv2.imread('/home/mosaic/mosaic/manipulation_ws/saved_images/r_rgb.png'), cv2.COLOR_BGR2RGB)
+
+# zedr cam intrinsics
+fx = 1059.9764404296875
+fy = 1059.9764404296875
+cx = 963.07568359375
+cy = 522.3530883789062
+# zedr extrinsics
+translation = [0.862, 0.478207, 0.57065845]
+qx = 0.55712176
+qy = 0.74418569
+qz = -0.29310264
+qw = -0.22336929
+rot_quat = R.from_quat([qx, qy, qz, qw])
+roll, pitch, yaw = rot_quat.as_euler('xyz')
+
+test_point = np.array([0.7, 0.0, 0.2])
 
 
 
@@ -522,27 +519,29 @@ points_world_hom = (T_total @ points_cam_hom.T).T
 
 
 # rotation adjust 
-# angle_deg = 5
-# angle_rad = radians(angle_deg)
-# R_y = R.from_euler('x', angle_rad).as_matrix()
-# T_y = np.eye(4)
-# T_y[:3, :3] = R_y
-# points_world_hom = (T_y @ points_world_hom.T).T
 
-# angle_deg = 5
-# angle_rad = radians(angle_deg)
-# R_y = R.from_euler('y', angle_rad).as_matrix()
-# T_y = np.eye(4)
-# T_y[:3, :3] = R_y
-# points_world_hom = (T_y @ points_world_hom.T).T
 
-# angle_deg = 5
-# angle_rad = radians(angle_deg)
-# R_y = R.from_euler('z', angle_rad).as_matrix()
-# T_y = np.eye(4)
-# T_y[:3, :3] = R_y
-# points_world_hom = (T_y @ points_world_hom.T).T
+angle_deg = 0
+angle_rad = radians(angle_deg)
+R_y = R.from_euler('x', angle_rad).as_matrix()
+T_y = np.eye(4)
+T_y[:3, :3] = R_y
+points_world_hom = (T_y @ points_world_hom.T).T
 
+
+angle_deg = 0
+angle_rad = radians(angle_deg)
+R_y = R.from_euler('z', angle_rad).as_matrix()
+T_y = np.eye(4)
+T_y[:3, :3] = R_y
+points_world_hom = (T_y @ points_world_hom.T).T
+
+angle_deg = 0
+angle_rad = radians(angle_deg)
+R_y = R.from_euler('y', angle_rad).as_matrix()
+T_y = np.eye(4)
+T_y[:3, :3] = R_y
+points_world_hom = (T_y @ points_world_hom.T).T
 
 points_world = points_world_hom[:, :3]
 

@@ -1,0 +1,37 @@
+digraph G {
+"fr3_hand" -> "fr3_leftfinger"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link8" -> "fr3_hand"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"fr3_hand" -> "fr3_rightfinger"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link0" -> "fr3_link1"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"base" -> "fr3_link0"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"fr3_link1" -> "fr3_link2"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link2" -> "fr3_link3"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link3" -> "fr3_link4"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link4" -> "fr3_link5"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link5" -> "fr3_link6"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"fr3_link6" -> "fr3_link7"[label=" Broadcaster: default_authority\nAverage rate: 15.197\nBuffer length: 5.067\nMost recent transform: 1772310680.204615\nOldest transform: 1772310675.137792\n"];
+"zedr_left_camera_frame" -> "zedr_left_camera_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_camera_center" -> "zedr_baro_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_camera_link" -> "zedr_camera_center"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_camera_center" -> "zedr_left_camera_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_camera_center" -> "zedr_mag_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_camera_center" -> "zedr_right_camera_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_right_camera_frame" -> "zedr_right_camera_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_left_camera_frame" -> "zedr_temp_left_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedr_right_camera_frame" -> "zedr_temp_right_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"fr3_link7" -> "fr3_link8"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"fr3_hand" -> "fr3_hand_tcp"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_camera_center" -> "zedl_baro_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_camera_link" -> "zedl_camera_center"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_camera_center" -> "zedl_left_camera_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_left_camera_frame" -> "zedl_left_camera_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_camera_center" -> "zedl_mag_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_camera_center" -> "zedl_right_camera_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_right_camera_frame" -> "zedl_right_camera_optical_frame"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_left_camera_frame" -> "zedl_temp_left_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"zedl_right_camera_frame" -> "zedl_temp_right_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1772310680.2223892"[ shape=plaintext ] ;
+}->"zedl_camera_link";
+}
