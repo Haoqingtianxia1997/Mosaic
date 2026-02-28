@@ -1,7 +1,7 @@
 torch
 torchvision
 torchaudio
-mediapipe
+mediapipe==0.10.21
 opencv-python
 ultralytics
 mistralai
@@ -17,7 +17,7 @@ sacremoses
 open3d
 
 matplotlib
-numpy
+numpy<2
 pandas
 Pillow
 scipy

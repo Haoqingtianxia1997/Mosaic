@@ -1,8 +1,11 @@
 from cv_bridge import CvBridge
+import math
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import cv2
 import mediapipe as mp
+from mediapipe.tasks.python import vision as mp_vision
+from mediapipe.tasks.python import BaseOptions
 import time
 from ultralytics import YOLO
 import os
@@ -27,25 +30,27 @@ class Intention():
         self.yolo_model = YOLO('yolo_model/best.pt')
         # self.transcriber = VoiceTranscriber()
 
-        self.mp_hands = mp.solutions.hands
-        self.hands_detector = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.5,
+        models_dir = os.path.join(os.path.dirname(__file__), 'models')
+        hand_model_path = os.path.join(models_dir, 'hand_landmarker.task')
+        face_model_path = os.path.join(models_dir, 'face_landmarker.task')
+
+        hand_options = mp_vision.HandLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=hand_model_path),
+            running_mode=mp_vision.RunningMode.IMAGE,
+            num_hands=2,
+            min_hand_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
+        self.hands_detector = mp_vision.HandLandmarker.create_from_options(hand_options)
 
-        
-        # self.play_text_to_speech = play_text_to_speech
-
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,  # More accurate pupil detection, etc.
-            min_detection_confidence=0.5,
+        face_options = mp_vision.FaceLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=face_model_path),
+            running_mode=mp_vision.RunningMode.IMAGE,
+            num_faces=1,
+            min_face_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
+        self.face_mesh = mp_vision.FaceLandmarker.create_from_options(face_options)
         
         self.gaze_pipeline = Pipeline(
             weights="src/intention/models/L2CSNet_gaze360.pkl",
@@ -75,22 +80,23 @@ class Intention():
         """
         fx, fy, cx, cy = camera_intrinsics
 
-        rgb = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
+        rgb = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
         depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')  # Single-channel float32 (meters)
 
         h, w = depth.shape
 
         img_rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-        hands_result = self.hands_detector.process(img_rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        hands_result = self.hands_detector.detect(mp_image)
 
-        if hands_result.multi_hand_landmarks:
-            hand = hands_result.multi_hand_landmarks[0]
+        if hands_result.hand_landmarks:
+            hand = hands_result.hand_landmarks[0]
         else:
-            return None, None 
+            return None, None
 
-        # get pixel coordinates
-        index_mcp = hand.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_MCP]
-        index_tip = hand.landmark[mp.solutions.hands.HandLandmark.INDEX_FINGER_TIP]
+        # get pixel coordinates (INDEX_FINGER_MCP=5, INDEX_FINGER_TIP=8)
+        index_mcp = hand[5]
+        index_tip = hand[8]
 
         u1, v1 = int(index_mcp.x * w), int(index_mcp.y * h)
         u2, v2 = int(index_tip.x * w), int(index_tip.y * h)
@@ -126,7 +132,7 @@ class Intention():
             return None, None
 
         direction /= np.linalg.norm(direction)
-        # print(f"origin:{origin}, direction: {direction}")
+        print(f"origin:{origin}, direction: {direction}")
         return direction, origin
 
     def get_gaze_direction(self, rgb_msg, depth_msg, T_wc, cam_intrinsics):
@@ -137,14 +143,15 @@ class Intention():
         fx, fy, cx, cy = cam_intrinsics
 
         # step1: face mesh detection
-        face_result = self.face_mesh.process(img_rgb)
-        if not face_result.multi_face_landmarks:
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        face_result = self.face_mesh.detect(mp_image)
+        if not face_result.face_landmarks:
             return None, None
-        face_landmarks = face_result.multi_face_landmarks[0]
+        face_landmarks = face_result.face_landmarks[0]
 
         # step2: Eye center keypoints (33, 263 for left and right eye centers)
-        left_eye = face_landmarks.landmark[33]
-        right_eye = face_landmarks.landmark[263]
+        left_eye = face_landmarks[33]
+        right_eye = face_landmarks[263]
       
         u = int((left_eye.x + right_eye.x) / 2 * w)
         v = int((left_eye.y + right_eye.y) / 2 * h)
@@ -227,7 +234,34 @@ class Intention():
         gaze_origin_w = R_wc @ cam_origin_c + t_wc
         print(f"gaze_vec_w: {gaze_vec_w}, gaze_origin_w: {gaze_origin_w}")
         return gaze_vec_w, gaze_origin_w
-    
+
+    def compute_gaze_from_aria(self, pitch, yaw, cam_position, cam_quaternion):
+        """
+        Compute gaze direction and origin in world frame from Aria gaze euler angles and camera pose.
+
+        Args:
+            pitch: gaze pitch angle (radians), from /aria/gaze_euler msg.x
+            yaw: gaze yaw angle (radians), from /aria/gaze_euler msg.y
+            cam_position: np.array([x, y, z]) camera position in world frame
+            cam_quaternion: np.array([x, y, z, w]) camera orientation quaternion
+
+        Returns:
+            (gaze_direction_world, gaze_origin_world) as numpy arrays
+        """
+        cos_pitch = math.cos(pitch)
+        dir_cam = np.array([
+            cos_pitch * math.sin(yaw),
+            -math.sin(pitch),
+            cos_pitch * math.cos(yaw),
+        ])
+
+        rot = R.from_quat(cam_quaternion).as_matrix()
+        gaze_dir_world = rot @ dir_cam
+        gaze_origin_world = cam_position.copy()
+
+        print(f"aria gaze_dir_world: {gaze_dir_world}, gaze_origin_world: {gaze_origin_world}")
+        return gaze_dir_world, gaze_origin_world
+
     def line_plane_intersect(self, origin, direction, z_plane=0.0):
         """calculate intersection of a line with xy plane"""
         if abs(direction[2]) < 1e-6:
@@ -471,7 +505,7 @@ class Intention():
                     print(f"Projected pixel: ({u}, {v})")
 
                     # yolo
-                    img = self.bridge.imgmsg_to_cv2(rgb, 'bgr8')
+                    img = self.bridge.compressed_imgmsg_to_cv2(rgb, 'bgr8')
                     labels = self.detect_and_draw_yolo(
                         img, u, v, self.yolo_model, os.path.join(self.output_dir, name)
                     )
@@ -504,7 +538,7 @@ class Intention():
                 print(f"Projected pixel: ({u}, {v})")
 
                 # yolo
-                img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
+                img = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
                 labels = self.detect_and_draw_yolo(
                     img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name)
                 )

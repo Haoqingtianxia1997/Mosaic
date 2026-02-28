@@ -439,9 +439,9 @@ from math import radians
 
 
 # left image load
-depth_img = np.load('./saved_images/l_depth.npy')
+depth_img = np.load('/home/mosaic/image_cache/saved_images/l_depth.npy')
 height, width = depth_img.shape
-rgb_img = cv2.cvtColor(cv2.imread('./saved_images/l_rgb.png'), cv2.COLOR_BGR2RGB)
+rgb_img = cv2.cvtColor(cv2.imread('/home/mosaic/image_cache/saved_images/l_rgb.png'), cv2.COLOR_BGR2RGB)
 
 # zedl cam intrinsics
 fx = 1060.0899658203125
@@ -449,15 +449,15 @@ fy = 1059.0899658203125
 cx = 958.9099731445312
 cy = 561.5670166015625
 # zedl extrinsics
-translation = np.array([0.11261126, -0.50195948, 0.55795671])
+translation = np.array([0.11761126, -0.49695948, 0.55795671])
 # translation = np.array([0.11261126 + 0.005, -0.50195948 + 0.005, 0.55795671])
 qx = 0.81395177
 qy = -0.40028226
 qz = -0.07631803
 qw = -0.41404371
-roll = -2.38206340
-pitch = 0.47316643
-yaw = -0.72222115
+roll = -2.372063405541288
+pitch = 0.5331664258453963
+yaw = -0.7102211666314453
 
 test_point = np.array([0.3, -0.2, 0.2])
 
@@ -557,7 +557,7 @@ pcd.points = o3d.utility.Vector3dVector(points_world)
 pcd.colors = o3d.utility.Vector3dVector(colors)
 
 # Create world coordinate frame
-world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
+world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
 
 # Create camera coordinate frame
 camera_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
