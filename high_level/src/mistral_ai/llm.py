@@ -11,7 +11,7 @@ import time
 
 def run_mistral_llm(client):
     # client = Mistralmodel()
-    transcribed_text = get_full_text("./src/transcribe/transcription.txt")
+    transcribed_text = get_full_text("./src/transcribe/speech.txt")
 
     subtasks = client.chat_with_text(
         transcribed_text,

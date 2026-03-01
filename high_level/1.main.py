@@ -3,7 +3,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
-from transcribe.stt import run_stt, NEW_TEXT_EVENT
+from transcribe.stt import run_stt, NEW_TEXT_EVENT, VoiceTranscriber
 from transcribe.tts import run_tts
 from mistral_ai.llm import run_mistral_llm
 from execute.actions import execute_action_sequence
@@ -20,7 +20,7 @@ import json
 
 def stt_thread():
     # run in background
-    run_stt()
+    run_stt(transcriber=VoiceTranscriber())
 
 # def intention_dection_thread():
 #     intention_predict("yolov8x-oiv7.pt")
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         # NEW_TEXT_EVENT.clear()
         # 3. read latest text
         try:
-            with open(TRANS_FILE, "r", encoding="utf-8") as f:
+            with open(SPEECH_FILE, "r", encoding="utf-8") as f:
                 text = f.read().strip()
         except FileNotFoundError:
             continue

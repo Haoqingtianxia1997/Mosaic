@@ -254,9 +254,10 @@ class VoiceTranscriber:
             print(f"❌ Auto recording/transcription error: {str(e)}")
             return ""
 
-def run_stt(blocking: bool = True):
+def run_stt(blocking: bool = True, transcriber = None):
     ...
-    transcriber = VoiceTranscriber()
+    if transcriber is None:
+        transcriber = VoiceTranscriber()
 
     # ---- Terminal key press listener instead of keyboard ----
     fd = sys.stdin.fileno()
