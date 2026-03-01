@@ -24,6 +24,29 @@ JSON FORMAT
   ]
 }
 
+
+The fixed available object target are:
+    - banana
+    - beer bottle
+    - cucumber
+    - cup
+    - detergent bottle
+    - ketchup bottle
+    - mayonnaise bottle
+    - oil bottle
+    - pepper bottle
+    - salt bottle
+    - scouring pad
+    - tomato
+    - water bottle
+    - user person
+    - soup pot
+    - home
+    - table
+    - spoon
+    - gripper
+    - hand
+    
 -----------------------------------------------------------------------
 ACTION TYPES
 
@@ -80,8 +103,8 @@ GENERAL RULES
 • If there're multiple actions, e.g. "give me the salt and then give me the pepper", 
 you should do "reset" first after "give me the salt" before "give me the pepper". Or 
 if "stir the soup pot for 5 minutes and then add salt twice to the soup, finally give 
-me the apple", you should do "reset" first after "stir the soup pot for 5 minutes", 
-and then "reset" again after "add salt twice to the soup" before "give me the apple".
+me the tomato", you should do "reset" first after "stir the soup pot for 5 minutes", 
+and then "reset" again after "add salt twice to the soup" before "give me the tomato".
 """
 
 # ---------------------------------------------------------------------
@@ -93,7 +116,7 @@ Can you hand me the salt?
 Please add salt to the soup pot twice.
 Use the spoon to stir the soup pot for 10 seconds.
 Put the pepper on the table.
-Can you help me to stir the soup pot for 10 minutes and then give me the apple?
+Can you help me to stir the soup pot for 10 minutes and then give me the tomato?
 Can you tell me how to make burger? And please give me the salt bottle.
 Please place the salt bottle back to its home position.
 Please pick up the pepper bottle in my hand and place it back to home position.
@@ -173,7 +196,7 @@ assistant_prompt = '''
 }
 
 {
-  "response": "Of course, I'll stir the soup pot for 10 minutes and then give you the apple.",
+  "response": "Of course, I'll stir the soup pot for 10 minutes and then give you the tomato.",
   "actions": [
     { "type": "perceive", "target": "spoon",        "parameters": {} },
     { "type": "move",     "target": "spoon",        "parameters": {} },
@@ -183,9 +206,9 @@ assistant_prompt = '''
     { "type": "stir",     "target": "soup pot",     "parameters": { "stir_time": 600} },
     { "type": "return_back", "target": "spoon",   "parameters": {} },
     { "type": "reset",    "target": "home",        "parameters": {} },
-    { "type": "perceive", "target": "apple",        "parameters": {} },
-    { "type": "move",     "target": "apple",        "parameters": {} },
-    { "type": "grasp_otherthings",    "target": "apple",        "parameters": {} },
+    { "type": "perceive", "target": "tomato",        "parameters": {} },
+    { "type": "move",     "target": "tomato",        "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "tomato",        "parameters": {} },
     { "type": "perceive", "target": "user person",  "parameters": {} },
     { "type": "move",     "target": "user person",  "parameters": {} },
     { "type": "open",    "target": "user person",  "parameters": {} },
@@ -314,9 +337,9 @@ assistant_prompt = '''
 
 {  "response": "Sure, adding curry to the soup pot five times then stop there.",
   "actions": [
-    { "type": "perceive", "target": "curry bottle", "parameters": {} },
-    { "type": "move",     "target": "curry bottle", "parameters": {} },
-    { "type": "grasp_otherthings",    "target": "curry bottle", "parameters": {} },
+    { "type": "perceive", "target": "beer bottle", "parameters": {} },
+    { "type": "move",     "target": "beer bottle", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "beer bottle", "parameters": {} },
     { "type": "perceive", "target": "soup pot",    "parameters": {} },
     { "type": "add",      "target": "soup pot",    "parameters": { "add_times": 5 } }
   ]

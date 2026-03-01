@@ -7,6 +7,7 @@ from src.transcribe.tts import play_text_to_speech
 from src.grasp.bounding_box import compute_obb
 from src.grasp.grasp_generation import GraspGeneration
 from src.execute.utils import *
+from src.VLM_agent.OwlViT_FastSAM_SAM import TextDrivenSegmenter
 
 
 class ActionExecutor:
@@ -17,7 +18,7 @@ class ActionExecutor:
     
     def __init__(self):
         """Initialize the ActionExecutor with all necessary parameters as class variables."""
-        
+        self.segmenter = TextDrivenSegmenter() 
         # Image paths
         CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
         self.IMAGE_FOLDER_PATH = os.path.abspath(os.path.join(
@@ -221,6 +222,7 @@ class ActionExecutor:
                 depth_path= self.r_depth_path,
                 pixels_to_world_func = pixels_to_world_right,
                 name= "right",
+                segmenter=self.segmenter
             )
 
             if_find_l, response_l, center_world_points_l, all_world_points_l, color_l  = get_cam_world_points(
@@ -230,6 +232,7 @@ class ActionExecutor:
                 depth_path= self.l_depth_path,
                 pixels_to_world_func = pixels_to_world_left,
                 name= "left",
+                segmenter=self.segmenter
             )
 
             if all_world_points_r is not None and all_world_points_l is not None:

@@ -342,9 +342,12 @@ def get_segmenter():
     return _SEG_INSTANCE
 
 
-
-def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left"):
-    seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
+    
+def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left", segmenter=None):
+    if segmenter is None:
+        seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
+    else:
+        seg = segmenter # Allow passing a segmenter instance to avoid repeated loading in multi-turn interactions                           
     img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate)
     if img is None or boxes is None or points is None:
         print(f"Cannot find target '{target}' in the image.")

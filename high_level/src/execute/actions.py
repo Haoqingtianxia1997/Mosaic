@@ -1,8 +1,9 @@
 from src.execute.element_action import *
 
-def execute_action_sequence(actions, vlm_client):
+def execute_action_sequence(actions, vlm_client,executor=None):
     """Wrapper function for backward compatibility."""
-    executor = ActionExecutor()
+    if executor is None:
+        executor = ActionExecutor()
     return executor.execute_action_sequence(actions, vlm_client)
 
 

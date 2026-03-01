@@ -9,6 +9,7 @@ from mistral_ai.llm import run_mistral_llm
 from execute.actions import execute_action_sequence
 from mistral_ai.vlm import run_mistral_vlm
 from src.mistral_ai.mistral import Mistralmodel
+from src.execute.element_action import *
 
 SPEECH_FILE = "src/transcribe/speech.txt"
 TRANS_FILE = "src/transcribe/transcription.txt"
@@ -18,9 +19,12 @@ LLM_FILE = "src/mistral_ai/scripts/llm_script.txt"
 LLM_JSON_FILE = "src/mistral_ai/scripts/llm_script.json"
 import json
 
+transcriber=VoiceTranscriber()
+executor = ActionExecutor()
+
 def stt_thread():
     # run in background
-    run_stt(transcriber=VoiceTranscriber())
+    run_stt(transcriber=transcriber)
 
 # def intention_dection_thread():
 #     intention_predict("yolov8x-oiv7.pt")
@@ -90,7 +94,7 @@ if __name__ == "__main__":
                 actions = llm_data.get("actions", [])
                 if actions:
                     print(f"🦾 Executing {len(actions)} actions...")
-                    execute_action_sequence(actions, vlm_client)
+                    execute_action_sequence(actions, vlm_client, executor=executor)
                 else:
                     print("ℹ️ No actions to execute.")
         except Exception as e:
