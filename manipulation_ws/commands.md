@@ -173,3 +173,20 @@ ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep
 # pepper
 ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep: 0.27, y_prep: 0.561, z_prep: 0.523, qx_prep: 0.725, qy_prep: 0.688, qz_prep: 0.023, qw_prep: -0.007, x_place: 0.27, y_place: 0.561, z_place: 0.223, qx_place: 0.725, qy_place: 0.688, qz_place: 0.023, qw_place: -0.007}"
 ```
+
+## TF tree
+```bash
+# zedr
+ros2 run tf2_ros static_transform_publisher \
+0.8485 0.5172 0.5711 \
+0.3718 0.0715 -0.9173 0.1234 \
+base zedr_camera_link
+
+# zedl
+ros2 run tf2_ros static_transform_publisher --x 0.125474 --y -0.531620 --z 0.534850 --qx 0.116199 --qy -0.326420 --qz -0.337829 --qw -0.875111 --frame-id base --child-frame-id zedl_camera_link
+
+# same base
+ros2 run tf2_ros static_transform_publisher \
+0 0 0 0 0 0 1 \
+base base_link
+```

@@ -94,9 +94,9 @@ class Intention():
         else:
             return None, None
 
-        # get pixel coordinates (INDEX_FINGER_MCP=5, INDEX_FINGER_TIP=8)
-        index_mcp = hand[5]
-        index_tip = hand[8]
+        # get pixel coordinates (MIDDLE_FINGER_MCP=9 as palm center, MIDDLE_FINGER_PIP=10)
+        index_mcp = hand[9]
+        index_tip = hand[10]
 
         u1, v1 = int(index_mcp.x * w), int(index_mcp.y * h)
         u2, v2 = int(index_tip.x * w), int(index_tip.y * h)
@@ -134,106 +134,6 @@ class Intention():
         direction /= np.linalg.norm(direction)
         print(f"origin:{origin}, direction: {direction}")
         return direction, origin
-
-    def get_gaze_direction(self, rgb_msg, depth_msg, T_wc, cam_intrinsics):
-
-        img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        h, w = img.shape[:2]
-        fx, fy, cx, cy = cam_intrinsics
-
-        # step1: face mesh detection
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
-        face_result = self.face_mesh.detect(mp_image)
-        if not face_result.face_landmarks:
-            return None, None
-        face_landmarks = face_result.face_landmarks[0]
-
-        # step2: Eye center keypoints (33, 263 for left and right eye centers)
-        left_eye = face_landmarks[33]
-        right_eye = face_landmarks[263]
-      
-        u = int((left_eye.x + right_eye.x) / 2 * w)
-        v = int((left_eye.y + right_eye.y) / 2 * h)
-
-
-        # step3: Back-projection Z
-        depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')
-        if 0 <= v < depth.shape[0] and 0 <= u < depth.shape[1] and not np.isnan(depth[v, u]).any():
-            z = float(depth[v, u])/1000.0
-        else:
-            return None , None
-
-        x = (u - cx) * z / fx
-        y = (v - cy) * z / fy
-        cam_origin_c = np.array([x, y, z])
-        print(f"cam_origin_c: {cam_origin_c}")
-        # u, v = np.meshgrid(np.arange(w), np.arange(h))
-        # z = depth.astype(np.float32) /1000.0
-
-        # x = (u - cx) * z / fx
-        # y = (v - cy) * z / fy
-
-        # cam_points_c = np.stack((x, y, z), axis=-1).reshape(-1, 3)
-        
-        
-        # rgb_flat = img_rgb.reshape(-1, 3)
-        # colors = rgb_flat / 255.0
-        # pcd = o3d.geometry.PointCloud()
-        # pcd.points = o3d.utility.Vector3dVector(cam_points_c)
-        # pcd.colors = o3d.utility.Vector3dVector(colors)
-
-        # world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
-
-        # # test point position
-        # sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.005)
-        # sphere.translate(test_point := cam_origin_c)
-        # sphere.paint_uniform_color([1, 0, 0])  # Red
-
-        # # Visualization
-        # o3d.visualization.draw_geometries([world_frame, sphere, pcd],
-        #                                 window_name="ZED2 PointCloud with World & Camera Frame")
-
-        # cv2.circle(img, (u, v), 5, (0, 255, 0), -1)
-        # cv2.imshow("Gaze Point", img)
-        # cv2.waitKey(1)
-
-
-
-        # step4: L2CSNet gaze direction
-        results = self.gaze_pipeline.step(img)
-        if results.pitch.shape[0] == 0:
-            return None, None
-        pitch = results.pitch[0]
-        yaw = results.yaw[0]
-
-        if np.isnan(pitch) or np.isnan(yaw):
-            self.first_gaze = True
-            self.pitch = None
-            self.yaw = None
-
-        else:
-            if self.first_gaze:
-                self.first_gaze = False
-                self.pitch = pitch
-                self.yaw = yaw
-            else:
-                self.pitch = self.ema_alpha * pitch + (1 - self.ema_alpha) * self.pitch
-                self.yaw=  self.ema_alpha * yaw + (1 - self.ema_alpha) * self.yaw
-
-        # Euler angles → Camera coordinate system unit vector
-        gx = -np.cos(self.pitch) * np.sin(self.yaw)
-        gy = - np.sin(self.pitch)
-        gz = -np.cos(self.pitch) * np.cos(self.yaw)
-        gaze_vec_c = np.array([gx, gy, gz])
-
-        # step5: Transform to world coordinate system
-        R_wc = T_wc[:3, :3]
-        t_wc = T_wc[:3, 3]
-        gaze_vec_w = R_wc @ gaze_vec_c
-        gaze_origin_w = R_wc @ cam_origin_c + t_wc
-        print(f"gaze_vec_w: {gaze_vec_w}, gaze_origin_w: {gaze_origin_w}")
-        return gaze_vec_w, gaze_origin_w
 
     def compute_gaze_from_aria(self, pitch, yaw, cam_position, cam_quaternion):
         """
@@ -273,7 +173,7 @@ class Intention():
         return p
 
     def in_valid_area(self, pt):
-        return pt is not None and (0.0 <= pt[0] <= 1.0) and (0.0 <= pt[1] <= 0.7) # right side of desk
+        return pt is not None and (0.0 <= pt[0] <= 1.0) and (-0.7 <= pt[1] <= 0.7)
 
     def draw_intersect(self, origin, direction, viewer):
         intersect = self.line_plane_intersect(origin, direction, z_plane=0.0)
@@ -466,17 +366,20 @@ class Intention():
     #     with open(TRANS_FILE, "w", encoding="utf-8") as f:
     #         f.write(last_query_result)
 
-    def process_detection(self, direction, origin, rgb_msg, finger_pts, direction_name, origin_name, image_name, camera_side):
-
-        # EMA filter
-        self.update_ema(direction_name, direction, self.ema_alpha, unit_vector=True)
-        self.update_ema(origin_name, origin, self.ema_alpha)
-        finger_direction_ema = self.get_ema(direction_name)
-        finger_origin_ema = self.get_ema(origin_name)
-
-        # Calculate intersect
-        intersect = self.line_plane_intersect(finger_origin_ema, finger_direction_ema, z_plane=0.0)
-
+    def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None):
+        
+        if intersect is None :     
+            # EMA filter
+            self.update_ema(direction_name, direction, self.ema_alpha, unit_vector=True)
+            self.update_ema(origin_name, origin, self.ema_alpha)
+            finger_direction_ema = self.get_ema(direction_name)
+            finger_origin_ema = self.get_ema(origin_name)                                      
+            # Calculate intersect
+            intersect = self.line_plane_intersect(finger_origin_ema, finger_direction_ema, z_plane=0.0)
+        else:
+            finger_direction_ema = None
+            finger_origin_ema = None
+        
         # stable intersect
         stable, last_output, finger_pts, finger_base = self.update_stable_point(
             finger_pts, intersect, self.SLIDING_WINDOW_SEC, self.AVG_LAST_N,
