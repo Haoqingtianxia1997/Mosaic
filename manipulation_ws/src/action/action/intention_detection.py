@@ -211,7 +211,7 @@ class HandDetectionWithPointCloudNode(Node):
 
                         finger_direction_l, finger_origin_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
                         finger_direction_r, finger_origin_r = self.intention.get_hand_pose(rgb_msg_r, depth_msg_r, self.T_wc_r, self.intrinsics_r)
-
+                        print("-----------------------", finger_direction_l, finger_origin_l, finger_direction_r, finger_origin_r)
                         if finger_direction_l is not None and finger_origin_l is not None and finger_direction_r is not None and finger_origin_r is not None:
                             print("Detection only with both cameras. ")
                             finger_direction = (finger_direction_l + finger_direction_r) / 2

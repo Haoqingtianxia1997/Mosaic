@@ -381,8 +381,8 @@ class Intention():
             finger_origin_ema = None
         
         # stable intersect
-        stable, last_output, finger_pts, finger_base = self.update_stable_point(
-            finger_pts, intersect, self.SLIDING_WINDOW_SEC, self.AVG_LAST_N,
+        stable, last_output, pts, finger_base = self.update_stable_point(
+            pts, intersect, self.SLIDING_WINDOW_SEC, self.AVG_LAST_N,
             self.OUTLIER_THRESHOLD, self.OUTLIER_COUNT
         )
         if isinstance(rgb_msg, list) and isinstance(image_name, list) and isinstance(camera_side, list):
@@ -451,5 +451,5 @@ class Intention():
             else:
                 label_output = []
         
-        return stable, last_output, finger_pts, finger_base, finger_direction_ema, finger_origin_ema, intersect, label_output
+        return stable, last_output, pts, finger_base, finger_direction_ema, finger_origin_ema, intersect, label_output
 
