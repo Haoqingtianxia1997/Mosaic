@@ -28,7 +28,7 @@
     },
     {
       "type": "open",
-      "target": "user person",
+      "target": "gripper",
       "parameters": {}
     },
     {
