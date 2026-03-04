@@ -69,11 +69,12 @@ def safe_extract_json_and_response_for_intention_llm(text: str) -> tuple[str, li
         # Try to parse the entire JSON
         parsed = json.loads(text)
         response = parsed.get("response", "")
+        audio_response = parsed.get("audio response", "")
         content = parsed.get("content", [])
-        return response, content, [parsed]  # Keep extract_json interface compatible
+        return response, audio_response, content, [parsed]
     except Exception as e:
         print(f"[safe_extract_json_and_response] JSON parsing failed: {e}")
-        return "", [], []
+        return "", "", [], []
 
 def safe_extract_json_and_response_for_vlm(data: Any) -> Tuple[bool, str, Dict]:
     """

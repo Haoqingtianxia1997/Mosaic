@@ -81,7 +81,7 @@ if __name__ == "__main__":
         
         last_text = text
         if_success = run_mistral_llm(llm_client)
-        run_tts(LLM_FILE)
+        # run_tts(LLM_FILE)
 
         if not if_success:
             print("❌ Planning LLM processing failed. Please try again.")

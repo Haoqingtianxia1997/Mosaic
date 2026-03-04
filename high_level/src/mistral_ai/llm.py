@@ -30,7 +30,7 @@ def run_mistral_llm(client):
         return False
 
     # Save response text
-    Path("./src/mistral_ai/scripts/llm_script.txt").write_text(response, encoding="utf-8")
+    # Path("./src/mistral_ai/scripts/llm_script.txt").write_text(response, encoding="utf-8")
 
     print("🤖 LLM Response:")
     print(">>> Subtask list:\n", response)
@@ -63,14 +63,15 @@ def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_se
     subtasks = re.sub(r':\s*None', ': ""', str(subtasks))
 
     # Safe extraction method
-    response, content, json_blocks = safe_extract_json_and_response_for_intention_llm(str(subtasks))
+    response, audio_response, content, json_blocks = safe_extract_json_and_response_for_intention_llm(str(subtasks))
 
     print("🤖 LLM Response:")
     print(">>> Subtask list:\n", response)
+    print(">>> Audio response:\n", audio_response)
     print(">>> Content:\n", content)
     print(">>> JSON:\n", json.dumps(json_blocks[0], indent=2, ensure_ascii=False) if json_blocks else "None")
 
-    return response, content, json_blocks
+    return response, audio_response, content, json_blocks
 
 # if __name__ == "__main__":
 #     run_mistral_llm()

@@ -5,6 +5,7 @@ from action_interfaces.msg import FileStatus
 from action_interfaces.msg import Labels
 import os
 import sys
+from pathlib import Path
 HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../../../../high_level/src"))
 if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
@@ -150,11 +151,16 @@ class IntentionLLM(Node):
                 f"gesture label: {gesture_str} and "
                 f"gaze label: {gaze_str}."
             )
-            response, content, json_blocks = run_mistral_llm_direct(
+            response, audio_response, content, json_blocks = run_mistral_llm_direct(
                 output,
                 self.client,
             )
-
+            
+            # Path("./src/mistral_ai/scripts/llm_script.txt").write_text(audio_response, encoding="utf-8")
+            
+            if audio_response:
+                play_text_to_speech(audio_response, language='en')
+                
             if response != "":
                 with open(self.file_path, 'w', encoding='utf-8') as f:
                     f.write(response)
