@@ -7,9 +7,9 @@ vlm_client = Mistralmodel()
 if __name__ == "__main__":
     actions = [
         # {"type": "open", "target": "home", "parameters": {}},
-        # {"type": "perceive", "target": "cucumber", "parameters": {}},
-        # {"type": "move", "target": "cucumber", "parameters": {}},
-        # {"type": "grasp_otherthings", "target": "cucumber", "parameters": {}},
+        {"type": "perceive", "target": "banana", "parameters": {}},
+        {"type": "move", "target": "banana", "parameters": {}},
+        {"type": "grasp_otherthings", "target": "banana", "parameters": {}},
         # {"type": "perceive", "target": "soup pot", "parameters": {}},
         # {"type": "move", "target": "soup pot", "parameters": {}},
         # {"type": "stir", "target": "soup pot", "parameters": {"stir_time": 10}},
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         # {"type": "get_grasps", "target": "cucumber", "parameters": {}},
 
         # test move offset
-        {"type": "move_offset", "target": "user", "parameters": {"direction": "z", "delta": 0.1}},
+        # {"type": "move_offset", "target": "user", "parameters": {"direction": "z", "delta": 0.1}},
 
         # # test get_objects_pos
         # {"type": "get_objects_pos", "target": "tomato", "parameters": {}},

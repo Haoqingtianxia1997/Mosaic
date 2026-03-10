@@ -64,6 +64,9 @@ class ActionExecutor:
         self.stir_time = 30
         self.add_times = 2
         
+        # Z-axis height threshold to filter out table/background points
+        self.z_filter_threshold = 0.01  # points with z below this value are removed
+
         # Action move offset
         self.delta = 0.0
         self.direction = None
@@ -312,6 +315,17 @@ class ActionExecutor:
                 self.success = False
                 return
 
+            # Filter out background/table points by z-axis threshold
+            z_mask = self.all_points_arr[:, 2] >= self.z_filter_threshold
+            num_filtered = np.sum(~z_mask)
+            self.all_points_arr = self.all_points_arr[z_mask]
+            self.all_colors_arr = self.all_colors_arr[z_mask]
+            print(f"🔻 Z-axis filter (threshold={self.z_filter_threshold}): removed {num_filtered} points, {len(self.all_points_arr)} remaining")
+            if len(self.all_points_arr) == 0:
+                print("❌ All points filtered out by z-axis threshold")
+                self.success = False
+                return
+
             # Calculate center point
             self.center_world_points = self.center_world_points[0]
             print ("center_world_points:", self.center_world_points)
@@ -465,30 +479,31 @@ class ActionExecutor:
                 print("❌ Failed to perceive target points in both cameras.")
                 self.success = False
                 return
-            #     maybe other method to determine the grasp strategy
-            else:
-            #     ................
-            #     now we have world_points of target (all_points_arr) , which is a array , each element is a point in world coordinates
-            #     put the value into gf_params by grasp strategy with points cloud or something else   
+
+            # use_anygrasp=True: AnyGrasp neural network method (no OBB needed)
+            # use_anygrasp=False: original OBB + sampling method
+            grasp_generator = GraspGeneration(use_anygrasp=False)
+
+            if not grasp_generator.use_anygrasp:
                 obb_corners, rotation_matrix, center = compute_obb(self.all_points_arr)
+                # visualize_obb_and_center(self.all_points_arr, self.all_colors_arr, obb_corners, center)
+                grasp_generator.bbox_center = center
+                grasp_generator.bbox_rotation_matrix = rotation_matrix
 
-                visualize_obb_and_center(self.all_points_arr, self.all_colors_arr, obb_corners, center)
+            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')
 
-                grasp_generator = GraspGeneration(center, rotation_matrix)
-                pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')
+            if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
+                print("❌ Failed to compute grasp poses.")
+                self.success = False
+                return
 
-                if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
-                    print("❌ Failed to compute grasp poses from OBB.")
-                    self.success = False
-                    return
-
-                self.grasp_params = {
-                    "x_prep": float(pose1_pos[0]), "y_prep": float(pose1_pos[1]), "z_prep": float(pose1_pos[2]),
-                    "qx_prep": float(pose1_orn[0]), "qy_prep": float(pose1_orn[1]), "qz_prep": float(pose1_orn[2]), "qw_prep": float(pose1_orn[3]),
-                    "x_grasp": float(pose2_pos[0]), "y_grasp": float(pose2_pos[1]), "z_grasp": float(pose2_pos[2]),
-                    "qx_grasp": float(pose2_orn[0]), "qy_grasp": float(pose2_orn[1]), "qz_grasp": float(pose2_orn[2]), "qw_grasp": float(pose2_orn[3])
-                }
-                print("Grasp parameters computed from OBB:", self.grasp_params)      
+            self.grasp_params = {
+                "x_prep": float(pose1_pos[0]), "y_prep": float(pose1_pos[1]), "z_prep": float(pose1_pos[2]),
+                "qx_prep": float(pose1_orn[0]), "qy_prep": float(pose1_orn[1]), "qz_prep": float(pose1_orn[2]), "qw_prep": float(pose1_orn[3]),
+                "x_grasp": float(pose2_pos[0]), "y_grasp": float(pose2_pos[1]), "z_grasp": float(pose2_pos[2]),
+                "qx_grasp": float(pose2_orn[0]), "qy_grasp": float(pose2_orn[1]), "qz_grasp": float(pose2_orn[2]), "qw_grasp": float(pose2_orn[3])
+            }
+            print("Grasp parameters computed:", self.grasp_params)
         
         try:
             # Check all grasp_params values

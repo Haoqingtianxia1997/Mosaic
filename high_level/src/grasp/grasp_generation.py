@@ -1,17 +1,149 @@
+import os
 import numpy as np
 import open3d as o3d
 from scipy.spatial.transform import Rotation
 from typing import Tuple, Sequence, Optional
-from scipy.spatial.transform import Rotation
 from src.grasp.mesh import visualize_3d_objs,create_grasp_mesh
+
+# Patch deprecated np.float aliases removed in NumPy 1.24+
+np.float = float
+
+ANYGRASP_CHECKPOINT_PATH = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../../../anygrasp_sdk/grasp_detection/log/checkpoint_detection.tar"
+))
 
 
 class GraspGeneration:
-    def __init__(self, bbox_center, bbox_rotation_matrix):
+    def __init__(self, bbox_center=None, bbox_rotation_matrix=None, use_anygrasp=True):
         self.bbox_center = bbox_center
         self.bbox_rotation_matrix = bbox_rotation_matrix
         self.valid_grasps_list = []
         self.top_10_grasps = []
+        self.use_anygrasp = use_anygrasp
+        self._anygrasp_model = None
+
+    def _init_anygrasp(self):
+        """Lazy-load AnyGrasp model on first use."""
+        if self._anygrasp_model is not None:
+            return
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../anygrasp_sdk/grasp_detection"))
+        from gsnet import AnyGrasp
+        from types import SimpleNamespace
+        cfg = SimpleNamespace(
+            checkpoint_path=ANYGRASP_CHECKPOINT_PATH,
+            max_gripper_width=0.1,
+            gripper_height=0.03,
+            top_down_grasp=True,
+            debug=False,
+        )
+        self._anygrasp_model = AnyGrasp(cfg)
+        self._anygrasp_model.load_net()
+        print("AnyGrasp model loaded.")
+
+    def anygrasp_compute_poses(self, points, colors, visualize=True):
+        """
+        Use AnyGrasp to compute grasp poses from a world-frame point cloud.
+
+        Parameters:
+            points: ndarray (N, 3), world-frame point cloud
+            colors: ndarray (N, 3), colors in [0, 1]
+            visualize: bool, whether to visualize
+
+        Returns:
+            Same format as final_compute_poses:
+            (pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps_list)
+        """
+        self._init_anygrasp()
+
+        points = points.astype(np.float32)
+        colors = colors.astype(np.float32)
+        if colors.max() > 1.1:
+            colors = colors / 255.0
+
+        # Filter out invalid points
+        mask = np.isfinite(points).all(axis=1)
+        points = points[mask]
+        colors = colors[mask]
+
+        # Rotate point cloud 180 degrees around X-axis before feeding to AnyGrasp
+        R_x_180 = np.array([[1, 0, 0],
+                             [0, 1, 0],
+                             [0, 0, 1]], dtype=np.float32)
+        points_rotated = (R_x_180 @ points.T).T
+
+        # Workspace limits in rotated frame
+        xmin, xmax = 0.0, 0.8
+        ymin, ymax = -0.8, 0.8
+        zmin, zmax = -1.0, 1.0
+        lims = [xmin, xmax, ymin, ymax, zmin, zmax]
+
+        print(f"AnyGrasp input: {len(points_rotated)} points")
+        print(f"Point cloud range (original): min={points.min(axis=0)}, max={points.max(axis=0)}")
+        print(f"Point cloud range (rotated): min={points_rotated.min(axis=0)}, max={points_rotated.max(axis=0)}")
+
+        gg, cloud = self._anygrasp_model.get_grasp(
+            points_rotated, colors, # lims=lims, --- IGNORE ---
+            apply_object_mask=True, dense_grasp=False,
+            collision_detection=True, voxel_size=0.0005
+        )
+
+        if gg is None or len(gg) == 0:
+            print("AnyGrasp: No grasp detected after collision detection!")
+            return None, None, None, None, None, None
+
+        gg = gg.nms().sort_by_score()
+        print(f"AnyGrasp: {len(gg)} grasps after NMS, top score: {gg[0].score:.4f}")
+
+        # Build valid_grasps_list, rotating grasp poses back to original world frame
+        R_x_180_f64 = R_x_180.astype(np.float64)
+        valid_grasps_list = []
+        num_grasps = min(len(gg), 20)
+        for i in range(num_grasps):
+            g = gg[i]
+            # Rotate grasp rotation matrix and translation back to original frame
+            R = R_x_180_f64 @ g.rotation_matrix
+            grasp_center = R_x_180_f64 @ g.translation
+            pose = (R, grasp_center)
+            valid_grasps_list.append((float(g.score), pose, None))
+
+        self.valid_grasps_list = valid_grasps_list
+        self.top_10_grasps = valid_grasps_list[:10]
+
+        # Best grasp
+        best_grasp = valid_grasps_list[0][1]
+        pose1_pos, pose1_orn, pose2_pos, pose2_orn = self.compute_grasp_poses(best_grasp)
+
+        # Compute top 10 poses
+        top_10_poses = []
+        for _, pose, _ in self.top_10_grasps:
+            p1_pos, p1_orn, p2_pos, p2_orn = self.compute_grasp_poses(pose)
+            top_10_poses.append({
+                'prep_pose_pos': p1_pos,
+                'prep_pose_orn': p1_orn,
+                'grasp_pose_pos': p2_pos,
+                'grasp_pose_orn': p2_orn
+            })
+
+        print(f"AnyGrasp best grasp - translation: {best_grasp[1]}, score: {valid_grasps_list[0][0]:.4f}")
+
+        # Visualization: original point cloud + rotated-back grippers
+        if visualize:
+            try:
+                cloud_vis = o3d.geometry.PointCloud()
+                cloud_vis.points = o3d.utility.Vector3dVector(points)
+                cloud_vis.colors = o3d.utility.Vector3dVector(colors)
+                # Rotate grippers back to original world frame for visualization
+                grippers = gg[:5].to_open3d_geometry_list()
+                R_x_180_4x4 = np.eye(4)
+                R_x_180_4x4[:3, :3] = R_x_180_f64
+                for g_mesh in grippers:
+                    g_mesh.transform(R_x_180_4x4)
+                o3d.visualization.draw_geometries([*grippers, cloud_vis])
+            except Exception as e:
+                print(f"AnyGrasp visualization skipped: {e}")
+
+        return pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_poses, valid_grasps_list
 
     def sample_grasps_state(
         self,
@@ -526,8 +658,20 @@ class GraspGeneration:
         """
         if merged_pcd is None:
             print("Error: Cannot merge point clouds, grasping terminated")
-            return None, None, None, None
-        
+            return None, None, None, None, None, None
+
+        # AnyGrasp branch
+        if self.use_anygrasp:
+            # Convert to numpy arrays if needed
+            if isinstance(merged_pcd, o3d.geometry.PointCloud):
+                pts = np.asarray(merged_pcd.points).astype(np.float32)
+                clr = np.asarray(merged_pcd.colors).astype(np.float32) if merged_pcd.has_colors() else np.ones_like(pts) * 0.5
+            else:
+                pts = np.asarray(merged_pcd).astype(np.float32)
+                clr = np.asarray(merged_color).astype(np.float32) if merged_color is not None else np.ones_like(pts) * 0.5
+            return self.anygrasp_compute_poses(pts, clr, visualize=visualize)
+
+        # Original OBB-based method below
         # If input is numpy array, convert to Open3D point cloud
         if isinstance(merged_pcd, np.ndarray):
             pcd = o3d.geometry.PointCloud()
@@ -558,7 +702,7 @@ class GraspGeneration:
         if grasp_type == 'flavoring':
             sampled_grasps_state = self.sample_grasps_state_for_flavoring(
                 center, 
-                num_grasps=1000, 
+                num_grasps=50, 
                 rotation_matrix=rotation_matrix,
                 min_point_rotated=min_point_rotated,
                 max_point_rotated=max_point_rotated,
@@ -567,7 +711,7 @@ class GraspGeneration:
         else:
             sampled_grasps_state = self.sample_grasps_state(
                 center, 
-                num_grasps=1000, 
+                num_grasps=50, 
                 rotation_matrix=rotation_matrix,
                 min_point_rotated=min_point_rotated,
                 max_point_rotated=max_point_rotated,
@@ -599,7 +743,7 @@ class GraspGeneration:
             vis_meshes.extend(grasp_mesh)
             
         # Call visualization function
-        visualize_3d_objs(vis_meshes)
+        # visualize_3d_objs(vis_meshes)
         # Evaluate grasping quality
         print("\nEvaluating grasping quality...")
         
@@ -666,7 +810,7 @@ class GraspGeneration:
             vis_meshes.extend(best_grasp_mesh)
             
             # Call visualization function
-            visualize_3d_objs(vis_meshes)
+            # visualize_3d_objs(vis_meshes)
 
         return pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, self.valid_grasps_list
     

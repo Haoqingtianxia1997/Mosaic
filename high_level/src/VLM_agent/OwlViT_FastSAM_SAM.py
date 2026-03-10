@@ -145,7 +145,7 @@ class TextDrivenSegmenter:
         return self.trans_tok.decode(gen[0], skip_special_tokens=True)
 
     # ---------------- Main Process ----------------
-    def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False, method="yolo"):
+    def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False, method="yolo", bbox_only=True):
         image = Image.open(image_path).convert("RGB")
         W, H  = image.size
         draw_img   = image.copy()
@@ -252,8 +252,10 @@ class TextDrivenSegmenter:
                                              scores[keep[0]].item())]
 
             for box, conf in cand:
-                
-                if if_sam:
+
+                if bbox_only:
+                    mask = self._box_mask(box, W, H)
+                elif if_sam:
                     masks_sam = self.sam.segment_with_boxes(image_path, [box],
                                                             multimask_output=False)
                     mask = masks_sam[0].astype(np.uint8)             # Choose single mask in the first box
@@ -292,6 +294,14 @@ class TextDrivenSegmenter:
         if len(xs) == 0:
             return []
         return np.array([(int(x), int(y)) for x, y in zip(xs, ys)], dtype=int)
+
+    @staticmethod
+    def _box_mask(box, W, H):
+        """Create a rectangular mask from the bounding box, skipping SAM/FastSAM."""
+        x1, y1, x2, y2 = box
+        mask = np.zeros((H, W), dtype=np.uint8)
+        mask[y1:y2, x1:x2] = 1
+        return mask
 
     def _fastsam_seg(self, img_path, box):
         image = Image.open(img_path).convert("RGB")
@@ -343,12 +353,12 @@ def get_segmenter():
 
 
     
-def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left", segmenter=None):
+def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool = True, if_translate: bool = False, name: str = "left", segmenter=None, bbox_only: bool = True):
     if segmenter is None:
         seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
     else:
-        seg = segmenter # Allow passing a segmenter instance to avoid repeated loading in multi-turn interactions                           
-    img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate)
+        seg = segmenter # Allow passing a segmenter instance to avoid repeated loading in multi-turn interactions
+    img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate, bbox_only = bbox_only)
     if img is None or boxes is None or points is None:
         print(f"Cannot find target '{target}' in the image.")
         return None, None, None, None, None, None
@@ -384,7 +394,7 @@ if __name__ == "__main__":
     text = "black pepper"  # Replace with the text you want to detect
     image_path = "images/example1.jpg"  # Replace with your image path
     # text = ""
-    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=True)  # Call the function to process object detection in the image
+    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(target_label, text, image_path, is_sam=True, if_translate=True, bbox_only=True)  # Call the function to process object detection in the image
     print(f"🔍 Detected target: {target_label}")
     print(f"📍 Target prompt: {target_prompt}")
     print(f"📏 Bounding box: {bbox}")

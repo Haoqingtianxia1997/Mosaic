@@ -1,5 +1,5 @@
 {
-  "response": "Sure—season and cook a beef patty, toast the bun, stack lettuce, tomato, onion, cheese, and sauces, then top it; now I’ll hand you the tomato.",
+  "response": "Sure, handing you the tomato.",
   "actions": [
     {
       "type": "perceive",
@@ -28,7 +28,7 @@
     },
     {
       "type": "open",
-      "target": "gripper",
+      "target": "user person",
       "parameters": {}
     },
     {

@@ -183,7 +183,10 @@ ros2 run tf2_ros static_transform_publisher \
 base zedr_camera_link
 
 # zedl
-ros2 run tf2_ros static_transform_publisher --x 0.125474 --y -0.531620 --z 0.534850 --qx 0.116199 --qy -0.326420 --qz -0.337829 --qw -0.875111 --frame-id base --child-frame-id zedl_camera_link
+ros2 run tf2_ros static_transform_publisher \
+--x 0.125474 --y -0.531620 --z 0.534850 \
+--qx 0.116199 --qy -0.326420 --qz -0.337829 --qw -0.875111 \
+--frame-id base --child-frame-id zedl_camera_link
 
 # same base
 ros2 run tf2_ros static_transform_publisher \
