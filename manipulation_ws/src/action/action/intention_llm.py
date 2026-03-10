@@ -137,11 +137,12 @@ class IntentionLLM(Node):
     def file_status_cb(self, msg):
         self.speech_changed = msg.changed
         self.new_file_content = msg.content
+        print(f"File status changed: {self.speech_changed}, New content: {self.new_file_content}")
         if self.speech_changed:
             self.get_logger().info(f"File changed: {self.speech_changed}, Content: {self.new_file_content}")
 
 
-        if self.speech_changed == True and self.new_file_content is not None : #and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None
+        if self.speech_changed == True and self.new_file_content is not None and self.new_file_content != "": #and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None
             cmd_str = self.new_file_content if self.new_file_content else "None"
             gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
             gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"

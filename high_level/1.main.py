@@ -67,7 +67,7 @@ if __name__ == "__main__":
         # NEW_TEXT_EVENT.clear()
         # 3. read latest text
         try:
-            with open(SPEECH_FILE, "r", encoding="utf-8") as f:
+            with open(TRANS_FILE, "r", encoding="utf-8") as f:
                 text = f.read().strip()
         except FileNotFoundError:
             continue

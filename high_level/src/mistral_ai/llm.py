@@ -11,8 +11,8 @@ import time
 
 def run_mistral_llm(client):
     # client = Mistralmodel()
-    transcribed_text = get_full_text("./src/transcribe/speech.txt")
-
+    transcribed_text = get_full_text("./src/transcribe/transcription.txt")
+    print(f"🟢 Transcribed text:\n{transcribed_text}")
     subtasks = client.chat_with_text(
         transcribed_text,
         system_prompt=system_prompt,
@@ -73,5 +73,6 @@ def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_se
 
     return response, audio_response, content, json_blocks
 
-# if __name__ == "__main__":
-#     run_mistral_llm()
+if __name__ == "__main__":
+    client = Mistralmodel()
+    run_mistral_llm(client)

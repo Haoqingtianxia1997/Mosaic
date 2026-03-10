@@ -7,9 +7,9 @@ vlm_client = Mistralmodel()
 if __name__ == "__main__":
     actions = [
         # {"type": "open", "target": "home", "parameters": {}},
-        {"type": "perceive", "target": "banana", "parameters": {}},
-        {"type": "move", "target": "banana", "parameters": {}},
-        {"type": "grasp_otherthings", "target": "banana", "parameters": {}},
+        {"type": "perceive", "target": "tomato", "parameters": {}},
+        {"type": "move", "target": "tomato", "parameters": {}},
+        {"type": "grasp_otherthings", "target": "tomato", "parameters": {}},
         # {"type": "perceive", "target": "soup pot", "parameters": {}},
         # {"type": "move", "target": "soup pot", "parameters": {}},
         # {"type": "stir", "target": "soup pot", "parameters": {"stir_time": 10}},
@@ -20,10 +20,10 @@ if __name__ == "__main__":
         # {"type": "grasp_otherthings", "target": "cucumber", "parameters": {}},
         # {"type": "perceive", "target": "user person", "parameters": {}},
         # {"type": "move", "target": "user person", "parameters": {}},
-        # {"type": "open", "target": "user person", "parameters": {}},
+        {"type": "open", "target": "user person", "parameters": {}},
         # {"type": "close", "target": "user person", "parameters": {}},
         # {"type": "add", "target": "soup pot", "parameters": {"times": 2}},
-        # {"type": "reset", "target": "home", "parameters": {}}
+        {"type": "reset", "target": "home", "parameters": {}}
 
         # # Test grasp detection
         # {"type": "close", "target": "user person", "parameters": {}},
