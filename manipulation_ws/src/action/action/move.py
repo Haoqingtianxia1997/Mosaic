@@ -88,7 +88,7 @@ class MoveService(Node):
         ik.robot_state = robot_state
         
         ik_res = self.ik_client.call(ik_req)
-        
+
         ok = ik_res and ik_res.error_code.val == 1
         if ok:
             js = ik_res.solution.joint_state
@@ -96,7 +96,8 @@ class MoveService(Node):
             js.position[6] += 0.785398
             print(js.position, "=================")
             print(js.name, js.position)
-            self.publish_traj(js.name, js.position, 5.0)
+            duration = req.duration if req.duration > 0.0 else 3.0
+            self.publish_traj(js.name, js.position, duration)
             self.get_logger().info('✅ IK success, trajectory published.')
 
             # ===== New wait for actual reach logic =====

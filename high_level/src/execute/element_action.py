@@ -353,7 +353,7 @@ class ActionExecutor:
             self.move_params["move_qz"] = 0.0
             self.move_params["move_qw"] = 0.0
             
-            open3d_show(self.all_points_arr, self.all_colors_arr, self.target_center_point, self.target_max_z_point, self.center_world_points)
+            # open3d_show(self.all_points_arr, self.all_colors_arr, self.target_center_point, self.target_max_z_point, self.center_world_points)
 
     def action_move(self):
         """Move the robot to a specified target using class variables.

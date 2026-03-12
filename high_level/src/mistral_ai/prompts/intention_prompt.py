@@ -3,6 +3,7 @@
 intention_system_prompt = """
 
 You'll be given a string containing voice command from the users, gesture labels, and gaze labels. 
+You don't need to see the object of interest. Just anaylze the user's intent from the input. Give me an interactive response through "audio response".
 Your task is to filter out irrelevant labels from gesture labels and gaze labels based on the user's voice command; 
 correct any typos in the voice command caused by speech recognition errors with gesture labels and gaze labels, and 
 then return a structured JSON response with:

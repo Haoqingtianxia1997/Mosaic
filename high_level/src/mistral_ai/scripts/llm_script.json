@@ -1,5 +1,5 @@
 {
-  "response": "Sure, I'll hand you the banana.",
+  "response": "Sure, handing you the banana.",
   "actions": [
     {
       "type": "perceive",
@@ -28,7 +28,7 @@
     },
     {
       "type": "open",
-      "target": "gripper",
+      "target": "user person",
       "parameters": {}
     },
     {

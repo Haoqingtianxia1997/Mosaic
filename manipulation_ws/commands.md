@@ -178,9 +178,9 @@ ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep
 ```bash
 # zedr
 ros2 run tf2_ros static_transform_publisher \
-0.8485 0.5172 0.5711 \
-0.3718 0.0715 -0.9173 0.1234 \
-base zedr_camera_link
+--x 0.8485 --y 0.5172 --z 0.5711 \
+--qx 0.3718 --qy 0.0715 --qz -0.9173 --qw 0.1234 \
+--frame-id base --child-frame-id zedr_camera_link
 
 # zedl
 ros2 run tf2_ros static_transform_publisher \
@@ -190,6 +190,7 @@ ros2 run tf2_ros static_transform_publisher \
 
 # same base
 ros2 run tf2_ros static_transform_publisher \
-0 0 0 0 0 0 1 \
-base base_link
+--x 0 --y 0 --z 0 \
+--qx 0 --qy 0 --qz 0 --qw 1 \
+--frame-id base --child-frame-id base_link
 ```

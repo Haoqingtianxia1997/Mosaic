@@ -86,6 +86,7 @@ class GraspService(Node):
         move_prep_req.qz = request.qz_prep
         move_prep_req.qw = request.qw_prep
 
+        move_prep_req.duration = 1.0
         move_prep_res = self.move_client.call(move_prep_req)
         
         if not move_prep_res or not move_prep_res.success:

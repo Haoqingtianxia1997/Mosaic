@@ -1,5 +1,6 @@
 import os
 import base64
+import hashlib
 from datetime import datetime
 from mistralai import Mistral
 from openai import OpenAI
@@ -20,8 +21,20 @@ class Mistralmodel:
             if not self.api_key:
                 raise ValueError("OPENAI_API_KEY not found in environment variables")
             self.client = OpenAI(api_key=self.api_key)
-            self.text_model = "gpt-5"
-            self.vision_model = "gpt-5"
+            self.text_model = "gpt-4.1-mini"
+            self.vision_model = "gpt-4.1-mini"
+
+    def _get_prompt_cache_key(self, mode, model_name, system_prompt, example, assistant_prompt):
+        """Build a stable key so repeated static prefixes can hit prompt caching."""
+        static_prefix = "\n".join([
+            mode,
+            model_name,
+            system_prompt or "",
+            example or "",
+            assistant_prompt or "",
+        ])
+        prompt_hash = hashlib.sha256(static_prefix.encode("utf-8")).hexdigest()[:16]
+        return f"mosaic:{mode}:{model_name}:{prompt_hash}"
  
     def encode_image(self, image_path):
         """Encode image to base64 format"""
@@ -53,8 +66,16 @@ class Mistralmodel:
         try:
 
             if self.if_openAI:
+                prompt_cache_key = self._get_prompt_cache_key(
+                    mode="text",
+                    model_name=self.text_model,
+                    system_prompt=system_prompt,
+                    example=example,
+                    assistant_prompt=assistant_prompt,
+                )
                 chat_response = self.client.responses.create(
                     model=self.text_model,
+                    prompt_cache_key=prompt_cache_key,
                     input=[
                         {
                             "role": "system",
@@ -124,6 +145,13 @@ class Mistralmodel:
         print("🤖 Calling vision model...")
 
         if self.if_openAI:
+            prompt_cache_key = self._get_prompt_cache_key(
+                mode="vision",
+                model_name=self.vision_model,
+                system_prompt=system_prompt,
+                example=example,
+                assistant_prompt=assistant_prompt,
+            )
             content = [
                 {
                     "type": "input_text",
@@ -136,6 +164,7 @@ class Mistralmodel:
             ]
             chat_response = self.client.responses.create(
                 model=self.vision_model,
+                prompt_cache_key=prompt_cache_key,
                 input=[
                     {
                         "role": "system",
@@ -211,5 +240,4 @@ class Mistralmodel:
     
 
     
-
 
