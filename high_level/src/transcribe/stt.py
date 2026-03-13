@@ -21,7 +21,7 @@ NEW_TEXT_EVENT = Event()
 
 class Config:
     # Use a larger model to improve multilingual recognition accuracy
-    MODEL_SIZE = "medium.en"  # Best multilingual model (tiny/base/small/medium/large/large-v3)
+    MODEL_SIZE = "tiny.en"  # Best multilingual model (tiny/base/small/medium/large/large-v3)
     SAMPLE_RATE = 16000
     CHUNK = 1024
     LANGUAGE = "en"          # Auto-detect language
@@ -264,7 +264,7 @@ def run_stt(blocking: bool = True, transcriber = None):
     old_settings = termios.tcgetattr(fd)
 
     tty.setraw(fd)             # ← Key! Use raw instead of cbreak
-    HOLD_TIMEOUT = 0.8
+    HOLD_TIMEOUT = 0.5
     last_s_time = None
     recording = False
 

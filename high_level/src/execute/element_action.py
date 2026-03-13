@@ -364,13 +364,19 @@ class ActionExecutor:
             ValueError: If move_params are not provided or incomplete.
         """
         self.success = False  # Reset success status
-        if self.target is self.grasped_thing:
+        if self.target == self.grasped_thing:
             self.success = True
             print(f"✅ Target '{self.target}' already grasped, skipping move.")
             return
         current_position = [0.0, 0.0, 0.0]  # Initialize current position
 
-        current_position[0], current_position[1], current_position[2] = call_fk_service()
+        try:
+            current_position[0], current_position[1], current_position[2] = call_fk_service()
+        except Exception as e:
+            print(f"❌ Failed to get FK position: {e}")
+            self.success = False
+            return
+
         print(f"Current position: {current_position}")
 
         if current_position[2] < 0.3:   
@@ -392,12 +398,11 @@ class ActionExecutor:
                 )
             except ValueError as e:
                 print(e)
-            while True:
-                if self.success:
-                    print("✅ List action executed successfully.")
-                    break
-                else:
-                    print("❌ List action failed, retrying...")
+            if self.success:
+                print("✅ Lift-to-safe-height step succeeded.")
+            else:
+                print("❌ Lift-to-safe-height step failed.")
+                return
         
         if self.move_params["move_z"] < 0.35:   
             try:
@@ -418,12 +423,11 @@ class ActionExecutor:
                 )
             except ValueError as e:
                 print(e)
-            while True:
-                if self.success:
-                    print("✅ List action executed successfully.")
-                    break
-                else:
-                    print("❌ List action failed, retrying...")
+            if self.success:
+                print("✅ Pre-move safe-height step succeeded.")
+            else:
+                print("❌ Pre-move safe-height step failed.")
+                return
         
         try:
             if any(v is None for v in self.move_params.values()):
@@ -443,10 +447,10 @@ class ActionExecutor:
             )
         except ValueError as e:
             print(e)
-        while True:
-            if self.success:
-                print("✅ Move action executed successfully.")
-                break
+        if self.success:
+            print("✅ Move action executed successfully.")
+        else:
+            print("❌ Move action failed.")
 
     def action_grasp(self):
         """Grasp an object using predefined parameters or computed grasp poses.

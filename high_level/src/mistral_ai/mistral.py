@@ -21,8 +21,8 @@ class Mistralmodel:
             if not self.api_key:
                 raise ValueError("OPENAI_API_KEY not found in environment variables")
             self.client = OpenAI(api_key=self.api_key)
-            self.text_model = "gpt-4.1-mini"
-            self.vision_model = "gpt-4.1-mini"
+            self.text_model = "gpt-4o"
+            self.vision_model = "gpt-4o"
 
     def _get_prompt_cache_key(self, mode, model_name, system_prompt, example, assistant_prompt):
         """Build a stable key so repeated static prefixes can hit prompt caching."""

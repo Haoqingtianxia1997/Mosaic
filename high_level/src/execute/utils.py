@@ -11,6 +11,9 @@ from scipy.spatial import cKDTree
 from src.VLM_agent.agent import VLM_agent
 
 
+ROS2_SERVICE_TIMEOUT_SEC = 15
+
+
 def visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center):
     """
     Visualize point cloud with OBB and center using Open3D
@@ -281,7 +284,12 @@ def call_ros2_service(service_name, service_type, args_dict):
     print(f"\n🚀 Calling service: {' '.join(cmd)}")
 
     try:
-        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
+        result = subprocess.check_output(
+            cmd,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=ROS2_SERVICE_TIMEOUT_SEC,
+        )
         print("✅ Service call returned:")
         print(result)
         if "success=True" in result:
@@ -289,6 +297,9 @@ def call_ros2_service(service_name, service_type, args_dict):
         else:
             print("❌ Service reported failure.")
             return False
+    except subprocess.TimeoutExpired:
+        print(f"❌ Service call timeout after {ROS2_SERVICE_TIMEOUT_SEC}s: {service_name}")
+        return False
     except subprocess.CalledProcessError as e:
         print("❌ Service call failed:")
         print(e.output)
@@ -301,12 +312,18 @@ def call_fk_service():
     """
     cmd = 'ros2 service call /fk_service action_interfaces/srv/Fk "{}"'
     # Use shlex.split to avoid issues with quotes
-    result = subprocess.run(
-        shlex.split(cmd),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
+    try:
+        result = subprocess.run(
+            shlex.split(cmd),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=ROS2_SERVICE_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError(
+            f"fk_service timeout after {ROS2_SERVICE_TIMEOUT_SEC}s"
+        ) from exc
 
     if result.returncode != 0:
         raise RuntimeError(f"ros2 命令失败: {result.stderr}")

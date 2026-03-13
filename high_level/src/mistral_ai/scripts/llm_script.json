@@ -1,19 +1,19 @@
 {
-  "response": "Sure, handing you the banana.",
+  "response": "Sure, handing you the tomato.",
   "actions": [
     {
       "type": "perceive",
-      "target": "banana",
+      "target": "tomato",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "banana",
+      "target": "tomato",
       "parameters": {}
     },
     {
       "type": "grasp_otherthings",
-      "target": "banana",
+      "target": "tomato",
       "parameters": {}
     },
     {
