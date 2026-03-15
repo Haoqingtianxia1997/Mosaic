@@ -649,7 +649,7 @@ class GraspGeneration:
 
         return pose1_pos, pose1_orn, ee_target_pos, pose2_orn
     
-    def final_compute_poses(self, merged_pcd, merged_color=None, visualize=True, grasp_type='other_things'):
+    def final_compute_poses(self, merged_pcd, merged_color=None, visualize=False, grasp_type='other_things'):
         """
         Calculate pre-grasp and final grasp poses based on the best grasp
         
@@ -743,7 +743,8 @@ class GraspGeneration:
             vis_meshes.extend(grasp_mesh)
             
         # Call visualization function
-        # visualize_3d_objs(vis_meshes)
+        if visualize:
+            visualize_3d_objs(vis_meshes)
         # Evaluate grasping quality
         print("\nEvaluating grasping quality...")
         
@@ -810,7 +811,7 @@ class GraspGeneration:
             vis_meshes.extend(best_grasp_mesh)
             
             # Call visualization function
-            # visualize_3d_objs(vis_meshes)
+            visualize_3d_objs(vis_meshes)
 
         return pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, self.valid_grasps_list
     

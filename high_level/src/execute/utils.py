@@ -179,7 +179,7 @@ def preprocess_pointcloud(points, colors, voxel_size=0.005, nb_points=10, radius
 
 def filter_and_merge_icp_translation_only(
         points_l, colors_l, points_r, colors_r, 
-        voxel_size=0.005, nb_points=10, radius=0.01):
+        voxel_size=0.005, nb_points=15, radius=0.01):
     
     pcd_l = preprocess_pointcloud(points_l, colors_l, voxel_size, 10, 0.01)
     pcd_r = preprocess_pointcloud(points_r, colors_r, voxel_size, 10, 0.01)

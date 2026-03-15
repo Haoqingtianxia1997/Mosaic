@@ -37,7 +37,7 @@ class ActionExecutor:
         self.all_points_arr = None  # all points in world coordinates
         self.all_colors_arr = None  # all colors in world coordinates
         self.target = None  # current target, used to update the target in each action
-        
+        self.if_visualize = False  # whether to visualize the point cloud and grasp poses
         # Move parameters
         self.move_params = {
             "move_x": None, "move_y": None, "move_z": None, 
@@ -353,7 +353,8 @@ class ActionExecutor:
             self.move_params["move_qz"] = 0.0
             self.move_params["move_qw"] = 0.0
             
-            # open3d_show(self.all_points_arr, self.all_colors_arr, self.target_center_point, self.target_max_z_point, self.center_world_points)
+            if self.if_visualize:
+                open3d_show(self.all_points_arr, self.all_colors_arr, self.target_center_point, self.target_max_z_point, self.center_world_points)
 
     def action_move(self):
         """Move the robot to a specified target using class variables.
@@ -494,10 +495,12 @@ class ActionExecutor:
                 grasp_generator.bbox_center = center
                 grasp_generator.bbox_rotation_matrix = rotation_matrix
 
-            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')
+            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=self.if_visualize, grasp_type='otherthings')
 
             if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
+                play_text_to_speech('Sorry, I cannot find the suitable grasp poses.', language='en')
                 print("❌ Failed to compute grasp poses.")
+                self.action_reset()
                 self.success = False
                 return
 
@@ -750,7 +753,7 @@ class ActionExecutor:
 
         _, rotation_matrix, center = compute_obb(self.all_points_arr)
         grasp_generator = GraspGeneration(center, rotation_matrix)
-        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=True, grasp_type='otherthings')
+        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=False, grasp_type='otherthings')
         best_pose = [pose1_pos, pose1_orn, pose2_pos, pose2_orn]
         print("Best grasp pose:", best_pose)
         print("Top 10 grasps:", top_10_grasps)
