@@ -1,19 +1,19 @@
 {
-  "response": "Sure, handing you the tomato.",
+  "response": "I’m not sure what you mean by model, but I'll give you the cucumber.",
   "actions": [
     {
       "type": "perceive",
-      "target": "tomato",
+      "target": "cucumber",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "tomato",
+      "target": "cucumber",
       "parameters": {}
     },
     {
       "type": "grasp_otherthings",
-      "target": "tomato",
+      "target": "cucumber",
       "parameters": {}
     },
     {
