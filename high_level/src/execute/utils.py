@@ -350,7 +350,8 @@ def get_cam_world_points(
     pixels_to_world_func,
     name,
     agent_image_path=None,
-    segmenter=None      
+    segmenter=None ,  
+    bbox_only= True   
     
 ):
     """
@@ -361,7 +362,7 @@ def get_cam_world_points(
     agent_image_path: If you want to specify an image to send to VLM_agent, you can use this, otherwise it will use rgb_path
     """
     img_path = agent_image_path if agent_image_path else rgb_path
-    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name, client, segmenter)  # Call VLM agent to perceive target and get pixel coordinates
+    if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name, client, segmenter, bbox_only= bbox_only)  # Call VLM agent to perceive target and get pixel coordinates
     if not if_find or box_center_point is None or seg_center_point is None or all_seg_points is None:
         print(f"❌ Failed to perceive target: {target}")
         return if_find, response, None, None, None

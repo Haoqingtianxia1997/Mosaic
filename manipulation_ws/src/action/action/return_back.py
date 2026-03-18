@@ -120,7 +120,7 @@ class ReturnBackService(Node):
             self.get_logger().error("Service call failed")
             response.success = False
             return response
-        time.sleep(1.5)
+        time.sleep(0.1)
         
         # 4. Move back to preparation position
         move_back_req = Move.Request()

@@ -36,7 +36,7 @@ class CloseService(Node):
         #         response.message = 'Gripper closed successfully'
         #         self.current_grasp_width = 0.08  # Reset current grasp width
         #         return response
-        time.sleep(2)  # Wait for the action to complete
+        time.sleep(0.1)  # Wait for the action to complete
         response.success = True
         return response
 

@@ -1,19 +1,19 @@
 {
-  "response": "I’m not sure what you mean by model, but I'll give you the cucumber.",
+  "response": "Sure, handing you the beer bottle.",
   "actions": [
     {
       "type": "perceive",
-      "target": "cucumber",
+      "target": "beer bottle",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "cucumber",
+      "target": "beer bottle",
       "parameters": {}
     },
     {
       "type": "grasp_otherthings",
-      "target": "cucumber",
+      "target": "beer bottle",
       "parameters": {}
     },
     {

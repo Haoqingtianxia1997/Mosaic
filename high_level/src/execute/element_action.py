@@ -37,7 +37,8 @@ class ActionExecutor:
         self.all_points_arr = None  # all points in world coordinates
         self.all_colors_arr = None  # all colors in world coordinates
         self.target = None  # current target, used to update the target in each action
-        self.if_visualize = False  # whether to visualize the point cloud and grasp poses
+        self.if_visualize = True  # whether to visualize the point cloud and grasp poses
+        self.bbox_only = True  # whether to use bbox-only segmentation for perception
         # Move parameters
         self.move_params = {
             "move_x": None, "move_y": None, "move_z": None, 
@@ -160,7 +161,7 @@ class ActionExecutor:
                     print(f"⚠️ Unknown action type: {act_type}")
                     self.success = False
 
-                time.sleep(0.5)  # Optional delay
+                # time.sleep(0.5)  # Optional delay
 
             except Exception as e:
                 print("❌ Exception inside execute_action_sequence:")
@@ -225,7 +226,8 @@ class ActionExecutor:
                 depth_path= self.r_depth_path,
                 pixels_to_world_func = pixels_to_world_right,
                 name= "right",
-                segmenter=self.segmenter
+                segmenter=self.segmenter,
+                bbox_only= self.bbox_only
             )
 
             if_find_l, response_l, center_world_points_l, all_world_points_l, color_l  = get_cam_world_points(
@@ -235,7 +237,8 @@ class ActionExecutor:
                 depth_path= self.l_depth_path,
                 pixels_to_world_func = pixels_to_world_left,
                 name= "left",
-                segmenter=self.segmenter
+                segmenter=self.segmenter,
+                bbox_only= self.bbox_only
             )
 
             if all_world_points_r is not None and all_world_points_l is not None:
@@ -571,7 +574,7 @@ class ActionExecutor:
             })
         except ValueError as e:
             print(e)
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Stir action executed successfully.")
@@ -587,7 +590,7 @@ class ActionExecutor:
         print("Execute reset action")
         self.success = call_ros2_service("/reset_service", "std_srvs/srv/Trigger", {})
 
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Reset action executed successfully.")
@@ -613,7 +616,7 @@ class ActionExecutor:
         except ValueError as e:
             print(e)
 
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Add action executed successfully.")
@@ -677,7 +680,7 @@ class ActionExecutor:
                 )
         except ValueError as e:
             print(e)
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Return back action executed successfully.")
@@ -693,7 +696,7 @@ class ActionExecutor:
         self.success = False  # Reset success status
         print("Execute open action")
         self.success = call_ros2_service("/open_service", "std_srvs/srv/Trigger", {})
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Open action executed successfully.")
@@ -708,7 +711,7 @@ class ActionExecutor:
         self.success = False  # Reset success status
         print("Execute close action")
         self.success = call_ros2_service("/close_service", "std_srvs/srv/Trigger", {})
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Close action executed successfully.")
@@ -723,7 +726,7 @@ class ActionExecutor:
         self.success = False  # Reset success status
         print("Execute grasp detection action")
         self.success = call_ros2_service("/grasp_detection_service", "action_interfaces/srv/GraspDetect", {})
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Grasp detection action executed successfully.")
@@ -767,7 +770,7 @@ class ActionExecutor:
         self.success = False  # Reset success status
         print("Execute move offset action")
         self.success = call_ros2_service("/move_offset_service", "action_interfaces/srv/MoveOffset", {"delta": self.delta, "direction": self.direction})
-        time.sleep(3)  # Wait for service call to complete
+        # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
                 print("✅ Move offset action executed successfully.")

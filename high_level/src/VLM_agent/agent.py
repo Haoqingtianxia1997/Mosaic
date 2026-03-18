@@ -3,7 +3,7 @@ from src.mistral_ai.vlm import run_mistral_vlm
 
 
 
-def VLM_agent(user_prompt: str, image_path, name, client, segmenter=None) -> list:
+def VLM_agent(user_prompt: str, image_path, name, client, segmenter=None, bbox_only=True) -> list:
     """
     Start the VLM agent to process the user's prompt and image.
     """  
@@ -19,7 +19,7 @@ def VLM_agent(user_prompt: str, image_path, name, client, segmenter=None) -> lis
     # if_find =True 
     # response = ""
 
-    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(user_prompt, user_prompt, image_path, True, False, name, segmenter)  # 调用函数处理图像中的目标检测
+    target_prompt, box_center_point, seg_center_point, all_seg_points, bbox, score = find_object_central_pixel(user_prompt, user_prompt, image_path, True, False, name, segmenter,bbox_only= bbox_only )  # 调用函数处理图像中的目标检测
     print(f"🔍 Detected target: {user_prompt}")
     print(f"📍 Target prompt: {target_prompt}")
     print(f"📏 Bounding box: {bbox}")
