@@ -1,40 +1,4 @@
 {
-  "response": "Sure, handing you the beer bottle.",
-  "actions": [
-    {
-      "type": "perceive",
-      "target": "beer bottle",
-      "parameters": {}
-    },
-    {
-      "type": "move",
-      "target": "beer bottle",
-      "parameters": {}
-    },
-    {
-      "type": "grasp_otherthings",
-      "target": "beer bottle",
-      "parameters": {}
-    },
-    {
-      "type": "perceive",
-      "target": "user person",
-      "parameters": {}
-    },
-    {
-      "type": "move",
-      "target": "user person",
-      "parameters": {}
-    },
-    {
-      "type": "open",
-      "target": "user person",
-      "parameters": {}
-    },
-    {
-      "type": "reset",
-      "target": "home",
-      "parameters": {}
-    }
-  ]
+  "response": "Of course, once upon a time, in a distant land, there was a curious robot who loved helping people cook.",
+  "actions": []
 }

@@ -71,7 +71,7 @@ class ImageSaver(Node):
         self.ts_left.registerCallback(self.callback_left)
 
         # Save every 10s
-        self.timer = self.create_timer(10.0, self.save_images_callback)
+        self.timer = self.create_timer(3.0, self.save_images_callback)
 
         self.get_logger().info('ImageSaver node started (atomic writes).')
 

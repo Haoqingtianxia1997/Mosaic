@@ -44,7 +44,7 @@ def run_mistral_llm(client):
     return True
 
 
-def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_sec=3):
+def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_sec=3, verbose=True):
     for i in range(max_retries):
         subtasks = client.chat_with_text(
             text,
@@ -52,10 +52,12 @@ def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_se
             example=intention_example,
             assistant_prompt=intention_assistant_prompt
         )
-        print(f"Attempt {i+1}, LLM output: {subtasks}")
+        if verbose:
+            print(f"Attempt {i+1}, LLM output: {subtasks}")
         if subtasks:  # If there is content, continue with the next logic
             break
-        print(f"LLM did not return content, retrying {i+1} time(s), waiting {wait_sec} seconds...")
+        if verbose:
+            print(f"LLM did not return content, retrying {i+1} time(s), waiting {wait_sec} seconds...")
         time.sleep(wait_sec)
     else:
         raise RuntimeError("LLM did not return content, exceeded maximum retry attempts")
@@ -65,11 +67,12 @@ def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_se
     # Safe extraction method
     response, audio_response, content, json_blocks = safe_extract_json_and_response_for_intention_llm(str(subtasks))
 
-    print("🤖 LLM Response:")
-    print(">>> Subtask list:\n", response)
-    print(">>> Audio response:\n", audio_response)
-    print(">>> Content:\n", content)
-    print(">>> JSON:\n", json.dumps(json_blocks[0], indent=2, ensure_ascii=False) if json_blocks else "None")
+    if verbose:
+        print("🤖 LLM Response:")
+        print(">>> Subtask list:\n", response)
+        print(">>> Audio response:\n", audio_response)
+        print(">>> Content:\n", content)
+        print(">>> JSON:\n", json.dumps(json_blocks[0], indent=2, ensure_ascii=False) if json_blocks else "None")
 
     return response, audio_response, content, json_blocks
 

@@ -4,6 +4,7 @@ import whisper
 import pyaudio
 import warnings
 import numpy as np
+import json
 from queue import Queue
 from threading import Event
 import sys
@@ -12,12 +13,25 @@ import select
 import termios
 import tty
 import os
+from datetime import datetime
 
 # Global warning filter
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 torch.set_warn_always(False)
 NEW_TEXT_EVENT = Event()
+OUTPUT_PATH = "src/transcribe/speech.txt"
+
+
+def save_transcript_entry(output_path: str, text: str, timestamp: str | None = None) -> dict:
+    """Save one STT result in a single file with timestamp + text."""
+    entry = {
+        "timestamp": timestamp or datetime.now().isoformat(timespec="milliseconds"),
+        "text": text,
+    }
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(entry, f, ensure_ascii=False, indent=2)
+    return entry
 
 class Config:
     # Use a larger model to improve multilingual recognition accuracy
@@ -187,10 +201,9 @@ class VoiceTranscriber:
             
             text = result["text"].strip()
             print(f"\n📝 Result: {text}")
-        
-            OUTPUT_PATH = "src/transcribe/speech.txt"
-            with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-                f.write(text)
+
+            entry = save_transcript_entry(OUTPUT_PATH, text)
+            print(f"🕒 Saved timestamp: {entry['timestamp']}")
 
             NEW_TEXT_EVENT.set()
 

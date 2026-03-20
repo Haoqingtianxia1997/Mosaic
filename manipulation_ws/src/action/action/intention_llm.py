@@ -1,3 +1,4 @@
+import cv2
 from matplotlib import text
 import rclpy
 from rclpy.node import Node
@@ -5,7 +6,10 @@ from action_interfaces.msg import FileStatus
 from action_interfaces.msg import Labels
 import os
 import sys
+import json
+from datetime import datetime
 from pathlib import Path
+from intention_utils.intention import Intention
 HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../../../../high_level/src"))
 if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
@@ -76,8 +80,23 @@ class IntentionLLM(Node):
 
         # self.transcriber = VoiceTranscriber()
         self.client = Mistralmodel()
-
+        self.intention = Intention()
+        
         CUR_DIR = os.path.dirname(os.path.abspath(__file__))
+       
+        self.r_rgb_path = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_images/r_rgb.png')
+        )
+        
+        self.scenario_img_path = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_images/r_scenario.png')
+        )
+        
+        self.saved_intention_input_path = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_intention_input')
+        )
+        os.makedirs(self.saved_intention_input_path, exist_ok=True)
+        
         self.file_path = os.path.abspath(
             os.path.join(CUR_DIR, '../../../../high_level/src/transcribe/transcription.txt')
         )
@@ -107,6 +126,21 @@ class IntentionLLM(Node):
         self.max_history_size = 50
         
         self.get_logger().info('Intention LLM Node has been started.')
+
+    def _save_output_json(self, output_text, cmd_str, gesture_str, gaze_str, scenario_labels_str):
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        payload = {
+            "timestamp": datetime.now().isoformat(timespec="milliseconds"),
+            "speech_command": cmd_str,
+            "gesture_label": gesture_str,
+            "gaze_label": gaze_str,
+            "scenario_labels": scenario_labels_str,
+            "output": output_text,
+        }
+        file_path = os.path.join(self.saved_intention_input_path, f"intention_input_{ts}.json")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        self.get_logger().info(f"Saved intention input JSON: {file_path}")
 
     def label_cb(self, msg):
         # Add to history
@@ -146,12 +180,21 @@ class IntentionLLM(Node):
             cmd_str = self.new_file_content if self.new_file_content else "None"
             gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
             gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
-
+            
+            
+            r_rgb = cv2.imread(self.r_rgb_path)
+            scenario_labels =self.intention.get_scenario_yolo_labels(r_rgb, self.scenario_img_path)
+            scenario_labels_str = ", ".join(scenario_labels) if scenario_labels else "None"
+            
             output = (
                 f"I have a speech command: {cmd_str}, "
                 f"gesture label: {gesture_str} and "
                 f"gaze label: {gaze_str}."
+                f"scenario labels: {scenario_labels_str}."
             )
+            self._save_output_json(output, cmd_str, gesture_str, gaze_str, scenario_labels_str)
+            
+            
             response, audio_response, content, json_blocks = run_mistral_llm_direct(
                 output,
                 self.client,

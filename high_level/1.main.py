@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # threading.Thread(target=intention_detection_thread, daemon=True).start()
 
     print("🟢 New task thread started.")
-    last_text = ""
+    last_processed_mtime_ns = None
     print("🟢 STT thread started. Waiting for new speech...")
 
     # 3. start Mistral model
@@ -67,6 +67,7 @@ if __name__ == "__main__":
         # NEW_TEXT_EVENT.clear()
         # 3. read latest text
         try:
+            current_mtime_ns = os.stat(TRANS_FILE).st_mtime_ns
             with open(TRANS_FILE, "r", encoding="utf-8") as f:
                 text = f.read().strip()
         except FileNotFoundError:
@@ -74,12 +75,13 @@ if __name__ == "__main__":
 
         if not text:
             continue
-        # 4. ignore if same as last time
-
-        if text == last_text:
+        # 4. ignore if no new transcription write or invalid text
+        if current_mtime_ns == last_processed_mtime_ns:
             continue
-        
-        last_text = text
+        if text == "None" or text == "":
+            continue
+
+        last_processed_mtime_ns = current_mtime_ns
         if_success = run_mistral_llm(llm_client)
         # run_tts(LLM_FILE)
 

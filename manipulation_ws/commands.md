@@ -1,4 +1,5 @@
 ## Prerequisites
+All commands followed need to be used under the path :.../manipulation_ws .
 ```bash
 sudo iptables -I INPUT 1 -s 192.168.2.55 -j ACCEPT
 ros2 launch franka_bringup gravity_compensation_example_controller.launch.py robot_ip:=192.168.2.55 use_rviz:=True
@@ -184,7 +185,7 @@ ros2 run tf2_ros static_transform_publisher \
 
 # zedl
 ros2 run tf2_ros static_transform_publisher \
---x 0.125474 --y -0.501620 --z 0.534850 \
+--x 0.115474 --y -0.511620 --z 0.514850 \
 --qx 0.116199 --qy -0.326420 --qz -0.337829 --qw -0.875111 \
 --frame-id base --child-frame-id zedl_camera_link
 
@@ -193,4 +194,21 @@ ros2 run tf2_ros static_transform_publisher \
 --x 0 --y 0 --z 0 \
 --qx 0 --qy 0 --qz 0 --qw 1 \
 --frame-id base --child-frame-id base_link
+```
+
+
+## offline intention llm ablation test:
+
+```bash
+# Use the latest JSON, with both gesture and gaze enabled
+python offline_intention_llm.py
+
+# Use a specified JSON, disable gesture
+python offline_intention_llm.py intention_input_20260320_101010_123456.json --no-gesture
+
+# Use a specified JSON, disable gaze
+python offline_intention_llm.py intention_input_20260320_101010_123456.json --no-gaze
+
+# Disable both
+python offline_intention_llm.py --no-gesture --no-gaze
 ```

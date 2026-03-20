@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-20T17:56:20.345",
+  "speech_command": "Please give me the yellow one.",
+  "gesture_label": "scouring pad",
+  "gaze_label": "None",
+  "scenario_labels": "scouring pad, tomato",
+  "output": "I have a speech command: Please give me the yellow one., gesture label: scouring pad and gaze label: None.scenario labels: scouring pad, tomato."
+}

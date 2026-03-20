@@ -70,6 +70,9 @@ class Intention():
         self.OUTLIER_COUNT = 5
         self.AVG_LAST_N = 5
 
+        #Yolo confidence
+        self.yolo_conf = 0.85
+        self.intention_yolo_conf = 0.7
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -294,7 +297,7 @@ class Intention():
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
             print("ROI empty, skip YOLO")
         else:
-            result = yolo_model(img, verbose=False,  conf=0.7)[0]
+            result = self.yolo_model(img, verbose=False,  conf=self.intention_yolo_conf)[0]
             if result.boxes.shape[0]:
                 for box in result.boxes:
                     bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
@@ -312,6 +315,35 @@ class Intention():
                 print(f"YOLO detected (ROI): {', '.join(labels)}")
         cv2.imwrite(output_path, img)
         print(f"YOLO ROI & label image saved: {output_path}")
+        return labels
+    
+    
+    
+    
+    
+    
+    
+    def get_scenario_yolo_labels(self, img, scenario_img_path=None):
+        """
+        img: bgr8 (cv2)
+        u, v: center point pixel of ROI
+        yolo_model: 
+        output_path: 
+        """
+        labels = []
+        result = self.yolo_model(img, verbose=False,  conf=self.yolo_conf)[0]
+        if result.boxes.shape[0]:
+            for box in result.boxes:
+                bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
+                cls = int(box.cls[0].cpu().numpy())
+                label = self.yolo_model.names[cls]
+                conf = float(box.conf[0].cpu().numpy())
+                cv2.rectangle(img, (bx1, by1), (bx2, by2), (0,0,255), 2)
+                cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+                labels.append(label)
+            print(f" scenario YOLO detected: {', '.join(labels)}")
+        cv2.imwrite(scenario_img_path, img)
         return labels
     
     # def ask_label_tts(self, labels):
