@@ -1,4 +1,40 @@
 {
-  "response": "Of course, once upon a time, in a distant land, there was a curious robot who loved helping people cook.",
-  "actions": []
+  "response": "Of course, giving you the tomato.",
+  "actions": [
+    {
+      "type": "perceive",
+      "target": "tomato",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "tomato",
+      "parameters": {}
+    },
+    {
+      "type": "grasp_otherthings",
+      "target": "tomato",
+      "parameters": {}
+    },
+    {
+      "type": "perceive",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "move",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "open",
+      "target": "user person",
+      "parameters": {}
+    },
+    {
+      "type": "reset",
+      "target": "home",
+      "parameters": {}
+    }
+  ]
 }

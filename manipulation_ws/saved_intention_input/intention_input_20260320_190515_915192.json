@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-20T19:05:15.915",
-  "speech_command": "Please tell me your story.+100.50399994850159",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "scouring pad, tomato",
-  "output": "I have a speech command: Please tell me your story.+100.50399994850159, gesture label: None and gaze label: None.scenario labels: scouring pad, tomato."
-}

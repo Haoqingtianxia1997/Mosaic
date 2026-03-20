@@ -37,7 +37,7 @@ class ActionExecutor:
         self.all_points_arr = None  # all points in world coordinates
         self.all_colors_arr = None  # all colors in world coordinates
         self.target = None  # current target, used to update the target in each action
-        self.if_visualize = True  # whether to visualize the point cloud and grasp poses
+        self.if_visualize = False  # whether to visualize the point cloud and grasp poses
         self.bbox_only = True  # whether to use bbox-only segmentation for perception
         # Move parameters
         self.move_params = {

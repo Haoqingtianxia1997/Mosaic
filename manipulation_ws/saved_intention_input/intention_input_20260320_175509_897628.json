@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-20T17:55:09.897",
-  "speech_command": "Give me nothing.",
-  "gesture_label": "None",
-  "gaze_label": "scouring pad",
-  "scenario_labels": "scouring pad, tomato",
-  "output": "I have a speech command: Give me nothing., gesture label: None and gaze label: scouring pad.scenario labels: scouring pad, tomato."
-}

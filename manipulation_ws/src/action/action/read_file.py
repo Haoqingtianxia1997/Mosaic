@@ -1,9 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from action_interfaces.msg import FileStatus
-import time
 import json
-from datetime import datetime
 
 def load_transcript_entry(input_path: str) -> tuple[str, str]:
     """
@@ -46,24 +44,11 @@ class ReadFile(Node):
         self.publisher = self.create_publisher(FileStatus, 'file_status', 10)
         timer_period = 0.06 
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        
-        self.first_ts_epoch = None
-        self.first_now=None
-        self.if_first = False
-        
-    def _timestamp_to_epoch(self, timestamp: str) -> float | None:
-        """Convert ISO timestamp text to epoch seconds."""
-        if not timestamp:
-            return None
-        try:
-            # Support trailing 'Z' form if present.
-            normalized = timestamp.replace('Z', '+00:00')
-            return datetime.fromisoformat(normalized).timestamp()
-        except Exception:
-            return None
+
+        # Track the last seen timestamp; publish changed=True once per new timestamp.
+        self.last_timestamp = None
     
     def timer_callback(self):
-        now = time.time()
         try:
             timestamp, content = load_transcript_entry(self.file_path)
         except Exception as e:
@@ -72,23 +57,19 @@ class ReadFile(Node):
             content = ''
 
         msg_changed = False
-        ts_epoch = self._timestamp_to_epoch(timestamp)
-        if ts_epoch is not None:
-            if not self.if_first:
-                self.first_ts_epoch = ts_epoch
-                self.first_now = now
-                self.if_first = True
-            ts_epoch -= self.first_ts_epoch
-            now -= self.first_now
-            if now  > ts_epoch:
-                dt = now - ts_epoch
-                if dt < 0.1:
-                    msg_changed = True
+        if timestamp:
+            if self.last_timestamp is None:
+                # Initialize baseline on first valid read.
+                self.last_timestamp = timestamp
+                msg_changed = True
+            elif timestamp != self.last_timestamp:
+                msg_changed = True
+                self.last_timestamp = timestamp
         
 
         msg = FileStatus()
         msg.changed = msg_changed
-        msg.content = f"{content}+{ts_epoch}"
+        msg.content = content
         self.publisher.publish(msg)
 
 def main(args=None):
