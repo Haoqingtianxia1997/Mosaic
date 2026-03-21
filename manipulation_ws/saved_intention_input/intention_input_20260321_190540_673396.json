@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T19:05:40.673",
+  "speech_command": "Please open the support and reset.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad",
+  "output": "I have a speech command: Please open the support and reset., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad."
+}

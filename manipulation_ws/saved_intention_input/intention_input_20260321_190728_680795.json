@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T19:07:28.680",
+  "speech_command": "Please, start a soup for 30 seconds.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, tomato, cucumber, banana, scouring pad, pepper bottle",
+  "output": "I have a speech command: Please, start a soup for 30 seconds., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, tomato, cucumber, banana, scouring pad, pepper bottle."
+}

@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T18:56:22.491",
+  "speech_command": "Please put the title in the part.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, pepper bottle",
+  "output": "I have a speech command: Please put the title in the part., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, pepper bottle."
+}

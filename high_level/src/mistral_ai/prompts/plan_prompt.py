@@ -42,7 +42,6 @@ The fixed available object target are:
     - user person
     - soup pot
     - home
-    - table
     - spoon
     - gripper
     - hand
@@ -105,6 +104,7 @@ you should do "reset" first after "give me the salt" before "give me the pepper"
 if "stir the soup pot for 5 minutes and then add salt twice to the soup, finally give 
 me the tomato", you should do "reset" first after "stir the soup pot for 5 minutes", 
 and then "reset" again after "add salt twice to the soup" before "give me the tomato".
+• If the instruction is broadly described like cooking, you must break it down into detailed steps as shown in example. 
 """
 
 # ---------------------------------------------------------------------
@@ -129,7 +129,14 @@ please grasp the cucumber.
 please grasp the salt bottle.
 please return back to the salt bottle.
 Please stir the soup pot for 5 min then wait for me. 
-Please Please add curry to the soup pot five times then stop there. 
+Please add curry to the soup pot five times then stop there. 
+Please put the banana into the soup pot. 
+please help me prepare a soup with the objects on the table.
+please help me make a salad.
+please help me make a soup using the tomato, cucumber and pepper bottle.
+please help me make a salad using the banana, tomato and cucumber.
+please help me cook a soup. First, add some salt to the soup pot, then put into the tomato, finally place cucumber into the pot.
+please help me make a salad. First, put cucumber into the pot, then add some pepper, next place tomato into the salad, and finally stir the pot for 5 seconds.
 
 """.strip()
 
@@ -188,9 +195,9 @@ assistant_prompt = '''
     { "type": "perceive", "target": "pepper bottle", "parameters": {} },
     { "type": "move",     "target": "pepper bottle", "parameters": {} },
     { "type": "grasp_otherthings",    "target": "pepper bottle", "parameters": {} },
-    { "type": "perceive", "target": "table",         "parameters": {} },
-    { "type": "move",     "target": "table",         "parameters": {} },
-    { "type": "open",    "target": "table",         "parameters": {} },
+    { "type": "perceive", "target": "user person",         "parameters": {} },
+    { "type": "move",     "target": "user person",         "parameters": {} },
+    { "type": "open",    "target": "user person",         "parameters": {} },
     { "type": "reset",    "target": "home",          "parameters": {} }
   ]
 }
@@ -344,4 +351,209 @@ assistant_prompt = '''
     { "type": "add",      "target": "soup pot",    "parameters": { "add_times": 5 } }
   ]
 } 
+
+{  "response": "Sure, placing the banana into the soup pot.",
+  "actions": [
+    { "type": "perceive", "target": "banana", "parameters": {} },
+    { "type": "move",     "target": "banana", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "banana", "parameters": {} },
+    { "type": "perceive", "target": "soup pot",    "parameters": {} },
+    { "type": "move",      "target": "soup pot",    "parameters": {} },
+    { "type": "open",      "target": "soup pot",    "parameters": {} },
+    { "type": "reset",     "target": "home",        "parameters": {} }
+  ]
+} 
+
+{
+  "response": "Sure, I'll first add salt to the soup once, then place the tomato in the soup as well, and finally stir the soup for 5 seconds.",
+  "actions": [
+    { "type": "perceive", "target": "salt bottle", "parameters": {} },
+    { "type": "move", "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "salt bottle", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "add", "target": "soup pot", "parameters": { "add_times": 1 } },
+    { "type": "return_back", "target": "salt bottle", "parameters": {} },
+    
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+
+    { "type": "perceive", "target": "spoon",       "  parameters": {} },
+    { "type": "move",     "target": "spoon",       "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "spoon",       "parameters": {} },
+    { "type": "perceive", "target": "soup pot",    "parameters": {} },
+    { "type": "move",     "target": "soup pot",    "parameters": {} },
+    { "type": "stir",     "target": "soup pot",    "parameters": { "stir_time": 5 } }
+    { "type": "return_back", "target": "spoon",  "parameters": {} },
+    
+    { "type": "reset", "target": "home", "parameters": {} }
+  ]
+}
+
+{
+  "response": "Sure, I'll first put the tomato into the pot, then place the cucumber in as well, next put the banana into the pot, add pepper to the salad twice, and finally stir the soup for 10 seconds.",
+  "actions": [
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "cucumber", "parameters": {} },
+    { "type": "move", "target": "cucumber", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "cucumber", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "banana", "parameters": {} },
+    { "type": "move", "target": "banana", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "banana", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "pepper bottle", "parameters": {} },
+    { "type": "move", "target": "pepper bottle", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "pepper bottle", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "add", "target": "soup pot", "parameters": { "add_times": 2 } },
+    { "type": "return_back", "target": "pepper bottle", "parameters": {} },
+    
+    { "type": "perceive", "target": "spoon",       "  parameters": {} },
+    { "type": "move",     "target": "spoon",       "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "spoon",       "parameters": {} },
+    { "type": "perceive", "target": "soup pot",    "parameters": {} },
+    { "type": "move",     "target": "soup pot",    "parameters": {} },
+    { "type": "stir",     "target": "soup pot",    "parameters": { "stir_time": 10 } }
+    { "type": "return_back", "target": "spoon",  "parameters": {} },
+    
+    { "type": "reset", "target": "home", "parameters": {} }
+  ]
+}
+
+{
+  "response": "Sure, I'll first put the cucumber into the soup, then also place the tomato in the soup pot, finally add pepper to the soup three times.",
+  "actions": [
+    { "type": "perceive", "target": "cucumber", "parameters": {} },
+    { "type": "move", "target": "cucumber", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "cucumber", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+
+    { "type": "perceive", "target": "pepper bottle", "parameters": {} },
+    { "type": "move", "target": "pepper bottle", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "pepper bottle", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "add", "target": "soup pot", "parameters": { "add_times": 3 } },
+    { "type": "return_back", "target": "pepper bottle", "parameters": {} },
+    
+    { "type": "reset", "target": "home", "parameters": {} }
+  ]
+}
+
+{
+  "response": "Sure, I'll put the banana into the salad first, then place the tomato in, finally put the tomato into the salad as well.",
+  "actions": [
+    { "type": "perceive", "target": "banana", "parameters": {} },
+    { "type": "move", "target": "banana", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "banana", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+      
+    { "type": "reset", "target": "home", "parameters": {} }
+  ]
+}
+
+{
+  "response": "Sure, I'll follow your instruction. First I'll add salt to the soup twice, put the tomato into the soup pot, finally place the cucumber in the soup.",
+  "actions": [
+    { "type": "perceive", "target": "salt bottle", "parameters": {} },
+    { "type": "move", "target": "salt bottle", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "salt bottle", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "add", "target": "soup pot", "parameters": { "add_times": 2 } },
+    { "type": "return_back", "target": "salt bottle", "parameters": {} },
+    
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+
+    { "type": "perceive", "target": "cucumber", "parameters": {} },
+    { "type": "move", "target": "cucumber", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "cucumber", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "reset", "target": "home", "parameters": {} }
+  ]
+}
+
+{
+  "response": "Sure, I'll follow your instruction. First I'll put the cucumber into the salad, then add pepper once in the pot, next put tomato in as well, finally stir the pot for 5 seconds.",
+  "actions": [    
+    { "type": "perceive", "target": "cucumber", "parameters": {} },
+    { "type": "move", "target": "cucumber", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "cucumber", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "pepper bottle", "parameters": {} },
+    { "type": "move", "target": "pepper bottle", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "pepper bottle", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "add", "target": "soup pot", "parameters": { "add_times": 2 } },
+    { "type": "return_back", "target": "pepper bottle", "parameters": {} },
+    
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move", "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings", "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "soup pot", "parameters": {} },
+    { "type": "move", "target": "soup pot", "parameters": {} },
+    { "type": "open", "target": "soup pot", "parameters": {} },
+    
+    { "type": "perceive", "target": "spoon",       "  parameters": {} },
+    { "type": "move",     "target": "spoon",       "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "spoon",       "parameters": {} },
+    { "type": "perceive", "target": "soup pot",    "parameters": {} },
+    { "type": "move",     "target": "soup pot",    "parameters": {} },
+    { "type": "stir",     "target": "soup pot",    "parameters": { "stir_time": 5 } }
+    { "type": "return_back", "target": "spoon",  "parameters": {} },
+    
+    { "type": "reset", "target": "home", "parameters": {} }
+  ]
+}
+
 '''.strip()

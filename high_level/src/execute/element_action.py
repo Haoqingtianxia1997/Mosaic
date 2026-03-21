@@ -88,6 +88,9 @@ class ActionExecutor:
             # Check if the service was successful
             if not self.success:
                 print(f"⛔ Aborting action sequence due to failure at step {i}.")
+                play_text_to_speech('Sorry, I cannot do that. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
                 break
 
             try:
@@ -165,6 +168,9 @@ class ActionExecutor:
 
             except Exception as e:
                 print("❌ Exception inside execute_action_sequence:")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
                 traceback.print_exc()
                 raise
         print("✅ Action sequence completed.")
@@ -302,7 +308,8 @@ class ActionExecutor:
                     play_text_to_speech(response_r, language='en')
                 else:
                     play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
-
+                self.action_open()
+                self.action_reset()
                 self.success = False
                 return
 
@@ -316,6 +323,8 @@ class ActionExecutor:
             if len(self.all_points_arr) == 0:
                 print("❌ All points are invalid (contain NaNs)")
                 self.success = False
+                self.action_open()
+                self.action_reset()
                 return
 
             # Filter out background/table points by z-axis threshold
@@ -327,6 +336,8 @@ class ActionExecutor:
             if len(self.all_points_arr) == 0:
                 print("❌ All points filtered out by z-axis threshold")
                 self.success = False
+                self.action_open()
+                self.action_reset()
                 return
 
             # Calculate center point
@@ -379,6 +390,9 @@ class ActionExecutor:
         except Exception as e:
             print(f"❌ Failed to get FK position: {e}")
             self.success = False
+            play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+            self.action_open()
+            self.action_reset()
             return
 
         print(f"Current position: {current_position}")
@@ -406,6 +420,9 @@ class ActionExecutor:
                 print("✅ Lift-to-safe-height step succeeded.")
             else:
                 print("❌ Lift-to-safe-height step failed.")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
                 return
         
         if self.move_params["move_z"] < 0.35:   
@@ -431,6 +448,9 @@ class ActionExecutor:
                 print("✅ Pre-move safe-height step succeeded.")
             else:
                 print("❌ Pre-move safe-height step failed.")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
                 return
         
         try:
@@ -455,6 +475,9 @@ class ActionExecutor:
             print("✅ Move action executed successfully.")
         else:
             print("❌ Move action failed.")
+            play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+            self.action_open()
+            self.action_reset()
 
     def action_grasp(self):
         """Grasp an object using predefined parameters or computed grasp poses.
@@ -486,6 +509,9 @@ class ActionExecutor:
             if self.all_points_arr is None:
                 print("❌ Failed to perceive target points in both cameras.")
                 self.success = False
+                play_text_to_speech('Sorry, I cannot perceive target points in both cameras.', language='en')
+                self.action_open()
+                self.action_reset()
                 return
 
             # use_anygrasp=True: AnyGrasp neural network method (no OBB needed)
@@ -503,6 +529,7 @@ class ActionExecutor:
             if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
                 play_text_to_speech('Sorry, I cannot find the suitable grasp poses.', language='en')
                 print("❌ Failed to compute grasp poses.")
+                self.action_open()
                 self.action_reset()
                 self.success = False
                 return
@@ -549,6 +576,9 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Grasp other things action failed, retrying...")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
 
     def action_stir(self):
         """Stir a pot for a specified duration using class variables.
@@ -581,6 +611,9 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Stir action failed, retrying...")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
 
     def action_reset(self):
         """Reset the robot to its home position.
@@ -623,6 +656,9 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Add action failed, retrying...")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')  
+                self.action_open()
+                self.action_reset()
 
     def action_return_back(self):
         """Return the robot to its original position after placing an object.
@@ -655,6 +691,9 @@ class ActionExecutor:
         try:
             # Check if there are any unassigned parameters in rb_params
             if any(v is None for v in self.rb_params.values()):
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
                 raise ValueError("Missing return_back parameters in rb_params.")
                 
             else:
@@ -688,6 +727,9 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Return back action failed, retrying...")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
 
     def action_open(self):
         """Open the robot's gripper.
@@ -733,6 +775,9 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Grasp detection action failed, retrying...")
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                self.action_open()
+                self.action_reset()
 
     def get_grasps(self):
         """

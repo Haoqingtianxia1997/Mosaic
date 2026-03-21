@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T18:57:41.307",
+  "speech_command": "Please put yellow things into the soap part.",
+  "gesture_label": "None",
+  "gaze_label": "ketchup bottle",
+  "scenario_labels": "ketchup bottle, salt bottle, banana, cucumber, tomato",
+  "output": "I have a speech command: Please put yellow things into the soap part., gesture label: None and gaze label: ketchup bottle.scenario labels: ketchup bottle, salt bottle, banana, cucumber, tomato."
+}

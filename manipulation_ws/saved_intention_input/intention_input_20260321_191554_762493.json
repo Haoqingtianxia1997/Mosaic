@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T19:15:54.762",
+  "speech_command": "Please put the cleaning water into the support.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad",
+  "output": "I have a speech command: Please put the cleaning water into the support., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad."
+}

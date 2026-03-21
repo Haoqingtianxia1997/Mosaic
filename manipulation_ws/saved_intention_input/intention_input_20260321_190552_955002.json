@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T19:05:52.955",
+  "speech_command": "Please give me the spelling.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad",
+  "output": "I have a speech command: Please give me the spelling., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad."
+}

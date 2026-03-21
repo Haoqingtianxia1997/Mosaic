@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T22:05:43.633",
+  "speech_command": "There are two long objects on the table. Please put them into the super heart sequentially.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "salt bottle, cucumber, banana, tomato, ketchup bottle",
+  "output": "I have a speech command: There are two long objects on the table. Please put them into the super heart sequentially., gesture label: None and gaze label: None.scenario labels: salt bottle, cucumber, banana, tomato, ketchup bottle."
+}

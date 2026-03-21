@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T18:29:41.799",
+  "speech_command": "Add pepper to the pot twice. Then add salt to the pot twice. Then give me the cucumber. Then add it to the pot.",
+  "gesture_label": "cucumber",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, banana, pepper bottle",
+  "output": "I have a speech command: Add pepper to the pot twice. Then add salt to the pot twice. Then give me the cucumber. Then add it to the pot., gesture label: cucumber and gaze label: None.scenario labels: ketchup bottle, salt bottle, banana, pepper bottle."
+}

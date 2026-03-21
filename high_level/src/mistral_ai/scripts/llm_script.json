@@ -1,19 +1,19 @@
 {
-  "response": "Of course, giving you the tomato.",
+  "response": "Sure, handing you the scouring pad.",
   "actions": [
     {
       "type": "perceive",
-      "target": "tomato",
+      "target": "scouring pad",
       "parameters": {}
     },
     {
       "type": "move",
-      "target": "tomato",
+      "target": "scouring pad",
       "parameters": {}
     },
     {
       "type": "grasp_otherthings",
-      "target": "tomato",
+      "target": "scouring pad",
       "parameters": {}
     },
     {

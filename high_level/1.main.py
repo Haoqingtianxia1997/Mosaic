@@ -76,7 +76,10 @@ if __name__ == "__main__":
         if not text:
             continue
         # 4. ignore if no new transcription write or invalid text
-        if current_mtime_ns == last_processed_mtime_ns:
+        if (
+            last_processed_mtime_ns is not None
+            and current_mtime_ns - last_processed_mtime_ns <= 500_000_000_0
+        ):
             continue
         if text == "None" or text == "":
             continue

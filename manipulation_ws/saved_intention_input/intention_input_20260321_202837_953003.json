@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T20:28:37.953",
+  "speech_command": "Please help me to cook a salad using a tomato and a cucumber and pepper.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "salt bottle, cucumber, banana, tomato, ketchup bottle",
+  "output": "I have a speech command: Please help me to cook a salad using a tomato and a cucumber and pepper., gesture label: None and gaze label: None.scenario labels: salt bottle, cucumber, banana, tomato, ketchup bottle."
+}

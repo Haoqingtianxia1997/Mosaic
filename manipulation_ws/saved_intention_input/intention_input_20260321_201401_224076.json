@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T20:14:01.224",
+  "speech_command": "Please help me to cook a soup.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "banana, salt bottle, tomato, cucumber, ketchup bottle",
+  "output": "I have a speech command: Please help me to cook a soup., gesture label: None and gaze label: None.scenario labels: banana, salt bottle, tomato, cucumber, ketchup bottle."
+}

@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T14:52:48.915",
+  "speech_command": "Please add salt to the soup twice.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "ketchup bottle, salt bottle, scouring pad, detergent bottle, banana, cucumber",
+  "output": "I have a speech command: Please add salt to the soup twice., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, scouring pad, detergent bottle, banana, cucumber."
+}

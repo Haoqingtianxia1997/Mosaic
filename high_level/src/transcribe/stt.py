@@ -35,7 +35,7 @@ def save_transcript_entry(output_path: str, text: str, timestamp: str | None = N
 
 class Config:
     # Use a larger model to improve multilingual recognition accuracy
-    MODEL_SIZE = "tiny.en"  # Best multilingual model (tiny/base/small/medium/large/large-v3)
+    MODEL_SIZE = "base.en"  # Best multilingual model (tiny/base/small/medium/large/large-v3)
     SAMPLE_RATE = 16000
     CHUNK = 1024
     LANGUAGE = "en"          # Auto-detect language

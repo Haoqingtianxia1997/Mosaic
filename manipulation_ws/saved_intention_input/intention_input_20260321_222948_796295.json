@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T22:29:48.796",
+  "speech_command": "Please make me assume with existing objects on a table without your trouble.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "banana, salt bottle, tomato, ketchup bottle",
+  "output": "I have a speech command: Please make me assume with existing objects on a table without your trouble., gesture label: None and gaze label: None.scenario labels: banana, salt bottle, tomato, ketchup bottle."
+}

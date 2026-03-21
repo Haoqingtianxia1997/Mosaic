@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T21:51:35.021",
+  "speech_command": "These prepare us a lot for me.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "salt bottle, tomato, ketchup bottle, cucumber, banana",
+  "output": "I have a speech command: These prepare us a lot for me., gesture label: None and gaze label: None.scenario labels: salt bottle, tomato, ketchup bottle, cucumber, banana."
+}

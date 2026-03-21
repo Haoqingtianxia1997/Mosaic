@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-21T16:05:30.631",
+  "speech_command": "Put the banana into the soup pot. Add salt to the soup twice and then stir the soup for 10 seconds.",
+  "gesture_label": "None",
+  "gaze_label": "None",
+  "scenario_labels": "salt bottle, cucumber",
+  "output": "I have a speech command: Put the banana into the soup pot. Add salt to the soup twice and then stir the soup for 10 seconds., gesture label: None and gaze label: None.scenario labels: salt bottle, cucumber."
+}
