@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T13:48:22.383",
+    "speech_command": "Please give me the banana.",
+    "gesture_label": "None",
+    "gaze_label": "None",
+    "scenario_labels": "banana, cucumber, cucumber",
+    "input": "I have a speech command: Please give me the banana., gesture label: None and gaze label: None.scenario labels: banana, cucumber, cucumber."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Here is the banana.",
+    "response_content": "Please give me the banana.",
+    "content": [
+      {
+        "action_type": "give",
+        "target": "banana"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Please give me the banana.",
+        "audio response": "Sure! Here is the banana.",
+        "content": [
+          {
+            "action_type": "give",
+            "target": "banana"
+          }
+        ]
+      }
+    ]
+  }
+}

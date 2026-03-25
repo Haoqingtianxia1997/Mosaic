@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T16:29:47.325",
-  "speech_command": "Put the spoon into the soup pot.",
-  "gesture_label": "cucumber",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle, banana",
-  "output": "I have a speech command: Put the spoon into the soup pot., gesture label: cucumber and gaze label: None.scenario labels: salt bottle, banana."
-}

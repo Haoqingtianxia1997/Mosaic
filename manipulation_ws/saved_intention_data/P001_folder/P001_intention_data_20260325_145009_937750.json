@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T14:50:09.937",
+    "speech_command": "Please give me the ketchup.",
+    "gesture_label": "None",
+    "gaze_label": "None",
+    "scenario_labels": "banana, ketchup bottle, salt bottle, cucumber, tomato, pepper bottle, detergent bottle",
+    "input": "I have a speech command: Please give me the ketchup., gesture label: None and gaze label: None.scenario labels: banana, ketchup bottle, salt bottle, cucumber, tomato, pepper bottle, detergent bottle."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Giving you the ketchup bottle.",
+    "response_content": "Please give me the ketchup bottle.",
+    "content": [
+      {
+        "action_type": "give",
+        "target": "ketchup bottle"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Please give me the ketchup bottle.",
+        "audio response": "Sure! Giving you the ketchup bottle.",
+        "content": [
+          {
+            "action_type": "give",
+            "target": "ketchup bottle"
+          }
+        ]
+      }
+    ]
+  }
+}

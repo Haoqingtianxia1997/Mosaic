@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T19:43:55.596",
-  "speech_command": "Please help me to cook a soup using the things that all the things you can see.",
-  "gesture_label": "ketchup bottle",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle, ketchup bottle, cucumber, tomato, banana",
-  "output": "I have a speech command: Please help me to cook a soup using the things that all the things you can see., gesture label: ketchup bottle and gaze label: None.scenario labels: salt bottle, ketchup bottle, cucumber, tomato, banana."
-}

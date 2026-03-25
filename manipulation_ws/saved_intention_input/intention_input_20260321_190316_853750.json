@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T19:03:16.853",
-  "speech_command": "Please, third soup for 30 seconds. And yes.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, tomato, scouring pad, cucumber, pepper bottle",
-  "output": "I have a speech command: Please, third soup for 30 seconds. And yes., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, tomato, scouring pad, cucumber, pepper bottle."
-}

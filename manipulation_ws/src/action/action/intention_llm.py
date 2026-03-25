@@ -1,12 +1,15 @@
 import cv2
+import argparse
 from matplotlib import text
 import rclpy
 from rclpy.node import Node
 from action_interfaces.msg import FileStatus
 from action_interfaces.msg import Labels
+from std_msgs.msg import String
 import os
 import sys
 import json
+import shutil
 from datetime import datetime
 from pathlib import Path
 from intention_utils.intention import Intention
@@ -75,8 +78,9 @@ from mistral_ai.llm import run_mistral_llm_direct
     # return last_query_result
 
 class IntentionLLM(Node):
-    def __init__(self):
+    def __init__(self, participant_code="unknown"):
         super().__init__('intention_llm')
+        self.participant_code = participant_code
 
         # self.transcriber = VoiceTranscriber()
         self.client = Mistralmodel()
@@ -92,14 +96,21 @@ class IntentionLLM(Node):
             os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_images/r_scenario.png')
         )
         
-        self.saved_intention_input_path = os.path.abspath(
-            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_intention_input')
+        self.saved_intention_data_path = os.path.abspath(
+            os.path.join(CUR_DIR, f'../../../../manipulation_ws/saved_intention_data/{self.participant_code}_folder')
         )
-        os.makedirs(self.saved_intention_input_path, exist_ok=True)
+        os.makedirs(self.saved_intention_data_path, exist_ok=True)
+        
+        
+        self.copy_rgbd_path = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_images')
+        )
         
         self.file_path = os.path.abspath(
             os.path.join(CUR_DIR, '../../../../high_level/src/transcribe/transcription.txt')
         )
+
+        self._copy_rgbd_files_to_participant_folder()
 
 
         self.file_status_sub = self.create_subscription(
@@ -117,6 +128,19 @@ class IntentionLLM(Node):
             self.label_cb,
             1
         )
+
+        # Publish plain string input/output for intention LLM pipeline.
+        self.intention_llm_input_publishers = self.create_publisher(
+            String,
+            'intention_llm_input',
+            1
+        )
+        self.intention_llm_output_publishers = self.create_publisher(
+            String,
+            'intention_llm_output',
+            1
+        )
+        
         self.latest_gesture_labels = None
         self.latest_gaze_labels = None
         self.all_labels = None
@@ -126,21 +150,50 @@ class IntentionLLM(Node):
         self.max_history_size = 50
         
         self.get_logger().info('Intention LLM Node has been started.')
+        self.get_logger().info(f'participant_code: {self.participant_code}')
 
-    def _save_output_json(self, output_text, cmd_str, gesture_str, gaze_str, scenario_labels_str):
+    def _copy_rgbd_files_to_participant_folder(self):
+        files_to_copy = ["l_depth.npy", "l_rgb.png", "r_depth.npy", "r_rgb.png"]
+        sensor_data_dir = os.path.join(self.saved_intention_data_path, "sensor_data")
+        os.makedirs(sensor_data_dir, exist_ok=True)
+
+        for filename in files_to_copy:
+            src_path = os.path.join(self.copy_rgbd_path, filename)
+            dst_path = os.path.join(sensor_data_dir, filename)
+
+            if not os.path.isfile(src_path):
+                self.get_logger().warn(f"Source file not found, skip copy: {src_path}")
+                continue
+
+            try:
+                shutil.copy2(src_path, dst_path)
+                self.get_logger().info(f"Copied {filename} to participant folder: {dst_path}")
+            except OSError as e:
+                self.get_logger().error(f"Failed to copy {src_path} -> {dst_path}: {e}")
+
+    def _save_json(self, input_text, cmd_str, gesture_str, gaze_str, scenario_labels_str, response, audio_response, content, json_blocks):
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         payload = {
-            "timestamp": datetime.now().isoformat(timespec="milliseconds"),
-            "speech_command": cmd_str,
-            "gesture_label": gesture_str,
-            "gaze_label": gaze_str,
-            "scenario_labels": scenario_labels_str,
-            "output": output_text,
+            "self_id": self.participant_code,
+            "intention_llm_input": {
+                "timestamp": datetime.now().isoformat(timespec="milliseconds"),
+                "speech_command": cmd_str,
+                "gesture_label": gesture_str,
+                "gaze_label": gaze_str,
+                "scenario_labels": scenario_labels_str,
+                "input": input_text,
+            },
+            "intention_llm_output": {
+                "audio_response": audio_response,
+                "response_content": response,
+                "content": content,
+                "json_blocks": json_blocks,
+            },
         }
-        file_path = os.path.join(self.saved_intention_input_path, f"intention_input_{ts}.json")
+        file_path = os.path.join(self.saved_intention_data_path, f"{self.participant_code}_intention_data_{ts}.json")
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
-        self.get_logger().info(f"Saved intention input JSON: {file_path}")
+        self.get_logger().info(f"Saved intention data JSON: {file_path}")
 
     def label_cb(self, msg):
         # Add to history
@@ -186,19 +239,33 @@ class IntentionLLM(Node):
             scenario_labels =self.intention.get_scenario_yolo_labels(r_rgb, self.scenario_img_path)
             scenario_labels_str = ", ".join(scenario_labels) if scenario_labels else "None"
             
-            output = (
+            input = (
                 f"I have a speech command: {cmd_str}, "
                 f"gesture label: {gesture_str} and "
                 f"gaze label: {gaze_str}."
                 f"scenario labels: {scenario_labels_str}."
             )
-            self._save_output_json(output, cmd_str, gesture_str, gaze_str, scenario_labels_str)
-            
+        
+            input_msg = String()
+            input_msg.data = input
+            self.intention_llm_input_publishers.publish(input_msg)
             
             response, audio_response, content, json_blocks = run_mistral_llm_direct(
-                output,
+                input,
                 self.client,
             )
+            
+            output_payload = {
+                "response": response,
+                "audio_response": audio_response,
+                "content": content,
+                "json_blocks": json_blocks,
+            }
+            output_msg = String()
+            output_msg.data = json.dumps(output_payload, ensure_ascii=False)
+            self.intention_llm_output_publishers.publish(output_msg)
+            
+            self._save_json(input, cmd_str, gesture_str, gaze_str, scenario_labels_str, response, audio_response, content, json_blocks)
             
             # Path("./src/mistral_ai/scripts/llm_script.txt").write_text(audio_response, encoding="utf-8")
             
@@ -248,8 +315,13 @@ class IntentionLLM(Node):
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = IntentionLLM()
+    argv = args if args is not None else sys.argv[1:]
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--participant_code', type=str, default='unknown')
+    known_args, remaining_args = parser.parse_known_args(argv)
+
+    rclpy.init(args=remaining_args)
+    node = IntentionLLM(participant_code=known_args.participant_code)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T19:16:34.849",
-  "speech_command": "Please give me the cleaning washer. Walter.",
-  "gesture_label": "cucumber, scouring pad, detergent bottle, ketchup bottle, salt bottle",
-  "gaze_label": "None",
-  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad",
-  "output": "I have a speech command: Please give me the cleaning washer. Walter., gesture label: cucumber, scouring pad, detergent bottle, ketchup bottle, salt bottle and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, cucumber, tomato, banana, scouring pad."
-}

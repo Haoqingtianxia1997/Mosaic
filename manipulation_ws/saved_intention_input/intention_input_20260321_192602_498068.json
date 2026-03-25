@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T19:26:02.498",
-  "speech_command": "Please help me to focus on using the support.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "banana, salt bottle, cucumber, scouring pad, tomato",
-  "output": "I have a speech command: Please help me to focus on using the support., gesture label: None and gaze label: None.scenario labels: banana, salt bottle, cucumber, scouring pad, tomato."
-}

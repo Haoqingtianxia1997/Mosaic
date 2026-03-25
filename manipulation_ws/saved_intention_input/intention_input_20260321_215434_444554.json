@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T21:54:34.444",
-  "speech_command": "Please make me a super with the objects on the table.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle, cucumber, banana, tomato, ketchup bottle",
-  "output": "I have a speech command: Please make me a super with the objects on the table., gesture label: None and gaze label: None.scenario labels: salt bottle, cucumber, banana, tomato, ketchup bottle."
-}

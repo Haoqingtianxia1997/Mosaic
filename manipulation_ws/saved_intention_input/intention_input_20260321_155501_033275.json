@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T15:55:01.033",
-  "speech_command": "There are two long objects on the table give them to me one by one.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle, banana, cucumber, scouring pad",
-  "output": "I have a speech command: There are two long objects on the table give them to me one by one., gesture label: None and gaze label: None.scenario labels: salt bottle, banana, cucumber, scouring pad."
-}

@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T14:55:45.483",
+    "speech_command": "Please put the cucumber into the plate.",
+    "gesture_label": "None",
+    "gaze_label": "None",
+    "scenario_labels": "banana, salt bottle, cucumber, tomato, pepper bottle",
+    "input": "I have a speech command: Please put the cucumber into the plate., gesture label: None and gaze label: None.scenario labels: banana, salt bottle, cucumber, tomato, pepper bottle."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Putting the cucumber into the dessert plate.",
+    "response_content": "Please put the cucumber into the dessert plate.",
+    "content": [
+      {
+        "action_type": "put in",
+        "target": "cucumber"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Please put the cucumber into the dessert plate.",
+        "audio response": "Sure! Putting the cucumber into the dessert plate.",
+        "content": [
+          {
+            "action_type": "put in",
+            "target": "cucumber"
+          }
+        ]
+      }
+    ]
+  }
+}

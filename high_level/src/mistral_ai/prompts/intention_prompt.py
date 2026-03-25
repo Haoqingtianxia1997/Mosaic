@@ -48,7 +48,8 @@ Their positions are fixed in the kitchen environment, and they are always availa
   - soup pot
   - pepper bottle
   - salt bottle
-Spoon can be grasped and soup pot is an end location for actions like "put in", "add to" and "stir".
+  - dessert plate
+Spoon can be grasped, soup pot and dessert plate are end locations for actions like "put in", "add to" and "stir".
 
 OBJECTIVE DESCRIPTION:
 banana: an elongated, curved tropical fruit with yellow color. 
@@ -73,7 +74,7 @@ the target should be a food item.
 * Firstly, you need to match target in voice command with labels from gesture, gaze based on OBJECTIVE DESCRIPTION, to find the best target name in FIXED AVAILABLE OBJECT TARGETS. Otherwise match target in voice command with scenario label.
 * Then, if match between target in voice command with gesture and gaze labels failed, match target with scenario label based on OBJECTTIVE DESCRIPTION to find the best target name in FIXED AVAILABLE OBJECT TARGETS. 
 * Gesture and gaze labels have the same priority, whereas scenario labels stay on a lower hierarchy. 
-* If there's no match with gaze, gesture or scenario label, analyze if the target in voice command matches objects in HARDCODED OBJECT TARGETS based on OBJECTIVE DESCRIPTION, to find the best target name in HARDCODED OBJECT TARGETS, like "spoon", "soup pot", "pepper bottle" and "salt bottle". Under any circumstance, these objects can be found !!!!!!! VERY IMPORTANT!!!!!!!!!
+* If there's no match with gaze, gesture or scenario label, analyze if the target in voice command matches objects in HARDCODED OBJECT TARGETS based on OBJECTIVE DESCRIPTION, to find the best target name in HARDCODED OBJECT TARGETS, like "spoon", "soup pot", "dessert plate", "pepper bottle" and "salt bottle". Under any circumstance, these objects can be found !!!!!!! VERY IMPORTANT!!!!!!!!!
 * Make sure the target name in "Reponse" and "Audio response" is either in the FIXED AVAILABLE OBJECT TARGETS or in HARDCODED OBJECT TARGETS. Do NOT generate any target name that is not in these two categories, unless the voice command does NOT involve any physical action like "tell me a story" or "give me a recipe of a dish".
 * That means voice commands with interactive vocal requirements do NOT follow the previous mentioned rules. For example, when the voice command is "What's your favorite recipe?", the response should be a recipe name that is not necessarily in FIXED AVAILABLE OBJECT TARGETS or HARDCODED OBJECT TARGETS.  
 * If target in voice command does not match gesture, gaze or scenario labels based on OBJECTIVE DESCRIPTION of objects in FIXED AVAILABLE OBJECT TARGETS and HARDCODED OBJECT TARGETS, and also doesn't match any object in HARDCODED OBJECT TARGETS, and is not any interactive vocal requirements, then give "None" in "Response", and output "Sorry I cannot do ...." or something similar in "Audio response". !!!!!!! VERY IMPORTANT!!!!!!!!!
@@ -164,6 +165,9 @@ I have a speech command: 'Give me the detergent bottle.', gesture label: '', gaz
 I have a speech command: 'Please help me to cook a soup!', gesture label: '', gaze label: 'pepper bottle' and scenario label: 'pepper bottle, detergent bottle, cucumber, tomato, salt bottle, banana, ketchup bottle'. 
 I have a speech command: 'Please help me to cook a salad!', gesture label: '', gaze label: '' and scenario label: 'pepper bottle, detergent bottle, cucumber, tomato, salt bottle, banana, ketchup bottle'. 
 
+I have a speech command: 'Please put the banana into the dessert plate', gesture label: 'banana', gaze label: '' and scenario label: 'banana'.
+I have a speech command: 'Please put the tomato into the dessert plate', gesture label: '', gaze label: 'tomato' and scenario label: 'tomato'.
+I have a speech command: 'Please put the cucumber into the dessert plate', gesture label: 'cucumber', gaze label: '' and scenario label: 'cucumber'.
 """.strip()
 
 # ---------------------------------------------------------------------
@@ -692,6 +696,33 @@ intention_assistant_prompt = '''
       "target": "cucumber"},
     { "action_type": "stir",
       "target": "soup pot"}
+  ]
+}
+
+{
+  "response": "Please put the banana into the dessert plate",
+  "audio response": "Sure! Putting the banana into the dessert plate.",
+  "content": [
+    { "action_type": "put in",
+      "target": "banana"}
+  ]
+}
+
+{
+  "response": "Please put the tomato into the dessert plate",
+  "audio response": "Sure! Putting the tomato into the dessert plate.",
+  "content": [
+    { "action_type": "put in",
+      "target": "tomato"}
+  ]
+}
+
+{
+  "response": "Please put the cucumber into the dessert plate",
+  "audio response": "Sure! Putting the cucumber into the dessert plate.",
+  "content": [
+    { "action_type": "put in",
+      "target": "cucumber"}
   ]
 }
 '''.strip()

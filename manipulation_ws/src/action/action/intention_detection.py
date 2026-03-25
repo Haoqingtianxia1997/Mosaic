@@ -95,10 +95,10 @@ class HandDetectionWithPointCloudNode(Node):
 
         self.get_logger().info("🖐️ Hand detection + point cloud visualization node started")
 
-        self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.09738127, -0.45562742+0.01,  0.51433431]), quaternion = np.array([0.83715593, -0.37772623, 0.15412896, -0.36433106]))
+        self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.078, -0.466, 0.554]), quaternion = np.array([0.837, -0.378, 0.154, -0.364]))
         self.intrinsics_l = (1060.0899658203125, 1059.0899658203125, 958.9099731445312, 561.5670166015625)
 
-        self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.862, 0.478207, 0.57065845]), quaternion = np.array([0.55712176, 0.74418569, -0.29310264, -0.22336929]))
+        self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.832, 0.468, 0.587]), quaternion = np.array([0.553, 0.749, -0.280, -0.233]))
         self.intrinsics_r = (1059.9764404296875, 1059.9764404296875, 963.07568359375, 522.3530883789062)
 
         # finger detection

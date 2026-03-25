@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T15:15:04.922",
+    "speech_command": "Please stir the soup for 10 seconds.",
+    "gesture_label": "None",
+    "gaze_label": "None",
+    "scenario_labels": "banana, salt bottle, cucumber, tomato, pepper bottle, beer bottle",
+    "input": "I have a speech command: Please stir the soup for 10 seconds., gesture label: None and gaze label: None.scenario labels: banana, salt bottle, cucumber, tomato, pepper bottle, beer bottle."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Stirring the soup pot for 10 seconds.",
+    "response_content": "Please stir the soup pot for 10 seconds.",
+    "content": [
+      {
+        "action_type": "stir",
+        "target": "soup pot"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Please stir the soup pot for 10 seconds.",
+        "audio response": "Sure! Stirring the soup pot for 10 seconds.",
+        "content": [
+          {
+            "action_type": "stir",
+            "target": "soup pot"
+          }
+        ]
+      }
+    ]
+  }
+}

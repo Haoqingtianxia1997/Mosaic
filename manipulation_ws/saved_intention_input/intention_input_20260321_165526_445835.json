@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T16:55:26.445",
-  "speech_command": "Please kill me.",
-  "gesture_label": "cucumber",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle",
-  "output": "I have a speech command: Please kill me., gesture label: cucumber and gaze label: None.scenario labels: salt bottle."
-}

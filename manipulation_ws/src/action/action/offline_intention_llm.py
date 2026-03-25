@@ -21,21 +21,36 @@ from mistral_ai.llm import run_mistral_llm_direct
 
 
 class offline_intention_llm:
-    def __init__(self):
+    def __init__(self, participant_code="unknown"):
         self.client = Mistralmodel()
         self.intention = Intention()
+        self.participant_code = participant_code
         
         CUR_DIR = os.path.dirname(os.path.abspath(__file__))
-        
-        self.saved_intention_input_path = os.path.abspath(
-            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_intention_input')
+
+        self.saved_intention_input_root = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_intention_data')
         )
+        self.saved_intention_input_path = self._resolve_input_dir(self.saved_intention_input_root)
 
         self.file_path = os.path.abspath(
             os.path.join(CUR_DIR, '../../../../high_level/src/transcribe/transcription.txt')
         )
 
         print('Offline Intention LLM has been started.')
+        print(f'participant_code: {self.participant_code}')
+        print(f'input folder: {self.saved_intention_input_path}')
+
+    def _resolve_input_dir(self, root_dir):
+        candidates = [
+            os.path.join(root_dir, f"{self.participant_code}_folder"),
+            os.path.join(root_dir, self.participant_code),
+            root_dir,
+        ]
+        for path in candidates:
+            if os.path.isdir(path):
+                return path
+        raise FileNotFoundError(f"No valid input directory found under: {root_dir}")
 
     def _to_output_str(self, value):
         if value is None:
@@ -65,10 +80,13 @@ class offline_intention_llm:
         with open(selected_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        cmd_str = self._to_output_str(data.get('speech_command'))
-        gesture_str = self._to_output_str(data.get('gesture_label'))
-        gaze_str = self._to_output_str(data.get('gaze_label'))
-        scenario_labels_str = self._to_output_str(data.get('scenario_labels'))
+        # New format stores fields under intention_llm_input; keep old-format fallback.
+        input_data = data.get('intention_llm_input', data)
+
+        cmd_str = self._to_output_str(input_data.get('speech_command'))
+        gesture_str = self._to_output_str(input_data.get('gesture_label'))
+        gaze_str = self._to_output_str(input_data.get('gaze_label'))
+        scenario_labels_str = self._to_output_str(input_data.get('scenario_labels'))
         print(f"Loaded intention input JSON: {selected_path}")
         return cmd_str, gesture_str, gaze_str, scenario_labels_str
 
@@ -114,11 +132,12 @@ class offline_intention_llm:
 def main(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("selected_json_name", nargs="?", default=None)
+    parser.add_argument("--participant_code", type=str, default="unknown")
     parser.add_argument("--no-gesture", action="store_true", help="Do not use gesture label")
     parser.add_argument("--no-gaze", action="store_true", help="Do not use gaze label")
     cli_args = parser.parse_args(args=args)
 
-    test = offline_intention_llm()
+    test = offline_intention_llm(participant_code=cli_args.participant_code)
     test.ablation_process(
         selected_json_name=cli_args.selected_json_name,
         use_gesture_label=not cli_args.no_gesture,

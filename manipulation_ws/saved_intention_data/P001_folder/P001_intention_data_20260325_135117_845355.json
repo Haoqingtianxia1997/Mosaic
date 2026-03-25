@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T13:51:17.845",
+    "speech_command": "Please give me the pakala.",
+    "gesture_label": "None",
+    "gaze_label": "None",
+    "scenario_labels": "banana, cucumber",
+    "input": "I have a speech command: Please give me the pakala., gesture label: None and gaze label: None.scenario labels: banana, cucumber."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sorry, I cannot find the pakala.",
+    "response_content": "None",
+    "content": [
+      {
+        "action_type": "",
+        "target": ""
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "None",
+        "audio response": "Sorry, I cannot find the pakala.",
+        "content": [
+          {
+            "action_type": "",
+            "target": ""
+          }
+        ]
+      }
+    ]
+  }
+}

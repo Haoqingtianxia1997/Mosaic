@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T19:18:11.383",
-  "speech_command": "Please give me something to clean the dishes.",
-  "gesture_label": "water bottle, tomato",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle, scouring pad, tomato, cucumber, banana",
-  "output": "I have a speech command: Please give me something to clean the dishes., gesture label: water bottle, tomato and gaze label: None.scenario labels: salt bottle, scouring pad, tomato, cucumber, banana."
-}

@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T14:51:49.269",
+    "speech_command": "Transcribe strictly in English.",
+    "gesture_label": "tomato, cucumber, salt bottle",
+    "gaze_label": "None",
+    "scenario_labels": "banana, salt bottle, cucumber, tomato, pepper bottle",
+    "input": "I have a speech command: Transcribe strictly in English., gesture label: tomato, cucumber, salt bottle and gaze label: None.scenario labels: banana, salt bottle, cucumber, tomato, pepper bottle."
+  },
+  "intention_llm_output": {
+    "audio_response": "Transcribing strictly in English.",
+    "response_content": "Transcribe strictly in English.",
+    "content": [
+      {
+        "action_type": "transcribe",
+        "target": "English"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Transcribe strictly in English.",
+        "audio response": "Transcribing strictly in English.",
+        "content": [
+          {
+            "action_type": "transcribe",
+            "target": "English"
+          }
+        ]
+      }
+    ]
+  }
+}

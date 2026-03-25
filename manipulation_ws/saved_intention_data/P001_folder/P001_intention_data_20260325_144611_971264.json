@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T14:46:11.971",
+    "speech_command": "Please give me the catch up.",
+    "gesture_label": "None",
+    "gaze_label": "None",
+    "scenario_labels": "banana, cucumber, salt bottle, detergent bottle, tomato, pepper bottle, ketchup bottle",
+    "input": "I have a speech command: Please give me the catch up., gesture label: None and gaze label: None.scenario labels: banana, cucumber, salt bottle, detergent bottle, tomato, pepper bottle, ketchup bottle."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Here is the ketchup bottle.",
+    "response_content": "Please give me the ketchup bottle.",
+    "content": [
+      {
+        "action_type": "give",
+        "target": "ketchup bottle"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Please give me the ketchup bottle.",
+        "audio response": "Sure! Here is the ketchup bottle.",
+        "content": [
+          {
+            "action_type": "give",
+            "target": "ketchup bottle"
+          }
+        ]
+      }
+    ]
+  }
+}

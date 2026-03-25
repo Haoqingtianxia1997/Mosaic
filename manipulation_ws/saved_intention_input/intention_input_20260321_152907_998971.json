@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T15:29:07.999",
-  "speech_command": "Please give me the catch up bottle.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "ketchup bottle, salt bottle, detergent bottle, scouring pad, cucumber, banana",
-  "output": "I have a speech command: Please give me the catch up bottle., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, detergent bottle, scouring pad, cucumber, banana."
-}

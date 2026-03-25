@@ -78,7 +78,7 @@ ros2 run action read_file
 ros2 topic pub /file_status action_interfaces/msg/FileStatus "{changed: true, content: 'hello world'}"
 
 #intention_llm:
-python3 src/action/action/intention_llm.py
+python3 src/action/action/intention_llm.py --participant_code P001  # P001 is a participant code example.
 
 
 
@@ -157,7 +157,7 @@ ros2 service call /reset_service std_srvs/srv/Trigger
 stir:
 ```bash
 ros2 run action stir
-ros2 service call /stir_service action_interfaces/srv/Stir "{center_x: 0.6, center_y: -0.3, center_z: 0.4, radius: 0.08, start_angle_deg: 0.0, move_down_offset: 0.1, speed: 0.5, stir_time: 30}"
+ros2 service call /stir_service action_interfaces/srv/Stir "{center_x: 0.62, center_y: -0.37, center_z: 0.49, radius: 0.05, start_angle_deg: 0.0, move_down_offset: 0.1, speed: 0.5, stir_time: 30}"
 ```
 
 
@@ -199,13 +199,13 @@ ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep
 ```bash
 # zedr
 ros2 run tf2_ros static_transform_publisher \
---x 0.8485 --y 0.5172 --z 0.5711 \
+--x 0.8185 --y 0.5272 --z 0.5711 \
 --qx 0.3718 --qy 0.0715 --qz -0.9173 --qw 0.1234 \
 --frame-id base --child-frame-id zedr_camera_link
 
 # zedl
 ros2 run tf2_ros static_transform_publisher \
---x 0.115474 --y -0.511620 --z 0.514850 \
+--x 0.115474 --y -0.511620 --z 0.534850 \
 --qx 0.116199 --qy -0.326420 --qz -0.337829 --qw -0.875111 \
 --frame-id base --child-frame-id zedl_camera_link
 
@@ -214,21 +214,28 @@ ros2 run tf2_ros static_transform_publisher \
 --x 0 --y 0 --z 0 \
 --qx 0 --qy 0 --qz 0 --qw 1 \
 --frame-id base --child-frame-id base_link
-```
 
+# adjust extrinsic
+ros2 run tf2_ros tf2_echo base zedl_left_camera_optical_frame
+
+ros2 run tf2_ros tf2_echo base zedr_left_camera_optical_frame
+```
 
 ## offline intention llm ablation test:
 
 ```bash
-# Use the latest JSON, with both gesture and gaze enabled
-python offline_intention_llm.py
+# Use the latest JSON for a participant, with both gesture and gaze enabled
+python src/action/action/offline_intention_llm.py --participant_code P001
 
 # Use a specified JSON, disable gesture
-python offline_intention_llm.py intention_input_20260320_101010_123456.json --no-gesture
+python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --no-gesture
 
 # Use a specified JSON, disable gaze
-python offline_intention_llm.py intention_input_20260320_101010_123456.json --no-gaze
+python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --no-gaze
 
 # Disable both
-python offline_intention_llm.py --no-gesture --no-gaze
+python src/action/action/offline_intention_llm.py --participant_code P001 --no-gesture --no-gaze
+
+# If your data folder is saved_intention_input/P001_folder or saved_intention_input/P001,
+# set participant_code to P001.
 ```

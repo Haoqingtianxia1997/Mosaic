@@ -66,7 +66,7 @@ class ActionExecutor:
         self.add_times = 2
         
         # Z-axis height threshold to filter out table/background points
-        self.z_filter_threshold = 0.01  # points with z below this value are removed
+        self.z_filter_threshold = 0.005  # points with z below this value are removed
 
         # Action move offset
         self.delta = 0.0
@@ -202,12 +202,13 @@ class ActionExecutor:
             print("✅ Perceived user person, moving to target point.")
             return
         elif self.target == "spoon":
-            self.move_params = {"move_x" : 0.406, "move_y" : -0.313, "move_z" : 0.6, "move_qx" : 0.999, "move_qy" : 0.023, "move_qz" : 0.026, "move_qw" : 0.001}
+            self.move_params = {"move_x" : 0.52, "move_y" : -0.14, "move_z" : 0.6, "move_qx" : 0.999, "move_qy" : 0.023, "move_qz" : 0.026, "move_qw" : 0.001}
+            # "move_x" : 0.406, "move_y" : -0.313, "move_z" : 0.6
             self.success = True
             print("✅ Perceived spoon, moving to target point.")
             return
         elif self.target == "soup pot":
-            self.move_params = {"move_x" : 0.6, "move_y" : -0.3, "move_z" : 0.32, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
+            self.move_params = {"move_x" : 0.62, "move_y" : -0.33, "move_z" : 0.37, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
             self.success = True
             print("✅ Perceived soup pot, moving to target point.")
             return
@@ -220,6 +221,11 @@ class ActionExecutor:
             self.move_params = {"move_x" : 0.27, "move_y" : 0.561, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
             self.success = True
             print("✅ Perceived pepper bottle, moving to target point.")
+            return
+        elif self.target == "dessert plate":
+            self.move_params = {"move_x" : 0.426, "move_y" : -0.353, "move_z" : 0.32, "move_qx" : 1.0, "move_qy" : 0.0, "move_qz" : 0.0, "move_qw" : 0.0}
+            self.success = True
+            print("✅ Perceived dessert plate, moving to target point.")
             return
 
         else:  
@@ -247,18 +253,31 @@ class ActionExecutor:
                 bbox_only= self.bbox_only
             )
 
-            if all_world_points_r is not None and all_world_points_l is not None:
-                    
+            if all_world_points_r is not None and all_world_points_l is not None: 
                 mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
                 all_world_points_r = all_world_points_r[mask_valid]
                 color_r = color_r[mask_valid]
 
-                print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")
-
                 mask_valid = ~np.isnan(all_world_points_l).any(axis=1)
                 all_world_points_l = all_world_points_l[mask_valid]
                 color_l = color_l[mask_valid]
+                
+                
+                all_world_points_r = np.asarray(all_world_points_r)
+                all_world_points_l = np.asarray(all_world_points_l)
+                color_r = np.asarray(color_r) if color_r is not None else None
+                color_l = np.asarray(color_l) if color_l is not None else None
 
+                all_world_points_r, color_r = filter_out_pcd_by_z(
+                    all_world_points_r, color_r, self.z_filter_threshold
+                )
+                all_world_points_l, color_l = filter_out_pcd_by_z(
+                    all_world_points_l, color_l, self.z_filter_threshold
+                )
+                if self.if_visualize:   
+                    open3d_show(all_world_points_l, color_l, center_world_points_l, all_world_points_r, color_r, center_world_points_r)
+                print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")
+                
                 # If both sides have point clouds, use ICP to align and merge
                 all_points, all_colors, T = filter_and_merge_icp_translation_only(
                     all_world_points_l, color_l, all_world_points_r, color_r
@@ -272,7 +291,15 @@ class ActionExecutor:
                 mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
                 all_world_points_r = all_world_points_r[mask_valid]
                 color_r = color_r[mask_valid]
+                
+                all_world_points_r = np.asarray(all_world_points_r)
+                color_r = np.asarray(color_r) if color_r is not None else None
 
+                all_world_points_r, color_r = filter_out_pcd_by_z(
+                    all_world_points_r, color_r, self.z_filter_threshold
+                )
+                if self.if_visualize:
+                    open3d_show(all_world_points_r, color_r, center_world_points_r)
                 print(f"World point in right camera: {all_world_points_r}, in left camera: None")
 
                 # If only the right side has point clouds, use the right side's point clouds directly
@@ -286,11 +313,18 @@ class ActionExecutor:
                 self.success = True
                 
             elif all_world_points_r is None and all_world_points_l is not None:
-                
                 mask_valid = ~np.isnan(all_world_points_l).any(axis=1)
                 all_world_points_l = all_world_points_l[mask_valid]
                 color_l = color_l[mask_valid]
+                
+                all_world_points_l = np.asarray(all_world_points_l)
+                color_l = np.asarray(color_l) if color_l is not None else None
 
+                all_world_points_l, color_l = filter_out_pcd_by_z(
+                    all_world_points_l, color_l, self.z_filter_threshold
+                )
+                if self.if_visualize:
+                    open3d_show(all_world_points_l, color_l, center_world_points_l)
                 print(f"World point in right camera: None, in left camera: {all_world_points_l}")
 
                 # If only the left side has point clouds, use the left side's point clouds directly
@@ -322,19 +356,6 @@ class ActionExecutor:
             self.all_colors_arr = self.all_colors_arr[mask_valid]
             if len(self.all_points_arr) == 0:
                 print("❌ All points are invalid (contain NaNs)")
-                self.success = False
-                self.action_open()
-                self.action_reset()
-                return
-
-            # Filter out background/table points by z-axis threshold
-            z_mask = self.all_points_arr[:, 2] >= self.z_filter_threshold
-            num_filtered = np.sum(~z_mask)
-            self.all_points_arr = self.all_points_arr[z_mask]
-            self.all_colors_arr = self.all_colors_arr[z_mask]
-            print(f"🔻 Z-axis filter (threshold={self.z_filter_threshold}): removed {num_filtered} points, {len(self.all_points_arr)} remaining")
-            if len(self.all_points_arr) == 0:
-                print("❌ All points filtered out by z-axis threshold")
                 self.success = False
                 self.action_open()
                 self.action_reset()
@@ -496,8 +517,8 @@ class ActionExecutor:
 
         # put the value into go_params by grasp strategy with points cloud or something else
         if self.target == "spoon": 
-            self.grasp_params = {"x_prep": 0.406, "y_prep": -0.313, "z_prep": 0.57, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
-                    "x_grasp": 0.406, "y_grasp": -0.313, "z_grasp": 0.3, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
+            self.grasp_params = {"x_prep": 0.52, "y_prep": -0.14, "z_prep": 0.57, "qx_prep": 0.999, "qy_prep": 0.023, "qz_prep": 0.026, "qw_prep": 0.001,
+                    "x_grasp": 0.52, "y_grasp": -0.14, "z_grasp": 0.37, "qx_grasp": 0.999, "qy_grasp": 0.023, "qz_grasp": 0.026, "qw_grasp": 0.001}
         elif self.target == "pepper bottle":
             self.grasp_params = {"x_prep": 0.27, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
                         "x_grasp": 0.27, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
@@ -595,7 +616,7 @@ class ActionExecutor:
             self.success = call_ros2_service("/stir_service", "action_interfaces/srv/Stir", {
                 "center_x": 0.62,
                 "center_y": -0.37,
-                "center_z": 0.42,
+                "center_z": 0.49,
                 "radius": 0.05,
                 "start_angle_deg": 0.0,
                 "move_down_offset": 0.1,
@@ -727,6 +748,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Return back action failed, retrying...")
+                self.grasped_thing = ""
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
                 self.action_open()
                 self.action_reset()
@@ -741,14 +763,16 @@ class ActionExecutor:
         # time.sleep(3)  # Wait for service call to complete
         while True:
             if self.success:
+                self.grasped_thing = ""
                 print("✅ Open action executed successfully.")
                 break
             else:
+                self.grasped_thing = ""
                 print("❌ Open action failed, retrying...")
 
     def action_close(self):
         """Close the robot's gripper.
-        Updates self.success.
+        Updates self.success.   
         """
         self.success = False  # Reset success status
         print("Execute close action")

@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T22:48:36.123",
-  "speech_command": "Please give me that yellow object.",
-  "gesture_label": "salt bottle, tomato, scouring pad",
-  "gaze_label": "scouring pad",
-  "scenario_labels": "salt bottle, scouring pad, tomato, ketchup bottle",
-  "output": "I have a speech command: Please give me that yellow object., gesture label: salt bottle, tomato, scouring pad and gaze label: scouring pad.scenario labels: salt bottle, scouring pad, tomato, ketchup bottle."
-}

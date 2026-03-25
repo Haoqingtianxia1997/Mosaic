@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T18:32:23.808",
-  "speech_command": "Please add the salt to the pork twice and then add the pepper to the soup twice and then use the spoon stir for 30 seconds and then give me the cucumber.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "ketchup bottle, salt bottle, banana, pepper bottle",
-  "output": "I have a speech command: Please add the salt to the pork twice and then add the pepper to the soup twice and then use the spoon stir for 30 seconds and then give me the cucumber., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, banana, pepper bottle."
-}

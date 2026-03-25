@@ -41,6 +41,7 @@ The fixed available object target are:
     - water bottle
     - user person
     - soup pot
+    - dessert plate
     - home
     - spoon
     - gripper
@@ -137,7 +138,9 @@ please help me make a soup using the tomato, cucumber and pepper bottle.
 please help me make a salad using the banana, tomato and cucumber.
 please help me cook a soup. First, add some salt to the soup pot, then put into the tomato, finally place cucumber into the pot.
 please help me make a salad. First, put cucumber into the pot, then add some pepper, next place tomato into the salad, and finally stir the pot for 5 seconds.
-
+Please put the banana into the dessert plate.
+Please put the tomato into the dessert plate.
+Please put the cucumber into the dessert plate.
 """.strip()
 
 # ---------------------------------------------------------------------
@@ -555,5 +558,41 @@ assistant_prompt = '''
     { "type": "reset", "target": "home", "parameters": {} }
   ]
 }
+
+{  "response": "Sure, placing the banana into the dessert plate.",
+  "actions": [
+    { "type": "perceive", "target": "banana", "parameters": {} },
+    { "type": "move",     "target": "banana", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "banana", "parameters": {} },
+    { "type": "perceive", "target": "dessert plate",    "parameters": {} },
+    { "type": "move",      "target": "dessert plate",    "parameters": {} },
+    { "type": "open",      "target": "dessert plate",    "parameters": {} },
+    { "type": "reset",     "target": "home",        "parameters": {} }
+  ]
+} 
+
+{  "response": "Sure, placing the tomato into the dessert plate.",
+  "actions": [
+    { "type": "perceive", "target": "tomato", "parameters": {} },
+    { "type": "move",     "target": "tomato", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "tomato", "parameters": {} },
+    { "type": "perceive", "target": "dessert plate",    "parameters": {} },
+    { "type": "move",      "target": "dessert plate",    "parameters": {} },
+    { "type": "open",      "target": "dessert plate",    "parameters": {} },
+    { "type": "reset",     "target": "home",        "parameters": {} }
+  ]
+} 
+
+{  "response": "Sure, placing the cucumber into the dessert plate.",
+  "actions": [
+    { "type": "perceive", "target": "cucumber", "parameters": {} },
+    { "type": "move",     "target": "cucumber", "parameters": {} },
+    { "type": "grasp_otherthings",    "target": "cucumber", "parameters": {} },
+    { "type": "perceive", "target": "dessert plate",    "parameters": {} },
+    { "type": "move",      "target": "dessert plate",    "parameters": {} },
+    { "type": "open",      "target": "dessert plate",    "parameters": {} },
+    { "type": "reset",     "target": "home",        "parameters": {} }
+  ]
+} 
 
 '''.strip()

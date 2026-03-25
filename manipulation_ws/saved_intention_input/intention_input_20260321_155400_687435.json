@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T15:54:00.687",
-  "speech_command": "I want to wash dishes. Give me something on the table.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "ketchup bottle, salt bottle, banana, detergent bottle, cucumber",
-  "output": "I have a speech command: I want to wash dishes. Give me something on the table., gesture label: None and gaze label: None.scenario labels: ketchup bottle, salt bottle, banana, detergent bottle, cucumber."
-}

@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T21:56:16.573",
-  "speech_command": "Please have a salad for the moment.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "salt bottle, cucumber, banana, tomato, ketchup bottle",
-  "output": "I have a speech command: Please have a salad for the moment., gesture label: None and gaze label: None.scenario labels: salt bottle, cucumber, banana, tomato, ketchup bottle."
-}

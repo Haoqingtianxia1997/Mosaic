@@ -13,6 +13,22 @@ from src.VLM_agent.agent import VLM_agent
 
 ROS2_SERVICE_TIMEOUT_SEC = 15
 
+def filter_out_pcd_by_z(points, colors, z_threshold=0.005):
+    """
+    Filter out points that are too high in the Z direction, which are likely to be noise or background.
+    points: Nx3 array of point coordinates
+    colors: Nx3 array of point colors (optional, can be None)
+    z_threshold: Maximum Z value to keep
+    Returns: filtered_points, filtered_colors
+    """
+    mask = points[:, 2] > z_threshold
+    filtered_points = points[mask]
+    if colors is not None:
+        filtered_colors = colors[mask]
+        return filtered_points, filtered_colors
+    else:
+        return filtered_points, None
+    
 
 def visualize_obb_and_center(all_points_arr, all_colors_arr, obb_corners, center):
     """
@@ -257,19 +273,51 @@ def sphere_at(point, color, radius=0.02):
     s.translate(point)
     return s
 
-def open3d_show(all_points_arr, all_colors_arr, target_center_point, target_max_z_point, center_world_points):
+def open3d_show(all_points_arr, all_colors_arr, *args):
+    """
+    Compatible call styles:
+    1) open3d_show(points, colors, center_point)
+    2) open3d_show(points, colors, target_center, target_max_z, center_world)
+    3) open3d_show(points_l, colors_l, center_l, points_r, colors_r, center_r)
+    """
     import open3d as o3d
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points_arr)
-    if all_colors_arr.max() > 1.1:   # If colors are in 0~255 range
-        all_colors_arr = all_colors_arr / 255.0
-    pcd.colors = o3d.utility.Vector3dVector(all_colors_arr)
 
-    vis_geoms = [pcd]
-    vis_geoms.append(sphere_at(target_center_point, color=[1,0,0], radius=0.012))# Red sphere represents centroid
-    vis_geoms.append(sphere_at(target_max_z_point, color=[0,0,1], radius=0.01))# Blue sphere represents max Z point
-    vis_geoms.append(sphere_at(center_world_points, color=[0,1,0], radius=0.01))# Green sphere represents target point
-    vis_geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=[0,0,0]))  # Coordinate frame
+    def _as_point(point):
+        arr = np.asarray(point).reshape(-1)
+        return arr[:3]
+
+    def _build_pcd(points, colors):
+        pcd = o3d.geometry.PointCloud()
+        pts = np.asarray(points)
+        pcd.points = o3d.utility.Vector3dVector(pts)
+        if colors is not None:
+            cols = np.asarray(colors)
+            if cols.size > 0 and cols.max() > 1.1:
+                cols = cols / 255.0
+            if cols.shape[0] == pts.shape[0]:
+                pcd.colors = o3d.utility.Vector3dVector(cols)
+        return pcd
+
+    vis_geoms = [_build_pcd(all_points_arr, all_colors_arr)]
+
+    if len(args) == 1:
+        # Single cloud with center point only.
+        vis_geoms.append(sphere_at(_as_point(args[0]), color=[0, 1, 0], radius=0.01))
+    elif len(args) == 3:
+        # Full legacy mode: target center, max-z point, and center world point.
+        vis_geoms.append(sphere_at(_as_point(args[0]), color=[1, 0, 0], radius=0.012))
+        vis_geoms.append(sphere_at(_as_point(args[1]), color=[0, 0, 1], radius=0.01))
+        vis_geoms.append(sphere_at(_as_point(args[2]), color=[0, 1, 0], radius=0.01))
+    elif len(args) == 4:
+        # Two-cloud debug mode: left cloud + center, right cloud + center.
+        points_r, colors_r, center_r = args[1], args[2], args[3]
+        vis_geoms.append(_build_pcd(points_r, colors_r))
+        vis_geoms.append(sphere_at(_as_point(args[0]), color=[1, 0, 0], radius=0.012))
+        vis_geoms.append(sphere_at(_as_point(center_r), color=[0, 1, 0], radius=0.01))
+    else:
+        raise ValueError(f"Unsupported open3d_show args length: {len(args)}")
+
+    vis_geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=[0, 0, 0]))
     o3d.visualization.draw_geometries(vis_geoms)
 
 def call_ros2_service(service_name, service_type, args_dict):

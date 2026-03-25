@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T18:45:32.197",
-  "speech_command": "Please give me the salt bottle and don't give me the pepper bottle.",
-  "gesture_label": "None",
-  "gaze_label": "None",
-  "scenario_labels": "banana, ketchup bottle, salt bottle, cucumber, pepper bottle",
-  "output": "I have a speech command: Please give me the salt bottle and don't give me the pepper bottle., gesture label: None and gaze label: None.scenario labels: banana, ketchup bottle, salt bottle, cucumber, pepper bottle."
-}

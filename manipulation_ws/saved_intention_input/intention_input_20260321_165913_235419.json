@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-03-21T16:59:13.235",
-  "speech_command": "Please give me the cucumber.",
-  "gesture_label": "cucumber",
-  "gaze_label": "None",
-  "scenario_labels": "cucumber",
-  "output": "I have a speech command: Please give me the cucumber., gesture label: cucumber and gaze label: None.scenario labels: cucumber."
-}
