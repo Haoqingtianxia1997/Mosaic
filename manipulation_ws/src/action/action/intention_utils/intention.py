@@ -277,12 +277,18 @@ class Intention():
     #     print(f"YOLO ROI & label image saved: {output_path}")
     #     return labels
     
-    def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path):
+    def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path, depth=None, camera_intrinsics=None, T_wc=None, ref_world_point=None):
         """
         img: bgr8 (cv2)
         u, v: center point pixel of ROI
-        yolo_model: 
-        output_path: 
+        yolo_model:
+        output_path:
+        depth: depth image (numpy, meters), optional
+        camera_intrinsics: (fx, fy, cx, cy), optional
+        T_wc: 4x4 world-from-camera transform, optional
+        ref_world_point: np.array([x, y, z]) world coordinate of the pointing target (stable),
+                         used to find the nearest detected object. If provided with depth/intrinsics/T_wc,
+                         returns only the label of the closest bbox; otherwise returns all labels.
         """
         h, w = img.shape[:2]
         roi_size = 500
@@ -297,22 +303,63 @@ class Intention():
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
             print("ROI empty, skip YOLO")
         else:
-            result = self.yolo_model(img, verbose=False,  conf=self.intention_yolo_conf)[0]
+            result = self.yolo_model(img, verbose=False, conf=self.intention_yolo_conf)[0]
             if result.boxes.shape[0]:
+                # First pass: collect all bbox info and world XY
+                detections = []  # list of (bx1,by1,bx2,by2, label, conf, world_xy)
                 for box in result.boxes:
                     bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
-                    # Check if the center point of the box is within the ROI
                     center_x = (bx1 + bx2) // 2
                     center_y = (by1 + by2) // 2
-                    if x1 <= center_x <= x2 and y1 <= center_y <= y2:
-                        cls = int(box.cls[0].cpu().numpy())
-                        label = yolo_model.names[cls]
-                        conf = float(box.conf[0].cpu().numpy())
-                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (0,0,255), 2)
-                        cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-                        labels.append(label)
+                    cls = int(box.cls[0].cpu().numpy())
+                    label = yolo_model.names[cls]
+                    conf = float(box.conf[0].cpu().numpy())
+                    world_xy = None
+                    if depth is not None and camera_intrinsics is not None and T_wc is not None:
+                        fx, fy, cx, cy = camera_intrinsics
+                        dh, dw = depth.shape[:2]
+                        if 0 <= center_x < dw and 0 <= center_y < dh:
+                            z = float(depth[center_y, center_x])
+                            if z > 0:
+                                xc = (center_x - cx) * z / fx
+                                yc = (center_y - cy) * z / fy
+                                p_cam = np.array([xc, yc, z, 1.0])
+                                xyz = (T_wc @ p_cam)[:3]
+                                world_xy = xyz[:2]
+                                print(f"  [{label}] center pixel ({center_x},{center_y}) -> world xyz: {xyz}")
+                    detections.append((bx1, by1, bx2, by2, label, conf, world_xy))
+
+                # Find nearest bbox to ref_world_point
+                if ref_world_point is not None:
+                    ref_xy = np.array(ref_world_point[:2])
+                    best_idx = None
+                    best_dist = float('inf')
+                    for i, (_, _, _, _, lbl, _, wxy) in enumerate(detections):
+                        if wxy is not None:
+                            dist = float(np.linalg.norm(wxy - ref_xy))
+                            print(f"  [{lbl}] world xy: {wxy}, dist to ref: {dist:.4f}")
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_idx = i
+                    if best_idx is not None:
+                        bx1, by1, bx2, by2, best_label, best_conf, _ = detections[best_idx]
+                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
+                        cv2.putText(img, f"{best_label} {best_conf:.2f}", (bx1, by1 - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                        labels = [best_label]
+                        print(f"  -> nearest bbox: [{best_label}] (dist={best_dist:.4f})")
+                    else:
+                        labels = [d[4] for d in detections]
+                else:
+                    # No ref point: draw and return all
+                    for bx1, by1, bx2, by2, lbl, conf, _ in detections:
+                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
+                        cv2.putText(img, f"{lbl} {conf:.2f}", (bx1, by1 - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                        labels.append(lbl)
+
                 print(f"YOLO detected (ROI): {', '.join(labels)}")
+
         cv2.imwrite(output_path, img)
         print(f"YOLO ROI & label image saved: {output_path}")
         return labels
@@ -398,7 +445,7 @@ class Intention():
     #     with open(TRANS_FILE, "w", encoding="utf-8") as f:
     #         f.write(last_query_result)
 
-    def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None):
+    def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None, depth_msg=None, camera_intrinsics=None, T_wc=None):
         
         if intersect is None :     
             # EMA filter
@@ -419,13 +466,16 @@ class Intention():
         )
         if isinstance(rgb_msg, list) and isinstance(image_name, list) and isinstance(camera_side, list):
             all_labels = []
+            depth_list = depth_msg if isinstance(depth_msg, list) else [None] * len(rgb_msg)
+            intrinsics_list = camera_intrinsics if isinstance(camera_intrinsics, list) else [camera_intrinsics] * len(rgb_msg)
+            T_wc_list = T_wc if isinstance(T_wc, list) else [T_wc] * len(rgb_msg)
             if stable is not None:
-                for rgb, name, side in zip(rgb_msg , image_name, camera_side):
+                for rgb, name, side, dm, intr, twc in zip(rgb_msg, image_name, camera_side, depth_list, intrinsics_list, T_wc_list):
                     if side == "right":
                         print(f"[Stable finger pos R:] {stable}")
                         # 3d to 2d projection
                         pixel, _ = world_to_pixels_right(stable)
-                    
+
                     elif side == "left":
                         print(f"[Stable finger pos L:] {stable}")
                         # 3d to 2d projection
@@ -441,8 +491,10 @@ class Intention():
 
                     # yolo
                     img = self.bridge.compressed_imgmsg_to_cv2(rgb, 'bgr8')
+                    depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough') if dm is not None else None
                     labels = self.detect_and_draw_yolo(
-                        img, u, v, self.yolo_model, os.path.join(self.output_dir, name)
+                        img, u, v, self.yolo_model, os.path.join(self.output_dir, name),
+                        depth=depth_np, camera_intrinsics=intr, T_wc=twc, ref_world_point=stable
                     )
                     all_labels.extend(labels)
 
@@ -474,8 +526,10 @@ class Intention():
 
                 # yolo
                 img = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
+                depth_np = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough') if depth_msg is not None else None
                 labels = self.detect_and_draw_yolo(
-                    img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name)
+                    img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name),
+                    depth=depth_np, camera_intrinsics=camera_intrinsics, T_wc=T_wc, ref_world_point=stable
                 )
                 label_output = labels
                 # # tts and stt

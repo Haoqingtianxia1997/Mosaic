@@ -207,7 +207,7 @@ class HandDetectionWithPointCloudNode(Node):
         self.gaze_last_output = None
         self.gaze_stable_pos = None
 
-    def _run_finger_detection(self, direction, origin, rgb_msg, image_name, camera_side):
+    def _run_finger_detection(self, direction, origin, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None):
         """Validate direction, normalize, and run finger process_detection.
 
         Returns finger_intersect point, or None if validation fails.
@@ -228,12 +228,13 @@ class HandDetectionWithPointCloudNode(Node):
          finger_label_output) = self.intention.process_detection(
             normalized, origin, rgb_msg, self.finger_pts,
             direction_name="finger_direction", origin_name="finger_origin",
-            image_name=image_name, camera_side=camera_side)
+            image_name=image_name, camera_side=camera_side,
+            depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc)
 
         self.label_msg.gesture_labels = finger_label_output
         return finger_intersect
 
-    def _run_gaze_detection(self, rgb_msg, image_name, camera_side):
+    def _run_gaze_detection(self, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None):
         """Run gaze detection if gaze intersection data is available."""
         if self.gaze_intersect_pos is None:
             return
@@ -247,7 +248,8 @@ class HandDetectionWithPointCloudNode(Node):
             rgb_msg=rgb_msg, pts=self.gaze_pts,
             direction_name="gaze_direction", origin_name="gaze_origin",
             image_name=image_name, camera_side=camera_side,
-            intersect=self.gaze_intersect_pos)
+            intersect=self.gaze_intersect_pos,
+            depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc)
 
         self.label_msg.gaze_labels = gaze_label_output
 
@@ -287,6 +289,9 @@ class HandDetectionWithPointCloudNode(Node):
             finger_direction, finger_origin = self._merge_finger_detections(dir_l, orig_l, dir_r, orig_r)
 
             rgb_msg = [rgb_msg_r, rgb_msg_l]
+            depth_msg = [depth_msg_r, depth_msg_l]
+            intrinsics = [self.intrinsics_r, self.intrinsics_l]
+            T_wc = [self.T_wc_r, self.T_wc_l]
             finger_img = ['gesture_yolo_r.png', 'gesture_yolo_l.png']
             gaze_img = ['gaze_yolo_r.png', 'gaze_yolo_l.png']
             cam_side = ['right', 'left']
@@ -320,10 +325,12 @@ class HandDetectionWithPointCloudNode(Node):
         # Process finger detection
         if finger_direction is not None and finger_origin is not None:
             finger_intersect = self._run_finger_detection(
-                finger_direction, finger_origin, rgb_msg, finger_img, cam_side)
+                finger_direction, finger_origin, rgb_msg, finger_img, cam_side,
+                depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
 
         # Process gaze detection
-        self._run_gaze_detection(rgb_msg, gaze_img, cam_side)
+        self._run_gaze_detection(rgb_msg, gaze_img, cam_side,
+                                 depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
 
         # Publish labels and markers
         self.label_pub.publish(self.label_msg)

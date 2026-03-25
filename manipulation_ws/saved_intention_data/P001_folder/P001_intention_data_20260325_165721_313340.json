@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T16:57:21.313",
+    "speech_command": "Add the cucumber to the support piece.",
+    "gesture_label": "None",
+    "gaze_label": "cucumber, scouring pad, detergent bottle, cup, ketchup bottle",
+    "scenario_labels": "banana, ketchup bottle, salt bottle, beer bottle",
+    "input": "I have a speech command: Add the cucumber to the support piece., gesture label: None and gaze label: cucumber, scouring pad, detergent bottle, cup, ketchup bottle.scenario labels: banana, ketchup bottle, salt bottle, beer bottle."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Adding the cucumber to the soup pot.",
+    "response_content": "Add the cucumber to the soup pot.",
+    "content": [
+      {
+        "action_type": "add",
+        "target": "cucumber"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Add the cucumber to the soup pot.",
+        "audio response": "Sure! Adding the cucumber to the soup pot.",
+        "content": [
+          {
+            "action_type": "add",
+            "target": "cucumber"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "self_id": "P001",
+  "intention_llm_input": {
+    "timestamp": "2026-03-25T16:56:18.061",
+    "speech_command": "Add the tomato to the soup pot.",
+    "gesture_label": "tomato, cucumber, scouring pad, banana, ketchup bottle",
+    "gaze_label": "tomato, cucumber, scouring pad, cup, ketchup bottle",
+    "scenario_labels": "banana, ketchup bottle, salt bottle, beer bottle, scouring pad, tomato, cucumber",
+    "input": "I have a speech command: Add the tomato to the soup pot., gesture label: tomato, cucumber, scouring pad, banana, ketchup bottle and gaze label: tomato, cucumber, scouring pad, cup, ketchup bottle.scenario labels: banana, ketchup bottle, salt bottle, beer bottle, scouring pad, tomato, cucumber."
+  },
+  "intention_llm_output": {
+    "audio_response": "Sure! Adding the tomato to the soup pot.",
+    "response_content": "Add the tomato to the soup pot.",
+    "content": [
+      {
+        "action_type": "add",
+        "target": "tomato"
+      }
+    ],
+    "json_blocks": [
+      {
+        "response": "Add the tomato to the soup pot.",
+        "audio response": "Sure! Adding the tomato to the soup pot.",
+        "content": [
+          {
+            "action_type": "add",
+            "target": "tomato"
+          }
+        ]
+      }
+    ]
+  }
+}
