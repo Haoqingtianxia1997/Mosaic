@@ -37,7 +37,7 @@ class Intention():
         hand_options = mp_vision.HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=hand_model_path),
             running_mode=mp_vision.RunningMode.IMAGE,
-            num_hands=2,
+            num_hands=1,
             min_hand_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
@@ -59,15 +59,15 @@ class Intention():
         )
 
         self.ema = {}
-        self.ema_alpha = 0.3
+        self.ema_alpha = 0.9
         self.first_gaze = True
         self.pitch = None
         self.yaw = None
 
         # stable point pos
-        self.SLIDING_WINDOW_SEC = 3.0
-        self.OUTLIER_THRESHOLD = 0.1
-        self.OUTLIER_COUNT = 5
+        self.SLIDING_WINDOW_SEC = 1.0
+        self.OUTLIER_THRESHOLD = 0.05
+        self.OUTLIER_COUNT = 15
         self.AVG_LAST_N = 5
 
         #Yolo confidence
@@ -89,7 +89,8 @@ class Intention():
         h, w = depth.shape
 
         img_rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        img_small = cv2.resize(img_rgb, (640, 360))
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_small)
         hands_result = self.hands_detector.detect(mp_image)
 
         if hands_result.hand_landmarks:

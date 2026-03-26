@@ -5,9 +5,6 @@ from cv_bridge import CvBridge
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import cv2
-import mediapipe as mp
-from mediapipe.tasks.python import vision as mp_vision
-from mediapipe.tasks.python import BaseOptions
 import time
 from threading import Thread, Lock
 from collections import deque
@@ -50,18 +47,6 @@ class HandDetectionWithPointCloudNode(Node):
 
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
-
-        hand_model_path = os.path.join(os.path.dirname(__file__), 'intention_utils', 'models', 'hand_landmarker.task')
-        hand_options = mp_vision.HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=hand_model_path),
-            running_mode=mp_vision.RunningMode.IMAGE,
-            num_hands=2,
-            min_hand_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-        self.hands_detector = mp_vision.HandLandmarker.create_from_options(hand_options)
-        self.mp_drawing = mp_vision.drawing_utils
-        self.hand_connections = mp_vision.HandLandmarksConnections.HAND_CONNECTIONS
 
         self.rgb_buffer = {'left': None, 'right': None}
         self.depth_buffer = {'left': None, 'right': None}
@@ -133,15 +118,6 @@ class HandDetectionWithPointCloudNode(Node):
             print("----------------------")
             if kind == 'rgb':
                 self.rgb_buffer[side] = msg
-                img = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
-                results = self.hands_detector.detect(mp_image)
-                if results.hand_landmarks:
-                    for hand_landmarks in results.hand_landmarks:
-                        self.mp_drawing.draw_landmarks(img, hand_landmarks, self.hand_connections)
-                out_path = os.path.join(self.output_dir, f'{side}_gesture_result.png')
-                cv2.imwrite(out_path, img)
             elif kind == 'depth':
                 self.depth_buffer[side] = msg
 
