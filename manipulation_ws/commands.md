@@ -41,7 +41,8 @@ ros2 launch zed_wrapper zed_camera.launch.py \
   ros_params_override_path:=/home/mosaic/zed_cfg/zed_no_tracking.yaml
 
 # gaze camera
-ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=848x480x30 rgb_camera.color_profile:=848x480x30
+# ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=848x480x30 rgb_camera.color_profile:=848x480x30
+ros2 launch realsense2_camera rs_pointcloud_launch.py 
 
 
 # image service node for left camera
@@ -220,6 +221,18 @@ ros2 run tf2_ros static_transform_publisher \
 --qw 0.9030767102046126 \
 --frame-id base \
 --child-frame-id zedl_camera_link
+
+# realsense TODO: not calibrated yet
+ros2 run tf2_ros static_transform_publisher \
+--x 0.7843575813734087 \
+--y 0.5117407108651009 \
+--z 0.9015147718934254 \
+--qx 0.24183433419868663 \
+--qy 0.23581611273462044 \
+--qz -0.8378607592744373 \
+--qw 0.4288312766642307 \
+--frame-id base \
+--child-frame-id camera_link
 
 # same base
 ros2 run tf2_ros static_transform_publisher \
