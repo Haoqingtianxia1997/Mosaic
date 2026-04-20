@@ -4,6 +4,7 @@ from sensor_msgs.msg import Image,CompressedImage
 from cv_bridge import CvBridge
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from std_msgs.msg import String as Strings
 import cv2
 import time
 from threading import Thread, Lock
@@ -71,7 +72,8 @@ class HandDetectionWithPointCloudNode(Node):
 
         # Aria gaze subscription
         self.create_subscription(PointStamped, '/aria/gaze_xy_intersect', self.gaze_intersect_callback, 10)
-
+        # label_msg from /gaze_label only(aria glass)
+        self.create_subscription(Strings, '/gaze_label', self._gaze_label_callback, 1)
         self.create_subscription(CompressedImage, '/zedl/zed_node/rgb/image_rect_color/compressed', lambda msg: self.buffer_callback(msg, 'left', 'rgb'), 10)
         self.create_subscription(CompressedImage, '/zedr/zed_node/rgb/image_rect_color/compressed', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
         self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'left', 'depth'), 10)
@@ -112,6 +114,11 @@ class HandDetectionWithPointCloudNode(Node):
         with self.lock:
             self.gaze_intersect_pos = np.array([msg.point.x, msg.point.y, msg.point.z])
 
+    def _gaze_label_callback(self, msg):
+        with self.lock:
+            self.label_msg.gaze_labels = msg.data.split(',') 
+            
+            
     def buffer_callback(self, msg, side, kind):
         with self.lock:
             print(side, kind)
@@ -244,7 +251,6 @@ class HandDetectionWithPointCloudNode(Node):
 
     def _process_frame(self):
         """Process a single frame: detect fingers/gaze and publish results."""
-        self.label_msg = Labels()
         finger_intersect = None
         finger_direction = None
         finger_origin = None
@@ -305,11 +311,14 @@ class HandDetectionWithPointCloudNode(Node):
                 depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
 
         # Process gaze detection
-        self._run_gaze_detection(rgb_msg, gaze_img, cam_side,
-                                 depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
+        if self.gaze_intersect_pos is not None:
+            self._run_gaze_detection(rgb_msg, gaze_img, cam_side,
+                                     depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
 
         # Publish labels and markers
         self.label_pub.publish(self.label_msg)
+        print(f"Published labels: gesture={self.label_msg.gesture_labels}, gaze={self.label_msg.gaze_labels}")
+        self.label_msg = Labels()
         if self.intention.in_valid_area(finger_intersect):
             self._publish_finger_ray(finger_direction, finger_origin)
             self._publish_finger_hit(finger_intersect)
