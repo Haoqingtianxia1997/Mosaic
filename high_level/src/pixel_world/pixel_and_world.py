@@ -27,8 +27,8 @@ left_cam = CameraModel(
     fy=1059.0899658203125,
     cx=958.9099731445312,
     cy=561.5670166015625,
-    R_wc=R.from_quat([0.837, -0.378, 0.154, -0.364]).as_matrix(),
-    t_wc=np.array([0.078, -0.466, 0.554]),
+    R_wc=R.from_quat([0.813, -0.426, 0.219, -0.332]).as_matrix(),
+    t_wc=np.array([0.104, -0.462, 0.560]),
 )
 
 right_cam = CameraModel(
@@ -36,8 +36,8 @@ right_cam = CameraModel(
     fy=1059.9764404296875,
     cx=963.07568359375,
     cy=522.3530883789062,
-    R_wc=R.from_quat([0.553, 0.749, -0.280, -0.233]).as_matrix(),
-    t_wc=np.array([0.832, 0.468, 0.587]),
+    R_wc=R.from_quat([0.212, 0.882, -0.373, -0.196]).as_matrix(),
+    t_wc=np.array([0.836, 0.477, 0.328]),
 )
 
 gaze_cam = CameraModel(
