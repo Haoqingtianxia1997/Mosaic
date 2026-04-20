@@ -27,7 +27,7 @@ from intention.l2cs import select_device, Pipeline
 class Intention():
     def __init__(self):
         self.bridge = CvBridge()
-        self.yolo_model = YOLO('yolo_model/best.pt')
+        self.yolo_model = YOLO(os.path.join(os.path.dirname(__file__), '../../../../../high_level/yolo_model/mixed.pt'))
         # self.transcriber = VoiceTranscriber()
 
         models_dir = os.path.join(os.path.dirname(__file__), 'models')
