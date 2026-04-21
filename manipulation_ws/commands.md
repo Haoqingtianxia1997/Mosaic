@@ -42,7 +42,7 @@ ros2 launch zed_wrapper zed_camera.launch.py \
 
 # gaze camera
 # ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=848x480x30 rgb_camera.color_profile:=848x480x30
-ros2 launch realsense2_camera rs_pointcloud_launch.py 
+ros2 launch realsense2_camera rs_pointcloud_launch.py align_depth.enable:=true
 
 
 # image service node for left camera
@@ -222,15 +222,15 @@ ros2 run tf2_ros static_transform_publisher \
 --frame-id base \
 --child-frame-id zedl_camera_link
 
-# realsense TODO: not calibrated yet
+# realsense
 ros2 run tf2_ros static_transform_publisher \
---x 0.7843575813734087 \
---y 0.5117407108651009 \
---z 0.9015147718934254 \
---qx 0.24183433419868663 \
---qy 0.23581611273462044 \
---qz -0.8378607592744373 \
---qw 0.4288312766642307 \
+--x 0.9273 \
+--y 0.3727 \
+--z 0.9698 \
+--qx 0.4929 \
+--qy 0.3356 \
+--qz -0.7458 \
+--qw 0.2976 \
 --frame-id base \
 --child-frame-id camera_link
 
