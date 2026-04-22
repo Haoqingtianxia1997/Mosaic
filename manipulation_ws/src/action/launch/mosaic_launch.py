@@ -90,6 +90,13 @@ def generate_launch_description():
             name='move_offset_node',
             output='screen',
         ),
+        
+        Node(
+            package='action',
+            executable='receive_transcription',
+            name='receive_transcription_node',
+            output='screen',
+        ),
 
         # ExecuteProcess(
         #     cmd=[

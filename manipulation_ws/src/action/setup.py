@@ -41,6 +41,7 @@ setup(
             'read_file = action.read_file:main',
             'intention_llm = action.intention_llm:main',
             'image_saver_yolo = action.image_saver_yolo:main',
+            'receive_transcription = action.receive_transcription:main',
         ],
     },
 )

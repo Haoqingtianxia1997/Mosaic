@@ -147,7 +147,7 @@ class IntentionLLM(Node):
 
         self.gesture_history = []  # Store the latest 10 gesture_labels
         self.gaze_history = []     # Store the latest 10 gaze_labels
-        self.max_history_size = 10 # TODO: tune this size based on gaze label frequency
+        self.max_history_size = 5 # TODO: tune this size based on gaze label frequency
         
         self.get_logger().info('Intention LLM Node has been started.')
         self.get_logger().info(f'participant_code: {self.participant_code}')

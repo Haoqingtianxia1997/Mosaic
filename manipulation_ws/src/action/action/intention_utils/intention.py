@@ -16,7 +16,7 @@ if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
 from transcribe.tts import play_text_to_speech
 from transcribe.stt import VoiceTranscriber
-from pixel_world.pixel_and_world import left_cam, right_cam, gaze_cam, world_to_pixels_left, world_to_pixels_right, world_to_pixels_gaze, pixels_to_world_gaze
+from pixel_world.pixel_and_world import left_cam, right_cam, gaze_cam, world_to_pixels_left, world_to_pixels_right, world_to_pixels_realsense, world_to_pixels_gaze, pixels_to_world_gaze
 SRC_PATH = os.path.abspath(os.path.join(__file__, "../../../../"))
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
@@ -71,8 +71,8 @@ class Intention():
         self.AVG_LAST_N = 5
 
         #Yolo confidence
-        self.yolo_conf = 0.85
-        self.intention_yolo_conf = 0.7
+        self.yolo_conf = 0.80
+        self.intention_yolo_conf = 0.80
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -83,24 +83,26 @@ class Intention():
         """
         fx, fy, cx, cy = camera_intrinsics
 
-        rgb = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
+        from sensor_msgs.msg import CompressedImage as _CompressedImage
+        if isinstance(rgb_msg, _CompressedImage):
+            rgb = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
+        else:
+            rgb = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
         depth = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')  # Single-channel float32 (meters)
 
         h, w = depth.shape
 
         img_rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-        img_small = cv2.resize(img_rgb, (640, 360))
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_small)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
         hands_result = self.hands_detector.detect(mp_image)
-
         if hands_result.hand_landmarks:
             hand = hands_result.hand_landmarks[0]
         else:
             return None, None
 
-        # get pixel coordinates (MIDDLE_FINGER_MCP=9 as palm center, MIDDLE_FINGER_PIP=10)
-        index_mcp = hand[9]
-        index_tip = hand[10]
+        # get pixel coordinates (INDEX_FINGER_MCP=5, INDEX_FINGER_TIP=8)
+        index_mcp = hand[5]
+        index_tip = hand[7]
 
         u1, v1 = int(index_mcp.x * w), int(index_mcp.y * h)
         u2, v2 = int(index_tip.x * w), int(index_tip.y * h)
@@ -110,9 +112,14 @@ class Intention():
             print(f"⚠️ finger points out of bounds")
             return None, None 
 
-        z1 = float(depth[v1, u1])
-        z2 = float(depth[v2, u2])
-
+        
+        #  =======================for realsense
+        z1 = float(depth[v1, u1]) * 0.001  # Convert mm to meters if needed
+        z2 = float(depth[v2, u2]) * 0.001 # Convert mm to meters if depth is in millimeters
+        # ========================for zed
+        # z1 = float(depth[v1, u1])
+        # z2 = float(depth[v2, u2])
+        
         if z1 <= 0 or z2 <= 0:
             print(f"⚠️ index finger depth abnormal: z1={z1}, z2={z2}")
             return None, None
@@ -292,13 +299,11 @@ class Intention():
                          returns only the label of the closest bbox; otherwise returns all labels.
         """
         h, w = img.shape[:2]
-        roi_size = 500
+        roi_size = 200
         half = roi_size // 2
         x1, y1 = max(u - half, 0), max(v - half, 0)
         x2, y2 = min(u + half, w-1), min(v + half, h-1)
 
-        # Draw ROI box
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0,255,255), 2)
         roi = img[y1:y2, x1:x2]
         labels = []
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
@@ -332,31 +337,57 @@ class Intention():
 
                 # Find nearest bbox to ref_world_point
                 if ref_world_point is not None:
-                    ref_xy = np.array(ref_world_point[:2])
+                    # Project ref_world_point to pixel coords
+                    ref_u, ref_v = None, None
+                    if camera_intrinsics is not None and T_wc is not None:
+                        fx, fy, cx, cy = camera_intrinsics
+                        T_cw = np.linalg.inv(T_wc)
+                        p_cam = (T_cw @ np.array([ref_world_point[0], ref_world_point[1], ref_world_point[2], 1.0]))[:3]
+                        if p_cam[2] > 0:
+                            ref_u = int(p_cam[0] * fx / p_cam[2] + cx)
+                            ref_v = int(p_cam[1] * fy / p_cam[2] + cy)
+
+                    # Draw all bboxes in blue
+                    for bx1, by1, bx2, by2, lbl, cf, _ in detections:
+                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (255, 0, 0), 2)
+                        cv2.putText(img, f"{lbl} {cf:.2f}", (bx1, by1 - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+
+                    # Draw ref point
+                    if ref_u is not None and ref_v is not None:
+                        cv2.circle(img, (ref_u, ref_v), 8, (0, 255, 0), -1)
+                        cv2.putText(img, "ref", (ref_u + 10, ref_v),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+                    # Find nearest bbox by pixel distance from ref to bbox center
                     best_idx = None
                     best_dist = float('inf')
-                    for i, (_, _, _, _, lbl, _, wxy) in enumerate(detections):
-                        if wxy is not None:
-                            dist = float(np.linalg.norm(wxy - ref_xy))
-                            print(f"  [{lbl}] world xy: {wxy}, dist to ref: {dist:.4f}")
+                    if ref_u is not None and ref_v is not None:
+                        ref_pixel = np.array([ref_u, ref_v])
+                        for i, (bx1, by1, bx2, by2, lbl, _, _) in enumerate(detections):
+                            cx_bbox = (bx1 + bx2) // 2
+                            cy_bbox = (by1 + by2) // 2
+                            dist = float(np.linalg.norm(np.array([cx_bbox, cy_bbox]) - ref_pixel))
+                            print(f"  [{lbl}] bbox center ({cx_bbox},{cy_bbox}), pixel dist to ref: {dist:.1f}")
                             if dist < best_dist:
                                 best_dist = dist
                                 best_idx = i
+
                     if best_idx is not None:
                         bx1, by1, bx2, by2, best_label, best_conf, _ = detections[best_idx]
                         cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
                         cv2.putText(img, f"{best_label} {best_conf:.2f}", (bx1, by1 - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                         labels = [best_label]
-                        print(f"  -> nearest bbox: [{best_label}] (dist={best_dist:.4f})")
+                        print(f"  -> nearest bbox: [{best_label}] (pixel dist={best_dist:.1f})")
                     else:
                         labels = [d[4] for d in detections]
                 else:
-                    # No ref point: draw and return all
+                    # No ref point: draw and return all in blue
                     for bx1, by1, bx2, by2, lbl, conf, _ in detections:
-                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
+                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (255, 0, 0), 2)
                         cv2.putText(img, f"{lbl} {conf:.2f}", (bx1, by1 - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
                         labels.append(lbl)
 
                 print(f"YOLO detected (ROI): {', '.join(labels)}")
@@ -475,7 +506,8 @@ class Intention():
                     if side == "right":
                         print(f"[Stable finger pos R:] {stable}")
                         # 3d to 2d projection
-                        pixel, _ = world_to_pixels_right(stable)
+                        # pixel, _ = world_to_pixels_right(stable) # for zed
+                        pixel, _ = world_to_pixels_realsense(stable) # for realsense
 
                     elif side == "left":
                         print(f"[Stable finger pos L:] {stable}")
@@ -491,7 +523,11 @@ class Intention():
                     print(f"Projected pixel: ({u}, {v})")
 
                     # yolo
-                    img = self.bridge.compressed_imgmsg_to_cv2(rgb, 'bgr8')
+                    from sensor_msgs.msg import CompressedImage as _CI
+                    if isinstance(rgb, _CI):
+                        img = self.bridge.compressed_imgmsg_to_cv2(rgb, 'bgr8')
+                    else:
+                        img = self.bridge.imgmsg_to_cv2(rgb, 'bgr8')
                     depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough') if dm is not None else None
                     labels = self.detect_and_draw_yolo(
                         img, u, v, self.yolo_model, os.path.join(self.output_dir, name),
@@ -511,12 +547,16 @@ class Intention():
                 if camera_side == "right":
                     print(f"[Stable finger pos R:] {stable}")
                     # 3d to 2d projection
-                    pixel, _ = world_to_pixels_right(stable)
+                    # pixel, _ = world_to_pixels_right(stable) # for zed
+                    pixel, _ = world_to_pixels_realsense(stable) # for realsense
                 
                 elif camera_side == "left":
                     print(f"[Stable finger pos L:] {stable}")
                     # 3d to 2d projection
-                    pixel, _ = world_to_pixels_left(stable)
+                    pixel, _ = world_to_pixels_left(stable) 
+                elif camera_side == "realsense":
+                    print(f"[Stable finger pos RealSense:] {stable}")
+                    pixel, _ = world_to_pixels_realsense(stable)
                 # elif camera_side == "middle":
                 #     print(f"[Stable finger pos Middle:] {stable}")
                 #     # 3d to 2d projection
@@ -526,7 +566,11 @@ class Intention():
                 print(f"Projected pixel: ({u}, {v})")
 
                 # yolo
-                img = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
+                from sensor_msgs.msg import CompressedImage as _CI
+                if isinstance(rgb_msg, _CI):
+                    img = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
+                else:
+                    img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
                 depth_np = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough') if depth_msg is not None else None
                 labels = self.detect_and_draw_yolo(
                     img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name),

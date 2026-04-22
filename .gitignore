@@ -6,7 +6,7 @@ log/
 __pycache__/
 .vscode/
 saved_images_yolo/
-
+saved_intention_data/
 *.py[oc]
 dist/
 wheels/

@@ -40,6 +40,16 @@ right_cam = CameraModel(
     t_wc=np.array([0.836, 0.477, 0.328]),
 )
 
+realsense_cam = CameraModel(
+    fx=603.6532592773438,
+    fy=602.72119140625,
+    cx=326.14337158203125,
+    cy=242.20367431640625,
+    R_wc=R.from_quat([0.305, 0.936, -0.106, -0.141]).as_matrix(),
+    t_wc=np.array([0.939, 0.364, 0.967]),
+)
+
+
 gaze_cam = CameraModel(
     fx = 910.5794677734375,
     fy = 910.3142700195312,
@@ -132,6 +142,9 @@ def world_to_pixels_left(points_world, return_depth=False):
 
 def world_to_pixels_right(points_world, return_depth=False):
     return world_to_pixels(points_world, right_cam, return_depth)
+
+def world_to_pixels_realsense(points_world, return_depth=False):
+    return world_to_pixels(points_world, realsense_cam, return_depth)
 
 def world_to_pixels_gaze(points_world, return_depth=False):
     return world_to_pixels(points_world, gaze_cam, return_depth)

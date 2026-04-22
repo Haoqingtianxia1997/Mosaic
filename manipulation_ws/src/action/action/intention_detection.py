@@ -61,11 +61,7 @@ class HandDetectionWithPointCloudNode(Node):
         time.sleep(5)
 
         available_topics = dict(self.get_topic_names_and_types())
-        left_rgb = '/zedl/zed_node/rgb/image_rect_color/compressed'
-        right_rgb = '/zedr/zed_node/rgb/image_rect_color/compressed'
-        self.left_camera_active = left_rgb in available_topics
-        self.right_camera_active = right_rgb in available_topics
-
+        
         self.label_pub = self.create_publisher(Labels, 'label_output', 10)
         self._marker_pub = self.create_publisher(Marker, '/finger/markers', 10)
         self.label_msg = Labels()
@@ -74,20 +70,38 @@ class HandDetectionWithPointCloudNode(Node):
         self.create_subscription(PointStamped, '/aria/gaze_xy_intersect', self.gaze_intersect_callback, 10)
         # label_msg from /gaze_label only(aria glass)
         self.create_subscription(Strings, '/gaze_label', self._gaze_label_callback, 1)
-        self.create_subscription(CompressedImage, '/zedl/zed_node/rgb/image_rect_color/compressed', lambda msg: self.buffer_callback(msg, 'left', 'rgb'), 10)
-        self.create_subscription(CompressedImage, '/zedr/zed_node/rgb/image_rect_color/compressed', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
-        self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'left', 'depth'), 10)
-        self.create_subscription(Image, '/zedr/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'right', 'depth'), 10)
+        
+        #=================================right/left zed camera========================================
+        
+        # self.create_subscription(CompressedImage, '/zedl/zed_node/rgb/image_rect_color/compressed', lambda msg: self.buffer_callback(msg, 'left', 'rgb'), 10)
+        # self.create_subscription(CompressedImage, '/zedr/zed_node/rgb/image_rect_color/compressed', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
+        # self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'left', 'depth'), 10)
+        # self.create_subscription(Image, '/zedr/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'right', 'depth'), 10)
 
+        # self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.836, 0.477, 0.328]), quaternion = np.array([0.212, 0.882, -0.373, -0.196]))
+        # self.intrinsics_l = (1060.0899658203125, 1059.0899658203125, 958.9099731445312, 561.5670166015625)
 
-        self.get_logger().info("🖐️ Hand detection + point cloud visualization node started")
-
-        self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.836, 0.477, 0.328]), quaternion = np.array([0.212, 0.882, -0.373, -0.196]))
-        self.intrinsics_l = (1060.0899658203125, 1059.0899658203125, 958.9099731445312, 561.5670166015625)
-
-        self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.736, 0.540, 0.351]), quaternion = np.array([0.212, 0.882, -0.373, -0.196]))
-        self.intrinsics_r = (1059.9764404296875, 1059.9764404296875, 963.07568359375, 522.3530883789062)
-
+        # self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.736, 0.540, 0.351]), quaternion = np.array([0.212, 0.882, -0.373, -0.196]))
+        # self.intrinsics_r = (1059.9764404296875, 1059.9764404296875, 963.07568359375, 522.3530883789062)
+        
+        # left_rgb = '/zedl/zed_node/rgb/image_rect_color/compressed'
+        # right_rgb = '/zedr/zed_node/rgb/image_rect_color/compressed'
+        
+        #===================================third realsense camera======================================
+        
+        self.create_subscription(Image, '/camera/camera/color/image_raw', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
+        self.create_subscription(Image, '/camera/camera/aligned_depth_to_color/image_raw', lambda msg: self.buffer_callback(msg, 'right', 'depth'), 10)
+        self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.939, 0.364, 0.967]), quaternion = np.array([0.305, 0.936, -0.106, -0.141]))
+        self.intrinsics_r = (603.6532592773438, 602.72119140625, 326.14337158203125, 242.20367431640625)
+        
+        left_rgb = None
+        right_rgb = '/camera/camera/color/image_raw'
+        
+        #=========================================================================
+        
+        self.left_camera_active = left_rgb in available_topics
+        self.right_camera_active = right_rgb in available_topics
+        
         # finger detection
         self.finger_pts = deque()    # Store intersection points and timestamps
         self.finger_base = None
