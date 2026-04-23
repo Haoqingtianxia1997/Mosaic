@@ -94,11 +94,39 @@ class Intention():
 
         img_rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        
         hands_result = self.hands_detector.detect(mp_image)
+        drawn_img_bgr = None
+        # Draw hand landmarks on the image for visualization
         if hands_result.hand_landmarks:
             hand = hands_result.hand_landmarks[0]
+            try:
+                # Convert normalized landmarks to pixel coordinates for drawing
+                drawn_img = img_rgb.copy()
+                for idx, landmark in enumerate(hand):
+                    x_px = int(landmark.x * w)
+                    y_px = int(landmark.y * h)
+                    cv2.circle(drawn_img, (x_px, y_px), 4, (0, 255, 0), -1)
+                # Optionally, draw connections (for MediaPipe Hands, see HAND_CONNECTIONS)
+                HAND_CONNECTIONS = [
+                    (0,1),(1,2),(2,3),(3,4),      # Thumb
+                    (0,5),(5,6),(6,7),(7,8),      # Index
+                    (5,9),(9,10),(10,11),(11,12), # Middle
+                    (9,13),(13,14),(14,15),(15,16), # Ring
+                    (13,17),(17,18),(18,19),(19,20), # Pinky
+                    (0,17)
+                ]
+                for start, end in HAND_CONNECTIONS:
+                    x1 = int(hand[start].x * w)
+                    y1 = int(hand[start].y * h)
+                    x2 = int(hand[end].x * w)
+                    y2 = int(hand[end].y * h)
+                    cv2.line(drawn_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                drawn_img_bgr = cv2.cvtColor(drawn_img, cv2.COLOR_RGB2BGR)
+            except Exception as e:
+                print(f"Hand landmark drawing error: {e}")
         else:
-            return None, None
+            return None, None, None, None, None
 
         # get pixel coordinates (INDEX_FINGER_MCP=5, INDEX_FINGER_TIP=8)
         index_mcp = hand[5]
@@ -110,7 +138,7 @@ class Intention():
         # Boundary check
         if not (0 <= u1 < w and 0 <= v1 < h and 0 <= u2 < w and 0 <= v2 < h):
             print(f"⚠️ finger points out of bounds")
-            return None, None 
+            return None, None, None, None, None
 
         
         #  =======================for realsense
@@ -122,7 +150,7 @@ class Intention():
         
         if z1 <= 0 or z2 <= 0:
             print(f"⚠️ index finger depth abnormal: z1={z1}, z2={z2}")
-            return None, None
+            return None, None, None, None, None
 
         # Camera coordinate system back-projection
         x1 = (u1 - cx) * z1 / fx
@@ -140,11 +168,31 @@ class Intention():
         direction = tip - origin
         if np.linalg.norm(direction) < 1e-6:
             print("⚠️ index finger direction length too short")
-            return None, None
+            return None, None, None
 
         direction /= np.linalg.norm(direction)
-        print(f"origin:{origin}, direction: {direction}")
-        return direction, origin
+        # tip 作为射线起点传出，避免点云求交时打到手自身
+        finger_tip_world = tip
+
+        # 计算所有 21 个骨骼点的世界坐标（用于 RViz marker）
+        hand_landmarks_world = []
+        for lm in hand:
+            u_lm = int(lm.x * w)
+            v_lm = int(lm.y * h)
+            if 0 <= u_lm < w and 0 <= v_lm < h:
+                z_lm = float(depth[v_lm, u_lm]) * 0.001
+                if z_lm > 0:
+                    xc = (u_lm - cx) * z_lm / fx
+                    yc = (v_lm - cy) * z_lm / fy
+                    p_world = (T_wc @ np.array([xc, yc, z_lm, 1.0]))[:3]
+                    hand_landmarks_world.append(p_world)
+                else:
+                    hand_landmarks_world.append(None)
+            else:
+                hand_landmarks_world.append(None)
+
+        print(f"origin:{origin}, direction: {direction}, tip:{finger_tip_world}")
+        return direction, origin, drawn_img_bgr, hand_landmarks_world, finger_tip_world
 
     def compute_gaze_from_aria(self, pitch, yaw, cam_position, cam_quaternion):
         """
@@ -182,6 +230,52 @@ class Intention():
             return None  # intersection point is behind the origin
         p = origin + t * direction
         return p
+
+    def _build_pointcloud_world(self, depth, intrinsics, T_wc, step=1):
+        """深度图 → 世界坐标点云（step 降采样，跳过无效深度）。"""
+        fx, fy, cx, cy = intrinsics
+        h, w = depth.shape[:2]
+        u = np.arange(0, w, step)
+        v = np.arange(0, h, step)
+        uu, vv = np.meshgrid(u, v)
+        z = depth[vv, uu].astype(np.float32) * 0.001  # mm → m
+        valid = z > 0.1
+        if not valid.any():
+            return None
+        uu, vv, z = uu[valid], vv[valid], z[valid]
+        xc = (uu - cx) * z / fx
+        yc = (vv - cy) * z / fy
+        pts_cam = np.stack([xc, yc, z, np.ones_like(z)], axis=1)  # (N,4)
+        pts_world = (T_wc @ pts_cam.T).T[:, :3]                   # (N,3)
+        return pts_world
+
+    def ray_pointcloud_intersect(self, origin, direction, points, dist_thresh=0.02, min_t=0.05):
+        """射线与世界坐标点云求交。
+        origin 应传指尖世界坐标，避免打到手自身。
+        min_t: 跳过起点前方 min_t 米内的点（过滤指尖残留噪声）。
+        dist_thresh: 点到射线的最大垂直距离（米）。
+        无有效点时退回 z=0 平面交点。
+        """
+        if points is None or len(points) == 0:
+            return self.line_plane_intersect(origin, direction)
+
+        diff = points - origin                              # (N,3)
+        t = diff @ direction                               # (N,) 沿射线投影
+        mask = t > min_t                                   # 跳过起点附近
+        if not mask.any():
+            return self.line_plane_intersect(origin, direction)
+
+        t_f = t[mask]
+        diff_f = diff[mask]
+        proj = np.outer(t_f, direction)                    # (M,3)
+        perp_dist = np.linalg.norm(diff_f - proj, axis=1) # (M,)
+
+        close = perp_dist < dist_thresh
+        if not close.any():
+            return self.line_plane_intersect(origin, direction)
+
+        best_t = t_f[close].min()
+        return origin + best_t * direction
 
     def in_valid_area(self, pt):
         return pt is not None and (0.0 <= pt[0] <= 1.0) and (-0.7 <= pt[1] <= 0.7)
@@ -477,16 +571,28 @@ class Intention():
     #     with open(TRANS_FILE, "w", encoding="utf-8") as f:
     #         f.write(last_query_result)
 
-    def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None, depth_msg=None, camera_intrinsics=None, T_wc=None):
+    def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None, depth_msg=None, camera_intrinsics=None, T_wc=None, finger_tip_world=None):
         
-        if intersect is None :     
+        if intersect is None :
             # EMA filter
             self.update_ema(direction_name, direction, self.ema_alpha, unit_vector=True)
             self.update_ema(origin_name, origin, self.ema_alpha)
             finger_direction_ema = self.get_ema(direction_name)
-            finger_origin_ema = self.get_ema(origin_name)                                      
-            # Calculate intersect
-            intersect = self.line_plane_intersect(finger_origin_ema, finger_direction_ema, z_plane=0.0)
+            finger_origin_ema = self.get_ema(origin_name)
+            # 构建点云（支持单张或多张深度图，取第一张有效的）
+            pcd_world = None
+            dm_list = depth_msg if isinstance(depth_msg, list) else [depth_msg]
+            intr_list = camera_intrinsics if isinstance(camera_intrinsics, list) else [camera_intrinsics]
+            twc_list = T_wc if isinstance(T_wc, list) else [T_wc]
+            for dm, intr, twc in zip(dm_list, intr_list, twc_list):
+                if dm is not None and intr is not None and twc is not None:
+                    depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough')
+                    pcd_world = self._build_pointcloud_world(depth_np, intr, twc)
+                    if pcd_world is not None:
+                        break
+            # 用指尖世界坐标作为射线起点，避免打到手自身点云
+            ray_origin = finger_tip_world if finger_tip_world is not None else finger_origin_ema
+            intersect = self.ray_pointcloud_intersect(ray_origin, finger_direction_ema, pcd_world)
         else:
             finger_direction_ema = None
             finger_origin_ema = None

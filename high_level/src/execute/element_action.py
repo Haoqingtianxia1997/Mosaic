@@ -418,7 +418,7 @@ class ActionExecutor:
 
         print(f"Current position: {current_position}")
 
-        if current_position[2] < 0.3:   
+        if current_position[2] < 0.5:   
             try:
                 if any(v is None for v in self.move_params.values()):
                     raise ValueError("Missing move parameters.")
@@ -446,7 +446,7 @@ class ActionExecutor:
                 self.action_reset()
                 return
         
-        if self.move_params["move_z"] < 0.35:   
+        if self.move_params["move_z"] < 0.5:   
             try:
                 if any(v is None for v in self.move_params.values()):
                     raise ValueError("Missing move parameters.")

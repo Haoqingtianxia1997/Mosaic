@@ -64,6 +64,8 @@ class HandDetectionWithPointCloudNode(Node):
         
         self.label_pub = self.create_publisher(Labels, 'label_output', 10)
         self._marker_pub = self.create_publisher(Marker, '/finger/markers', 10)
+        self.hand_img_pub = self.create_publisher(Image, '/hand_landmarks_image', 10)
+        self._hand_marker_pub = self.create_publisher(Marker, '/hand/landmarks_markers', 10)
         self.label_msg = Labels()
 
         # Aria gaze subscription
@@ -192,6 +194,69 @@ class HandDetectionWithPointCloudNode(Node):
         marker.lifetime.nanosec = 200_000_000
         self._marker_pub.publish(marker)
 
+    def _publish_hand_landmarks(self, landmarks_world: list) -> None:
+        """发布手部21个骨骼点（SPHERE_LIST）和连线（LINE_LIST）到 RViz。"""
+        HAND_CONNECTIONS = [
+            (0,1),(1,2),(2,3),(3,4),
+            (0,5),(5,6),(6,7),(7,8),
+            (5,9),(9,10),(10,11),(11,12),
+            (9,13),(13,14),(14,15),(15,16),
+            (13,17),(17,18),(18,19),(19,20),
+            (0,17)
+        ]
+        stamp = self.get_clock().now().to_msg()
+
+        # --- 关节球 ---
+        from geometry_msgs.msg import Point
+        sphere_marker = Marker()
+        sphere_marker.header.stamp = stamp
+        sphere_marker.header.frame_id = "base_link"
+        sphere_marker.ns = "hand_joints"
+        sphere_marker.id = 10
+        sphere_marker.type = Marker.SPHERE_LIST
+        sphere_marker.action = Marker.ADD
+        sphere_marker.scale.x = 0.012
+        sphere_marker.scale.y = 0.012
+        sphere_marker.scale.z = 0.012
+        sphere_marker.color.r = 0.0
+        sphere_marker.color.g = 1.0
+        sphere_marker.color.b = 0.3
+        sphere_marker.color.a = 1.0
+        sphere_marker.lifetime.nanosec = 300_000_000
+
+        for pt in landmarks_world:
+            if pt is not None:
+                p = Point()
+                p.x, p.y, p.z = float(pt[0]), float(pt[1]), float(pt[2])
+                sphere_marker.points.append(p)
+
+        # --- 连线 ---
+        line_marker = Marker()
+        line_marker.header.stamp = stamp
+        line_marker.header.frame_id = "base_link"
+        line_marker.ns = "hand_bones"
+        line_marker.id = 11
+        line_marker.type = Marker.LINE_LIST
+        line_marker.action = Marker.ADD
+        line_marker.scale.x = 0.005
+        line_marker.color.r = 0.2
+        line_marker.color.g = 0.6
+        line_marker.color.b = 1.0
+        line_marker.color.a = 1.0
+        line_marker.lifetime.nanosec = 300_000_000
+
+        for start, end in HAND_CONNECTIONS:
+            if landmarks_world[start] is not None and landmarks_world[end] is not None:
+                ps = Point()
+                ps.x, ps.y, ps.z = float(landmarks_world[start][0]), float(landmarks_world[start][1]), float(landmarks_world[start][2])
+                pe = Point()
+                pe.x, pe.y, pe.z = float(landmarks_world[end][0]), float(landmarks_world[end][1]), float(landmarks_world[end][2])
+                line_marker.points.append(ps)
+                line_marker.points.append(pe)
+
+        self._hand_marker_pub.publish(sphere_marker)
+        self._hand_marker_pub.publish(line_marker)
+
     def _reset_detection_state(self):
         """Reset all finger and gaze detection state."""
         self.finger_pts.clear()
@@ -204,7 +269,7 @@ class HandDetectionWithPointCloudNode(Node):
         self.gaze_last_output = None
         self.gaze_stable_pos = None
 
-    def _run_finger_detection(self, direction, origin, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None):
+    def _run_finger_detection(self, direction, origin, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None, finger_tip_world=None):
         """Validate direction, normalize, and run finger process_detection.
 
         Returns finger_intersect point, or None if validation fails.
@@ -226,7 +291,8 @@ class HandDetectionWithPointCloudNode(Node):
             normalized, origin, rgb_msg, self.finger_pts,
             direction_name="finger_direction", origin_name="finger_origin",
             image_name=image_name, camera_side=camera_side,
-            depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc)
+            depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc,
+            finger_tip_world=finger_tip_world)
 
         self.label_msg.gesture_labels = finger_label_output
         return finger_intersect
@@ -268,6 +334,7 @@ class HandDetectionWithPointCloudNode(Node):
         finger_intersect = None
         finger_direction = None
         finger_origin = None
+        finger_tip_world = None
 
         if self.left_camera_active and self.right_camera_active:
             rgb_msg_l = self.rgb_buffer['left']
@@ -280,9 +347,16 @@ class HandDetectionWithPointCloudNode(Node):
                 self.label_pub.publish(self.label_msg)
                 return
 
-            dir_l, orig_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
-            dir_r, orig_r = self.intention.get_hand_pose(rgb_msg_r, depth_msg_r, self.T_wc_r, self.intrinsics_r)
+            dir_l, orig_l, hand_img_l, lm_world_l, tip_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
+            dir_r, orig_r, hand_img_r, lm_world_r, tip_r = self.intention.get_hand_pose(rgb_msg_r, depth_msg_r, self.T_wc_r, self.intrinsics_r)
+            hand_img = hand_img_r if hand_img_r is not None else hand_img_l
+            if hand_img is not None:
+                self.hand_img_pub.publish(self.bridge.cv2_to_imgmsg(hand_img, encoding='bgr8'))
+            lm_world = lm_world_r if lm_world_r is not None else lm_world_l
+            if lm_world is not None:
+                self._publish_hand_landmarks(lm_world)
             finger_direction, finger_origin = self._merge_finger_detections(dir_l, orig_l, dir_r, orig_r)
+            finger_tip_world = tip_r if tip_r is not None else tip_l
 
             rgb_msg = [rgb_msg_r, rgb_msg_l]
             depth_msg = [depth_msg_r, depth_msg_l]
@@ -306,8 +380,12 @@ class HandDetectionWithPointCloudNode(Node):
             intrinsics = self.intrinsics_r if side == 'right' else self.intrinsics_l
             suffix = 'r' if side == 'right' else 'l'
 
-            finger_direction, finger_origin = self.intention.get_hand_pose(
+            finger_direction, finger_origin, hand_img, lm_world, finger_tip_world = self.intention.get_hand_pose(
                 rgb_msg, depth_msg, T_wc, intrinsics)
+            if hand_img is not None:
+                self.hand_img_pub.publish(self.bridge.cv2_to_imgmsg(hand_img, encoding='bgr8'))
+            if lm_world is not None:
+                self._publish_hand_landmarks(lm_world)
 
             finger_img = f'gesture_yolo_{suffix}.png'
             gaze_img = f'gaze_yolo_{suffix}.png'
@@ -322,7 +400,8 @@ class HandDetectionWithPointCloudNode(Node):
         if finger_direction is not None and finger_origin is not None:
             finger_intersect = self._run_finger_detection(
                 finger_direction, finger_origin, rgb_msg, finger_img, cam_side,
-                depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
+                depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc,
+                finger_tip_world=finger_tip_world)
 
         # Process gaze detection
         if self.gaze_intersect_pos is not None:

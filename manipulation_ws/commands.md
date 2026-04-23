@@ -269,3 +269,7 @@ python src/action/action/offline_intention_llm.py --participant_code P001 --no-g
 # If your data folder is saved_intention_input/P001_folder or saved_intention_input/P001,
 # set participant_code to P001.
 ```
+
+
+# Save Images from 3 cameras
+python3 collect_image_from_3_camera.py
