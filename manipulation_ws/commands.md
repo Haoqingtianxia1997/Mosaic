@@ -75,7 +75,7 @@ ros2 launch action mosaic_launch.py
 python3 src/action/action/intention_detection.py
 
 #Debug intention_detection:
-ros2 topic pub /label_output action_interfaces/msg/Labels "{gaze_labels: [], gesture_labels: []}"
+ros2 topic pub /label_output action_interfaces/msg/Labels "{gaze_info: '[]', gesture_info: '[{\"label\": \"ketchup bottle\", \"score\": 0.3533}]'}"
 
 # read_file ros node for speech.txt
 ros2 run action read_file

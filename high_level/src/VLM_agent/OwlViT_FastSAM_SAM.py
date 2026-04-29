@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 from segment_anything import sam_model_registry, SamPredictor
 
 # yolo_model = YOLO('yolo_model/yolo11m.pt')  # Or use your custom model path
-yolo_model = YOLO('yolo_model/mixed.pt')
+yolo_model = YOLO('yolo_model/mixed_zed_realsense.pt')
 
 # Pseudo color table (customizable)
 COLOR_TABLE = [

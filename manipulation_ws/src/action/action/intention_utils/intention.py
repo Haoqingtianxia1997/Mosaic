@@ -27,7 +27,7 @@ from intention.l2cs import select_device, Pipeline
 class Intention():
     def __init__(self):
         self.bridge = CvBridge()
-        self.yolo_model = YOLO(os.path.join(os.path.dirname(__file__), '../../../../../high_level/yolo_model/mixed.pt'))
+        self.yolo_model = YOLO(os.path.join(os.path.dirname(__file__), '../../../../../high_level/yolo_model/mixed_zed_realsense.pt'))
         # self.transcriber = VoiceTranscriber()
 
         models_dir = os.path.join(os.path.dirname(__file__), 'models')
@@ -73,6 +73,7 @@ class Intention():
         #Yolo confidence
         self.yolo_conf = 0.80
         self.intention_yolo_conf = 0.80
+        self.intention_score_threshold = 0.0
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -130,7 +131,7 @@ class Intention():
 
         # get pixel coordinates (INDEX_FINGER_MCP=5, INDEX_FINGER_TIP=8)
         index_mcp = hand[5]
-        index_tip = hand[7]
+        index_tip = hand[8]
 
         u1, v1 = int(index_mcp.x * w), int(index_mcp.y * h)
         u2, v2 = int(index_tip.x * w), int(index_tip.y * h)
@@ -280,6 +281,26 @@ class Intention():
     def in_valid_area(self, pt):
         return pt is not None and (0.0 <= pt[0] <= 1.0) and (-0.7 <= pt[1] <= 0.7)
 
+    def _normalize_cos_scores(self, scores):
+        """Min-max normalize current-frame cosine scores to [0, 1]."""
+        valid_scores = [float(score) for score in scores if score is not None]
+        if not valid_scores:
+            return [0.0] * len(scores)
+
+        min_score = min(valid_scores)
+        max_score = max(valid_scores)
+        score_range = max_score - min_score
+        if score_range < 1e-6:
+            return [1.0 if score is not None else 0.0 for score in scores]
+
+        normalized = []
+        for score in scores:
+            if score is None:
+                normalized.append(0.0)
+            else:
+                normalized.append(float((float(score) - min_score) / score_range))
+        return normalized
+
     def draw_intersect(self, origin, direction, viewer):
         intersect = self.line_plane_intersect(origin, direction, z_plane=0.0)
         if self.in_valid_area(intersect):
@@ -379,7 +400,7 @@ class Intention():
     #     print(f"YOLO ROI & label image saved: {output_path}")
     #     return labels
     
-    def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path, depth=None, camera_intrinsics=None, T_wc=None, ref_world_point=None):
+    def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path, depth=None, camera_intrinsics=None, T_wc=None, ref_world_point=None, ray_origin=None, ray_direction=None):
         """
         img: bgr8 (cv2)
         u, v: center point pixel of ROI
@@ -390,7 +411,8 @@ class Intention():
         T_wc: 4x4 world-from-camera transform, optional
         ref_world_point: np.array([x, y, z]) world coordinate of the pointing target (stable),
                          used to find the nearest detected object. If provided with depth/intrinsics/T_wc,
-                         returns only the label of the closest bbox; otherwise returns all labels.
+                         returns only the label and score of the closest bbox; otherwise returns all labels
+                         with per-label scores. Also returns every valid bbox center in world coordinates.
         """
         h, w = img.shape[:2]
         roi_size = 200
@@ -400,6 +422,8 @@ class Intention():
 
         roi = img[y1:y2, x1:x2]
         labels = []
+        label_scores = []
+        bbox_world_points = []
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
             print("ROI empty, skip YOLO")
         else:
@@ -419,14 +443,16 @@ class Intention():
                         fx, fy, cx, cy = camera_intrinsics
                         dh, dw = depth.shape[:2]
                         if 0 <= center_x < dw and 0 <= center_y < dh:
-                            z = float(depth[center_y, center_x])
+                            z = float(depth[center_y, center_x]) * 0.001  # mm → m
                             if z > 0:
                                 xc = (center_x - cx) * z / fx
                                 yc = (center_y - cy) * z / fy
                                 p_cam = np.array([xc, yc, z, 1.0])
                                 xyz = (T_wc @ p_cam)[:3]
-                                world_xy = xyz[:2]
-                                print(f"  [{label}] center pixel ({center_x},{center_y}) -> world xyz: {xyz}")
+                                world_xy = xyz
+                                # print(f"  [{label}] center pixel ({center_x},{center_y}) -> world xyz: {xyz}")
+                    if world_xy is not None:
+                        bbox_world_points.append(world_xy)
                     detections.append((bx1, by1, bx2, by2, label, conf, world_xy))
 
                 # Find nearest bbox to ref_world_point
@@ -446,6 +472,8 @@ class Intention():
                         cv2.rectangle(img, (bx1, by1), (bx2, by2), (255, 0, 0), 2)
                         cv2.putText(img, f"{lbl} {cf:.2f}", (bx1, by1 - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                        cx_bb, cy_bb = (bx1 + bx2) // 2, (by1 + by2) // 2
+                        cv2.circle(img, (cx_bb, cy_bb), 5, (255, 0, 0), -1)
 
                     # Draw ref point
                     if ref_u is not None and ref_v is not None:
@@ -453,29 +481,53 @@ class Intention():
                         cv2.putText(img, "ref", (ref_u + 10, ref_v),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-                    # Find nearest bbox by pixel distance from ref to bbox center
-                    best_idx = None
-                    best_dist = float('inf')
+                    # Calculate per-bbox pointing scores and publish all labels above threshold.
+                    normalized_scores = [0.0] * len(detections)
                     if ref_u is not None and ref_v is not None:
                         ref_pixel = np.array([ref_u, ref_v])
-                        for i, (bx1, by1, bx2, by2, lbl, _, _) in enumerate(detections):
+                        ray_dir_norm = None
+                        if ray_direction is not None:
+                            nd = np.linalg.norm(ray_direction)
+                            if nd > 1e-6:
+                                ray_dir_norm = np.array(ray_direction) / nd
+                        raw_scores = [None] * len(detections)
+                        score_debug = []
+                        for i, (bx1, by1, bx2, by2, lbl, _, world_xyz) in enumerate(detections):
                             cx_bbox = (bx1 + bx2) // 2
                             cy_bbox = (by1 + by2) // 2
                             dist = float(np.linalg.norm(np.array([cx_bbox, cy_bbox]) - ref_pixel))
-                            print(f"  [{lbl}] bbox center ({cx_bbox},{cy_bbox}), pixel dist to ref: {dist:.1f}")
-                            if dist < best_dist:
-                                best_dist = dist
-                                best_idx = i
+                            angle_deg = None
+                            if ray_dir_norm is not None and ray_origin is not None and world_xyz is not None:
+                                v_to_bbox = np.array(world_xyz) - np.array(ray_origin)
+                                nv = np.linalg.norm(v_to_bbox)
+                                if nv > 1e-6:
+                                    cos_a = np.clip(np.dot(v_to_bbox / nv, ray_dir_norm), -1.0, 1.0)
+                                    raw_scores[i] = cos_a
+                                    angle_deg = float(np.degrees(np.arccos(cos_a)))
+                            score_debug.append((lbl, cx_bbox, cy_bbox, dist, raw_scores[i], angle_deg))
+                        normalized_scores = self._normalize_cos_scores(raw_scores)
+                        for i, (lbl, cx_bbox, cy_bbox, dist, raw_score, angle_deg) in enumerate(score_debug):
+                            cos_str = f"{raw_score:.3f}" if raw_score is not None else "None"
+                            angle_val = f"{angle_deg:.1f}" if angle_deg is not None else "None"
+                            print(
+                                f"  [{lbl}] bbox center ({cx_bbox},{cy_bbox}), "
+                                f"pixel dist to ref: {dist:.1f}, cos_a: {cos_str}, "
+                                f"angle_deg: {angle_val}, normalized_score: {normalized_scores[i]:.3f}"
+                            )
 
-                    if best_idx is not None:
-                        bx1, by1, bx2, by2, best_label, best_conf, _ = detections[best_idx]
+                    selected_indices = [
+                        i for i, score in enumerate(normalized_scores)
+                        if score > self.intention_score_threshold
+                    ]
+                    for i in selected_indices:
+                        bx1, by1, bx2, by2, label, conf, _ = detections[i]
                         cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
-                        cv2.putText(img, f"{best_label} {best_conf:.2f}", (bx1, by1 - 5),
+                        cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                        labels = [best_label]
-                        print(f"  -> nearest bbox: [{best_label}] (pixel dist={best_dist:.1f})")
-                    else:
-                        labels = [d[4] for d in detections]
+                        cx_bb, cy_bb = (bx1 + bx2) // 2, (by1 + by2) // 2
+                        cv2.circle(img, (cx_bb, cy_bb), 5, (0, 0, 255), -1)
+                        labels.append(label)
+                        label_scores.append(normalized_scores[i])
                 else:
                     # No ref point: draw and return all in blue
                     for bx1, by1, bx2, by2, lbl, conf, _ in detections:
@@ -483,12 +535,13 @@ class Intention():
                         cv2.putText(img, f"{lbl} {conf:.2f}", (bx1, by1 - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
                         labels.append(lbl)
+                        label_scores.append(0.0)
 
-                print(f"YOLO detected (ROI): {', '.join(labels)}")
+                print(f"YOLO detected (ROI): {', '.join(labels)} with scores: {label_scores}")
 
         cv2.imwrite(output_path, img)
         print(f"YOLO ROI & label image saved: {output_path}")
-        return labels
+        return labels, label_scores, bbox_world_points
     
     
     
@@ -572,6 +625,7 @@ class Intention():
     #         f.write(last_query_result)
 
     def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None, depth_msg=None, camera_intrinsics=None, T_wc=None, finger_tip_world=None):
+        ray_origin = None
         
         if intersect is None :
             # EMA filter
@@ -604,6 +658,8 @@ class Intention():
         )
         if isinstance(rgb_msg, list) and isinstance(image_name, list) and isinstance(camera_side, list):
             all_labels = []
+            all_label_scores = []
+            all_bbox_world_points = []
             depth_list = depth_msg if isinstance(depth_msg, list) else [None] * len(rgb_msg)
             intrinsics_list = camera_intrinsics if isinstance(camera_intrinsics, list) else [camera_intrinsics] * len(rgb_msg)
             T_wc_list = T_wc if isinstance(T_wc, list) else [T_wc] * len(rgb_msg)
@@ -635,18 +691,23 @@ class Intention():
                     else:
                         img = self.bridge.imgmsg_to_cv2(rgb, 'bgr8')
                     depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough') if dm is not None else None
-                    labels = self.detect_and_draw_yolo(
+                    labels, label_scores, bbox_world_points = self.detect_and_draw_yolo(
                         img, u, v, self.yolo_model, os.path.join(self.output_dir, name),
-                        depth=depth_np, camera_intrinsics=intr, T_wc=twc, ref_world_point=stable
+                        depth=depth_np, camera_intrinsics=intr, T_wc=twc, ref_world_point=stable, ray_origin=ray_origin, ray_direction=finger_direction_ema
                     )
                     all_labels.extend(labels)
+                    all_label_scores.extend(label_scores)
+                    all_bbox_world_points.extend(bbox_world_points)
 
-                all_labels = list(set(all_labels))
                 # # tts and stt
                 # self.ask_label_tts(all_labels)
                 label_output = all_labels
+                score_output = all_label_scores
+                bbox_world_output = all_bbox_world_points
             else:
                 label_output = []
+                score_output = []
+                bbox_world_output = []
 
         else:
             if stable is not None:
@@ -678,15 +739,18 @@ class Intention():
                 else:
                     img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
                 depth_np = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough') if depth_msg is not None else None
-                labels = self.detect_and_draw_yolo(
+                labels, label_scores, bbox_world_points = self.detect_and_draw_yolo(
                     img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name),
-                    depth=depth_np, camera_intrinsics=camera_intrinsics, T_wc=T_wc, ref_world_point=stable
+                    depth=depth_np, camera_intrinsics=camera_intrinsics, T_wc=T_wc, ref_world_point=stable, ray_origin=ray_origin, ray_direction=finger_direction_ema
                 )
                 label_output = labels
+                score_output = label_scores
+                bbox_world_output = bbox_world_points
                 # # tts and stt
                 # self.ask_label_tts(labels)
             else:
                 label_output = []
+                score_output = []
+                bbox_world_output = []
         
-        return stable, last_output, pts, finger_base, finger_direction_ema, finger_origin_ema, intersect, label_output
-
+        return stable, last_output, pts, finger_base, finger_direction_ema, finger_origin_ema, intersect, label_output, score_output, bbox_world_output

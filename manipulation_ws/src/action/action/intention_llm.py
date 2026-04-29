@@ -141,12 +141,12 @@ class IntentionLLM(Node):
             1
         )
         
-        self.latest_gesture_labels = None
-        self.latest_gaze_labels = None
+        self.latest_gesture_info = None
+        self.latest_gaze_info = None
         self.all_labels = None
 
-        self.gesture_history = []  # Store the latest 10 gesture_labels
-        self.gaze_history = []     # Store the latest 10 gaze_labels
+        self.gesture_history = []  # Store the latest gesture_info JSON strings
+        self.gaze_history = []     # Store the latest gaze_info JSON strings
         self.max_history_size = 5 # TODO: tune this size based on gaze label frequency
         
         self.get_logger().info('Intention LLM Node has been started.')
@@ -197,8 +197,8 @@ class IntentionLLM(Node):
 
     def label_cb(self, msg):
         # Add to history
-        self.gesture_history.append(msg.gesture_labels)
-        self.gaze_history.append(msg.gaze_labels)
+        self.gesture_history.append(msg.gesture_info)
+        self.gaze_history.append(msg.gaze_info)
 
         # Keep history size within limit
         if len(self.gesture_history) > self.max_history_size:
@@ -207,18 +207,18 @@ class IntentionLLM(Node):
             self.gaze_history.pop(0)
 
         # Find the latest non-empty labels from history
-        self.latest_gesture_labels = self._find_latest_non_empty(self.gesture_history)
-        self.latest_gaze_labels = self._find_latest_non_empty(self.gaze_history)
+        self.latest_gesture_info = self._find_latest_non_empty(self.gesture_history)
+        self.latest_gaze_info = self._find_latest_non_empty(self.gaze_history)
         
-        self.get_logger().info(f"Received gesture labels: {msg.gesture_labels}, Received gaze labels: {msg.gaze_labels}")
-        self.get_logger().info(f"Latest non-empty gesture labels: {self.latest_gesture_labels}, Latest non-empty gaze labels: {self.latest_gaze_labels}")
+        self.get_logger().info(f"Received gesture info: {msg.gesture_info}, Received gaze info: {msg.gaze_info}")
+        self.get_logger().info(f"Latest non-empty gesture info: {self.latest_gesture_info}, Latest non-empty gaze info: {self.latest_gaze_info}")
     
     def _find_latest_non_empty(self, history_list):
         """Find the latest non-empty labels from history"""
         # Start searching from the latest
-        for labels in reversed(history_list):
-            if labels and len(labels) > 0:  # Check if non-empty and not empty list
-                return labels
+        for info in reversed(history_list):
+            if info and info.strip() and info.strip() != "[]":
+                return info
         return None
 
     def file_status_cb(self, msg):
@@ -231,8 +231,8 @@ class IntentionLLM(Node):
 
         if self.speech_changed == True and self.new_file_content is not None and self.new_file_content != "": #and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None
             cmd_str = self.new_file_content if self.new_file_content else "None"
-            gesture_str = ", ".join(self.latest_gesture_labels) if self.latest_gesture_labels else "None"
-            gaze_str = ", ".join(self.latest_gaze_labels) if self.latest_gaze_labels else "None"
+            gesture_str = self.latest_gesture_info if self.latest_gesture_info else "None"
+            gaze_str = self.latest_gaze_info if self.latest_gaze_info else "None"
             
             
             r_rgb = cv2.imread(self.r_rgb_path)
@@ -276,7 +276,7 @@ class IntentionLLM(Node):
                 with open(self.file_path, 'w', encoding='utf-8') as f:
                     f.write(response)
 
-            self.latest_gesture_labels, self.latest_gaze_labels, self.new_file_content = None, None, None
+            self.latest_gesture_info, self.latest_gaze_info, self.new_file_content = None, None, None
         else:
             response, content, json_blocks = "", "", ""
             output = None   

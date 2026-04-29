@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R
 from std_msgs.msg import String as Strings
 import cv2
 import time
+import json
 from threading import Thread, Lock
 from collections import deque
 import os
@@ -64,9 +65,10 @@ class HandDetectionWithPointCloudNode(Node):
         
         self.label_pub = self.create_publisher(Labels, 'label_output', 10)
         self._marker_pub = self.create_publisher(Marker, '/finger/markers', 10)
+        self._yolo_bbox_marker_pub = self.create_publisher(Marker, '/yolo/bbox_centers', 10)
         self.hand_img_pub = self.create_publisher(Image, '/hand_landmarks_image', 10)
         self._hand_marker_pub = self.create_publisher(Marker, '/hand/landmarks_markers', 10)
-        self.label_msg = Labels()
+        self.label_msg = self._new_label_msg()
 
         # Aria gaze subscription
         self.create_subscription(PointStamped, '/aria/gaze_xy_intersect', self.gaze_intersect_callback, 10)
@@ -132,7 +134,26 @@ class HandDetectionWithPointCloudNode(Node):
 
     def _gaze_label_callback(self, msg):
         with self.lock:
-            self.label_msg.gaze_labels = msg.data.split(',') 
+            labels = [label.strip() for label in msg.data.split(',') if label.strip()]
+            self.label_msg.gaze_info = self._format_label_info(labels)
+            
+    def _new_label_msg(self):
+        msg = Labels()
+        msg.gaze_info = "[]"
+        msg.gesture_info = "[]"
+        return msg
+
+    def _format_label_info(self, labels, scores=None):
+        if scores is None:
+            scores = [None] * len(labels)
+        info = []
+        for label, score in zip(labels, scores):
+            item = {"label": label}
+            if score is not None:
+                item["score"] = float(score)
+            info.append(item)
+        info.sort(key=lambda item: item.get("score", float("-inf")), reverse=True)
+        return json.dumps(info, ensure_ascii=False)
             
             
     def buffer_callback(self, msg, side, kind):
@@ -257,6 +278,35 @@ class HandDetectionWithPointCloudNode(Node):
         self._hand_marker_pub.publish(sphere_marker)
         self._hand_marker_pub.publish(line_marker)
 
+    def _publish_bbox_centers(self, points_world: list, namespace: str, marker_id: int, color: tuple) -> None:
+        """Publish YOLO bbox center points in world coordinates for RViz."""
+        from geometry_msgs.msg import Point
+
+        marker = Marker()
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.header.frame_id = "base_link"
+        marker.ns = namespace
+        marker.id = marker_id
+        marker.type = Marker.SPHERE_LIST
+        marker.action = Marker.ADD
+        marker.scale.x = 0.035
+        marker.scale.y = 0.035
+        marker.scale.z = 0.035
+        marker.color.r = float(color[0])
+        marker.color.g = float(color[1])
+        marker.color.b = float(color[2])
+        marker.color.a = 1.0
+        marker.lifetime.nanosec = 300_000_000
+
+        for pt in points_world:
+            if pt is None:
+                continue
+            p = Point()
+            p.x, p.y, p.z = float(pt[0]), float(pt[1]), float(pt[2])
+            marker.points.append(p)
+
+        self._yolo_bbox_marker_pub.publish(marker)
+
     def _reset_detection_state(self):
         """Reset all finger and gaze detection state."""
         self.finger_pts.clear()
@@ -287,14 +337,17 @@ class HandDetectionWithPointCloudNode(Node):
          self.finger_base,
          _, _,
          finger_intersect,
-         finger_label_output) = self.intention.process_detection(
+         finger_label_output,
+         finger_score_output,
+         finger_bbox_world_points) = self.intention.process_detection(
             normalized, origin, rgb_msg, self.finger_pts,
             direction_name="finger_direction", origin_name="finger_origin",
             image_name=image_name, camera_side=camera_side,
             depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc,
             finger_tip_world=finger_tip_world)
 
-        self.label_msg.gesture_labels = finger_label_output
+        self.label_msg.gesture_info = self._format_label_info(finger_label_output, finger_score_output)
+        self._publish_bbox_centers(finger_bbox_world_points, "gesture_yolo_bbox_centers", 20, (1.0, 0.35, 0.05))
         return finger_intersect
 
     def _run_gaze_detection(self, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None):
@@ -307,14 +360,16 @@ class HandDetectionWithPointCloudNode(Node):
          self.gaze_pts,
          self.gaze_base,
          _, _, _,
-         gaze_label_output) = self.intention.process_detection(
+         gaze_label_output,
+         gaze_score_output,
+         gaze_bbox_world_points) = self.intention.process_detection(
             rgb_msg=rgb_msg, pts=self.gaze_pts,
             direction_name="gaze_direction", origin_name="gaze_origin",
             image_name=image_name, camera_side=camera_side,
             intersect=self.gaze_intersect_pos,
             depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc)
 
-        self.label_msg.gaze_labels = gaze_label_output
+        self.label_msg.gaze_info = self._format_label_info(gaze_label_output, gaze_score_output)
 
     def _merge_finger_detections(self, dir_l, orig_l, dir_r, orig_r):
         """Merge finger detections from two cameras by averaging available results."""
@@ -410,8 +465,11 @@ class HandDetectionWithPointCloudNode(Node):
 
         # Publish labels and markers
         self.label_pub.publish(self.label_msg)
-        print(f"Published labels: gesture={self.label_msg.gesture_labels}, gaze={self.label_msg.gaze_labels}")
-        self.label_msg = Labels()
+        print(
+            f"Published labels: gesture_info={self.label_msg.gesture_info}, "
+            f"gaze_info={self.label_msg.gaze_info}"
+        )
+        self.label_msg = self._new_label_msg()
         if self.intention.in_valid_area(finger_intersect):
             self._publish_finger_ray(finger_direction, finger_origin)
             self._publish_finger_hit(finger_intersect)
