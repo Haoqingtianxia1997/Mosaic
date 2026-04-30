@@ -73,7 +73,7 @@ class Intention():
         #Yolo confidence
         self.yolo_conf = 0.80
         self.intention_yolo_conf = 0.80
-        self.intention_score_threshold = 0.0
+        self.gaussian_sigma_deg = 15.0   # half-cone width for Gaussian pointing score
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -400,7 +400,7 @@ class Intention():
     #     print(f"YOLO ROI & label image saved: {output_path}")
     #     return labels
     
-    def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path, depth=None, camera_intrinsics=None, T_wc=None, ref_world_point=None, ray_origin=None, ray_direction=None):
+    def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path, depth=None, camera_intrinsics=None, T_wc=None, ref_world_point=None, ray_mcp=None, ray_direction=None):
         """
         img: bgr8 (cv2)
         u, v: center point pixel of ROI
@@ -490,35 +490,25 @@ class Intention():
                             nd = np.linalg.norm(ray_direction)
                             if nd > 1e-6:
                                 ray_dir_norm = np.array(ray_direction) / nd
-                        raw_scores = [None] * len(detections)
-                        score_debug = []
+                        gaussian_scores = [0.0] * len(detections)
                         for i, (bx1, by1, bx2, by2, lbl, _, world_xyz) in enumerate(detections):
                             cx_bbox = (bx1 + bx2) // 2
                             cy_bbox = (by1 + by2) // 2
                             dist = float(np.linalg.norm(np.array([cx_bbox, cy_bbox]) - ref_pixel))
+                            cos_a = None
                             angle_deg = None
-                            if ray_dir_norm is not None and ray_origin is not None and world_xyz is not None:
-                                v_to_bbox = np.array(world_xyz) - np.array(ray_origin)
+                            if ray_dir_norm is not None and ray_mcp is not None and world_xyz is not None:
+                                v_to_bbox = np.array(world_xyz) - np.array(ray_mcp)
                                 nv = np.linalg.norm(v_to_bbox)
                                 if nv > 1e-6:
-                                    cos_a = np.clip(np.dot(v_to_bbox / nv, ray_dir_norm), -1.0, 1.0)
-                                    raw_scores[i] = cos_a
+                                    cos_a = float(np.clip(np.dot(v_to_bbox / nv, ray_dir_norm), -1.0, 1.0))
                                     angle_deg = float(np.degrees(np.arccos(cos_a)))
-                            score_debug.append((lbl, cx_bbox, cy_bbox, dist, raw_scores[i], angle_deg))
-                        normalized_scores = self._normalize_cos_scores(raw_scores)
-                        for i, (lbl, cx_bbox, cy_bbox, dist, raw_score, angle_deg) in enumerate(score_debug):
-                            cos_str = f"{raw_score:.3f}" if raw_score is not None else "None"
-                            angle_val = f"{angle_deg:.1f}" if angle_deg is not None else "None"
-                            print(
-                                f"  [{lbl}] bbox center ({cx_bbox},{cy_bbox}), "
-                                f"pixel dist to ref: {dist:.1f}, cos_a: {cos_str}, "
-                                f"angle_deg: {angle_val}, normalized_score: {normalized_scores[i]:.3f}"
-                            )
+                                    gaussian_scores[i] = float(np.exp(
+                                        -angle_deg ** 2 / (2 * self.gaussian_sigma_deg ** 2)
+                                    ))
+                        normalized_scores = gaussian_scores
 
-                    selected_indices = [
-                        i for i, score in enumerate(normalized_scores)
-                        if score > self.intention_score_threshold
-                    ]
+                    selected_indices = list(range(len(detections)))
                     for i in selected_indices:
                         bx1, by1, bx2, by2, label, conf, _ = detections[i]
                         cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
@@ -626,27 +616,34 @@ class Intention():
 
     def process_detection(self, direction=None, origin=None, rgb_msg=None, pts=None, direction_name=None, origin_name=None, image_name=None, camera_side=None, intersect=None, depth_msg=None, camera_intrinsics=None, T_wc=None, finger_tip_world=None):
         ray_origin = None
-        
-        if intersect is None :
-            # EMA filter
-            self.update_ema(direction_name, direction, self.ema_alpha, unit_vector=True)
-            self.update_ema(origin_name, origin, self.ema_alpha)
-            finger_direction_ema = self.get_ema(direction_name)
-            finger_origin_ema = self.get_ema(origin_name)
-            # 构建点云（支持单张或多张深度图，取第一张有效的）
-            pcd_world = None
-            dm_list = depth_msg if isinstance(depth_msg, list) else [depth_msg]
-            intr_list = camera_intrinsics if isinstance(camera_intrinsics, list) else [camera_intrinsics]
-            twc_list = T_wc if isinstance(T_wc, list) else [T_wc]
-            for dm, intr, twc in zip(dm_list, intr_list, twc_list):
-                if dm is not None and intr is not None and twc is not None:
-                    depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough')
-                    pcd_world = self._build_pointcloud_world(depth_np, intr, twc)
-                    if pcd_world is not None:
-                        break
-            # 用指尖世界坐标作为射线起点，避免打到手自身点云
-            ray_origin = finger_tip_world if finger_tip_world is not None else finger_origin_ema
-            intersect = self.ray_pointcloud_intersect(ray_origin, finger_direction_ema, pcd_world)
+        ray_mcp = None
+
+        if intersect is None:
+            if direction is not None and origin is not None:
+                # EMA filter
+                self.update_ema(direction_name, direction, self.ema_alpha, unit_vector=True)
+                self.update_ema(origin_name, origin, self.ema_alpha)
+                finger_direction_ema = self.get_ema(direction_name)
+                finger_origin_ema = self.get_ema(origin_name)
+                ray_mcp = finger_origin_ema
+                # 构建点云（支持单张或多张深度图，取第一张有效的）
+                pcd_world = None
+                dm_list = depth_msg if isinstance(depth_msg, list) else [depth_msg]
+                intr_list = camera_intrinsics if isinstance(camera_intrinsics, list) else [camera_intrinsics]
+                twc_list = T_wc if isinstance(T_wc, list) else [T_wc]
+                for dm, intr, twc in zip(dm_list, intr_list, twc_list):
+                    if dm is not None and intr is not None and twc is not None:
+                        depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough')
+                        pcd_world = self._build_pointcloud_world(depth_np, intr, twc)
+                        if pcd_world is not None:
+                            break
+                # 用指尖世界坐标作为射线起点，避免打到手自身点云
+                ray_origin = finger_tip_world if finger_tip_world is not None else finger_origin_ema
+                intersect = self.ray_pointcloud_intersect(ray_origin, finger_direction_ema, pcd_world)
+            else:
+                finger_direction_ema = None
+                finger_origin_ema = None
+                ray_origin = None
         else:
             finger_direction_ema = None
             finger_origin_ema = None
@@ -663,94 +660,75 @@ class Intention():
             depth_list = depth_msg if isinstance(depth_msg, list) else [None] * len(rgb_msg)
             intrinsics_list = camera_intrinsics if isinstance(camera_intrinsics, list) else [camera_intrinsics] * len(rgb_msg)
             T_wc_list = T_wc if isinstance(T_wc, list) else [T_wc] * len(rgb_msg)
-            if stable is not None:
-                for rgb, name, side, dm, intr, twc in zip(rgb_msg, image_name, camera_side, depth_list, intrinsics_list, T_wc_list):
+            for rgb, name, side, dm, intr, twc in zip(rgb_msg, image_name, camera_side, depth_list, intrinsics_list, T_wc_list):
+                from sensor_msgs.msg import CompressedImage as _CI
+                if isinstance(rgb, _CI):
+                    img = self.bridge.compressed_imgmsg_to_cv2(rgb, 'bgr8')
+                else:
+                    img = self.bridge.imgmsg_to_cv2(rgb, 'bgr8')
+                depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough') if dm is not None else None
+                if stable is not None:
                     if side == "right":
                         print(f"[Stable finger pos R:] {stable}")
-                        # 3d to 2d projection
-                        # pixel, _ = world_to_pixels_right(stable) # for zed
-                        pixel, _ = world_to_pixels_realsense(stable) # for realsense
-
+                        pixel, _ = world_to_pixels_realsense(stable)
                     elif side == "left":
                         print(f"[Stable finger pos L:] {stable}")
-                        # 3d to 2d projection
                         pixel, _ = world_to_pixels_left(stable)
-
-                    # elif camera_side == "middle":
-                    #     print(f"[Stable finger pos Middle:] {stable}")
-                    #     # 3d to 2d projection
-                    #     pixel, _ = world_to_pixels_third(stable)
-
                     u, v = int(round(pixel[0])), int(round(pixel[1]))
                     print(f"Projected pixel: ({u}, {v})")
+                    ref_pt = stable
+                else:
+                    h_img, w_img = img.shape[:2]
+                    u, v = w_img // 2, h_img // 2
+                    ref_pt = None
+                labels, label_scores, bbox_world_points = self.detect_and_draw_yolo(
+                    img, u, v, self.yolo_model, os.path.join(self.output_dir, name),
+                    depth=depth_np, camera_intrinsics=intr, T_wc=twc,
+                    ref_world_point=ref_pt, ray_mcp=ray_mcp, ray_direction=finger_direction_ema
+                )
+                all_labels.extend(labels)
+                all_label_scores.extend(label_scores)
+                all_bbox_world_points.extend(bbox_world_points)
 
-                    # yolo
-                    from sensor_msgs.msg import CompressedImage as _CI
-                    if isinstance(rgb, _CI):
-                        img = self.bridge.compressed_imgmsg_to_cv2(rgb, 'bgr8')
-                    else:
-                        img = self.bridge.imgmsg_to_cv2(rgb, 'bgr8')
-                    depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough') if dm is not None else None
-                    labels, label_scores, bbox_world_points = self.detect_and_draw_yolo(
-                        img, u, v, self.yolo_model, os.path.join(self.output_dir, name),
-                        depth=depth_np, camera_intrinsics=intr, T_wc=twc, ref_world_point=stable, ray_origin=ray_origin, ray_direction=finger_direction_ema
-                    )
-                    all_labels.extend(labels)
-                    all_label_scores.extend(label_scores)
-                    all_bbox_world_points.extend(bbox_world_points)
-
-                # # tts and stt
-                # self.ask_label_tts(all_labels)
-                label_output = all_labels
-                score_output = all_label_scores
-                bbox_world_output = all_bbox_world_points
-            else:
-                label_output = []
-                score_output = []
-                bbox_world_output = []
+            # # tts and stt
+            # self.ask_label_tts(all_labels)
+            label_output = all_labels
+            score_output = all_label_scores
+            bbox_world_output = all_bbox_world_points
 
         else:
+            from sensor_msgs.msg import CompressedImage as _CI
+            if isinstance(rgb_msg, _CI):
+                img = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
+            else:
+                img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
+            depth_np = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough') if depth_msg is not None else None
             if stable is not None:
                 if camera_side == "right":
                     print(f"[Stable finger pos R:] {stable}")
-                    # 3d to 2d projection
-                    # pixel, _ = world_to_pixels_right(stable) # for zed
-                    pixel, _ = world_to_pixels_realsense(stable) # for realsense
-                
+                    pixel, _ = world_to_pixels_realsense(stable)
                 elif camera_side == "left":
                     print(f"[Stable finger pos L:] {stable}")
-                    # 3d to 2d projection
-                    pixel, _ = world_to_pixels_left(stable) 
+                    pixel, _ = world_to_pixels_left(stable)
                 elif camera_side == "realsense":
                     print(f"[Stable finger pos RealSense:] {stable}")
                     pixel, _ = world_to_pixels_realsense(stable)
-                # elif camera_side == "middle":
-                #     print(f"[Stable finger pos Middle:] {stable}")
-                #     # 3d to 2d projection
-                #     pixel, _ = world_to_pixels_third(stable)
-
                 u, v = int(round(pixel[0])), int(round(pixel[1]))
                 print(f"Projected pixel: ({u}, {v})")
-
-                # yolo
-                from sensor_msgs.msg import CompressedImage as _CI
-                if isinstance(rgb_msg, _CI):
-                    img = self.bridge.compressed_imgmsg_to_cv2(rgb_msg, 'bgr8')
-                else:
-                    img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
-                depth_np = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough') if depth_msg is not None else None
-                labels, label_scores, bbox_world_points = self.detect_and_draw_yolo(
-                    img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name),
-                    depth=depth_np, camera_intrinsics=camera_intrinsics, T_wc=T_wc, ref_world_point=stable, ray_origin=ray_origin, ray_direction=finger_direction_ema
-                )
-                label_output = labels
-                score_output = label_scores
-                bbox_world_output = bbox_world_points
-                # # tts and stt
-                # self.ask_label_tts(labels)
+                ref_pt = stable
             else:
-                label_output = []
-                score_output = []
-                bbox_world_output = []
+                h_img, w_img = img.shape[:2]
+                u, v = w_img // 2, h_img // 2
+                ref_pt = None
+            labels, label_scores, bbox_world_points = self.detect_and_draw_yolo(
+                img, u, v, self.yolo_model, os.path.join(self.output_dir, image_name),
+                depth=depth_np, camera_intrinsics=camera_intrinsics, T_wc=T_wc,
+                ref_world_point=ref_pt, ray_mcp=ray_mcp, ray_direction=finger_direction_ema
+            )
+            label_output = labels
+            score_output = label_scores
+            bbox_world_output = bbox_world_points
+            # # tts and stt
+            # self.ask_label_tts(labels)
         
         return stable, last_output, pts, finger_base, finger_direction_ema, finger_origin_ema, intersect, label_output, score_output, bbox_world_output

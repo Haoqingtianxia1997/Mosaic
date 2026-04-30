@@ -320,16 +320,14 @@ class HandDetectionWithPointCloudNode(Node):
         self.gaze_stable_pos = None
 
     def _run_finger_detection(self, direction, origin, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None, finger_tip_world=None):
-        """Validate direction, normalize, and run finger process_detection.
-
-        Returns finger_intersect point, or None if validation fails.
-        """
-        if np.isnan(direction).any() or np.isnan(origin).any():
-            return None
-        if np.linalg.norm(direction) <= 1e-6:
-            return None
-
-        normalized = direction / np.linalg.norm(direction)
+        """Run YOLO + 3D bbox detection. direction/origin optional: when present, also compute pointing score."""
+        if direction is not None and origin is not None:
+            if np.isnan(direction).any() or np.isnan(origin).any():
+                direction, origin, finger_tip_world = None, None, None
+            elif np.linalg.norm(direction) <= 1e-6:
+                direction, origin, finger_tip_world = None, None, None
+            else:
+                direction = direction / np.linalg.norm(direction)
 
         (self.finger_stable_pos,
          self.finger_last_output,
@@ -340,7 +338,7 @@ class HandDetectionWithPointCloudNode(Node):
          finger_label_output,
          finger_score_output,
          finger_bbox_world_points) = self.intention.process_detection(
-            normalized, origin, rgb_msg, self.finger_pts,
+            direction, origin, rgb_msg, self.finger_pts,
             direction_name="finger_direction", origin_name="finger_origin",
             image_name=image_name, camera_side=camera_side,
             depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc,
@@ -348,6 +346,11 @@ class HandDetectionWithPointCloudNode(Node):
 
         self.label_msg.gesture_info = self._format_label_info(finger_label_output, finger_score_output)
         self._publish_bbox_centers(finger_bbox_world_points, "gesture_yolo_bbox_centers", 20, (1.0, 0.35, 0.05))
+
+        for label, score, pt in zip(finger_label_output, finger_score_output, finger_bbox_world_points):
+            pt_str = f"({pt[0]:.3f}, {pt[1]:.3f}, {pt[2]:.3f})" if pt is not None else "None"
+            print(f"  bbox: label={label}, score={score:.4f}, 3d={pt_str}")
+
         return finger_intersect
 
     def _run_gaze_detection(self, rgb_msg, image_name, camera_side, depth_msg=None, camera_intrinsics=None, T_wc=None):
@@ -451,12 +454,11 @@ class HandDetectionWithPointCloudNode(Node):
             print("There are not any rgb_msg and depth_msg !")
             return
 
-        # Process finger detection
-        if finger_direction is not None and finger_origin is not None:
-            finger_intersect = self._run_finger_detection(
-                finger_direction, finger_origin, rgb_msg, finger_img, cam_side,
-                depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc,
-                finger_tip_world=finger_tip_world)
+        # Always run finger detection for YOLO bbox 3D coords; direction/origin may be None when no hand
+        finger_intersect = self._run_finger_detection(
+            finger_direction, finger_origin, rgb_msg, finger_img, cam_side,
+            depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc,
+            finger_tip_world=finger_tip_world)
 
         # Process gaze detection
         if self.gaze_intersect_pos is not None:
