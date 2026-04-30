@@ -68,6 +68,7 @@ class HandDetectionWithPointCloudNode(Node):
         self._yolo_bbox_marker_pub = self.create_publisher(Marker, '/yolo/bbox_centers', 10)
         self.hand_img_pub = self.create_publisher(Image, '/hand_landmarks_image', 10)
         self._hand_marker_pub = self.create_publisher(Marker, '/hand/landmarks_markers', 10)
+        self._mcp_to_bbox_marker_pub = self.create_publisher(Marker, '/finger/mcp_to_bbox_lines', 10)
         self.label_msg = self._new_label_msg()
 
         # Aria gaze subscription
@@ -135,26 +136,13 @@ class HandDetectionWithPointCloudNode(Node):
     def _gaze_label_callback(self, msg):
         with self.lock:
             labels = [label.strip() for label in msg.data.split(',') if label.strip()]
-            self.label_msg.gaze_info = self._format_label_info(labels)
+            self.label_msg.gaze_info = self.intention._format_label_info(labels)
             
     def _new_label_msg(self):
         msg = Labels()
         msg.gaze_info = "[]"
         msg.gesture_info = "[]"
         return msg
-
-    def _format_label_info(self, labels, scores=None):
-        if scores is None:
-            scores = [None] * len(labels)
-        info = []
-        for label, score in zip(labels, scores):
-            item = {"label": label}
-            if score is not None:
-                item["score"] = float(score)
-            info.append(item)
-        info.sort(key=lambda item: item.get("score", float("-inf")), reverse=True)
-        return json.dumps(info, ensure_ascii=False)
-            
             
     def buffer_callback(self, msg, side, kind):
         with self.lock:
@@ -307,6 +295,61 @@ class HandDetectionWithPointCloudNode(Node):
 
         self._yolo_bbox_marker_pub.publish(marker)
 
+    def _publish_mcp_to_bbox_lines(self, mcp_world: np.ndarray, bbox_points_world: list) -> None:
+        """Publish LINE_LIST from index finger MCP to each YOLO bbox center, for angle verification."""
+        from geometry_msgs.msg import Point
+
+        stamp = self.get_clock().now().to_msg()
+
+        # MCP sphere
+        mcp_marker = Marker()
+        mcp_marker.header.stamp = stamp
+        mcp_marker.header.frame_id = "base_link"
+        mcp_marker.ns = "mcp_point"
+        mcp_marker.id = 31
+        mcp_marker.type = Marker.SPHERE
+        mcp_marker.action = Marker.ADD
+        mcp_marker.scale.x = 0.025
+        mcp_marker.scale.y = 0.025
+        mcp_marker.scale.z = 0.025
+        mcp_marker.color.r = 1.0
+        mcp_marker.color.g = 1.0
+        mcp_marker.color.b = 0.0
+        mcp_marker.color.a = 1.0
+        mcp_marker.pose.position.x = float(mcp_world[0])
+        mcp_marker.pose.position.y = float(mcp_world[1])
+        mcp_marker.pose.position.z = float(mcp_world[2])
+        mcp_marker.pose.orientation.w = 1.0
+        mcp_marker.lifetime.nanosec = 300_000_000
+        self._mcp_to_bbox_marker_pub.publish(mcp_marker)
+
+        # Lines from MCP to each bbox center
+        line_marker = Marker()
+        line_marker.header.stamp = stamp
+        line_marker.header.frame_id = "base_link"
+        line_marker.ns = "mcp_to_bbox"
+        line_marker.id = 32
+        line_marker.type = Marker.LINE_LIST
+        line_marker.action = Marker.ADD
+        line_marker.scale.x = 0.006
+        line_marker.color.r = 1.0
+        line_marker.color.g = 1.0
+        line_marker.color.b = 0.0
+        line_marker.color.a = 0.9
+        line_marker.lifetime.nanosec = 300_000_000
+
+        mcp_pt = Point()
+        mcp_pt.x, mcp_pt.y, mcp_pt.z = float(mcp_world[0]), float(mcp_world[1]), float(mcp_world[2])
+        for pt in bbox_points_world:
+            if pt is None:
+                continue
+            bbox_pt = Point()
+            bbox_pt.x, bbox_pt.y, bbox_pt.z = float(pt[0]), float(pt[1]), float(pt[2])
+            line_marker.points.append(mcp_pt)
+            line_marker.points.append(bbox_pt)
+
+        self._mcp_to_bbox_marker_pub.publish(line_marker)
+
     def _reset_detection_state(self):
         """Reset all finger and gaze detection state."""
         self.finger_pts.clear()
@@ -333,7 +376,7 @@ class HandDetectionWithPointCloudNode(Node):
          self.finger_last_output,
          self.finger_pts,
          self.finger_base,
-         _, _,
+         _, finger_origin_ema,
          finger_intersect,
          finger_label_output,
          finger_score_output,
@@ -344,8 +387,11 @@ class HandDetectionWithPointCloudNode(Node):
             depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc,
             finger_tip_world=finger_tip_world)
 
-        self.label_msg.gesture_info = self._format_label_info(finger_label_output, finger_score_output)
+        self.label_msg.gesture_info = self.intention._format_label_info(finger_label_output, finger_score_output)
         self._publish_bbox_centers(finger_bbox_world_points, "gesture_yolo_bbox_centers", 20, (1.0, 0.35, 0.05))
+
+        if finger_origin_ema is not None and finger_bbox_world_points:
+            self._publish_mcp_to_bbox_lines(finger_origin_ema, finger_bbox_world_points)
 
         for label, score, pt in zip(finger_label_output, finger_score_output, finger_bbox_world_points):
             pt_str = f"({pt[0]:.3f}, {pt[1]:.3f}, {pt[2]:.3f})" if pt is not None else "None"
@@ -371,8 +417,6 @@ class HandDetectionWithPointCloudNode(Node):
             image_name=image_name, camera_side=camera_side,
             intersect=self.gaze_intersect_pos,
             depth_msg=depth_msg, camera_intrinsics=camera_intrinsics, T_wc=T_wc)
-
-        self.label_msg.gaze_info = self._format_label_info(gaze_label_output, gaze_score_output)
 
     def _merge_finger_detections(self, dir_l, orig_l, dir_r, orig_r):
         """Merge finger detections from two cameras by averaging available results."""

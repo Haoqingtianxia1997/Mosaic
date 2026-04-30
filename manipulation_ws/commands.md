@@ -42,8 +42,8 @@ ros2 launch zed_wrapper zed_camera.launch.py \
 
 # gaze camera
 # ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=848x480x30 rgb_camera.color_profile:=848x480x30
-ros2 launch realsense2_camera rs_pointcloud_launch.py align_depth.enable:=true
-ros2 launch realsense2_camera rs_pointcloud_launch.py \
+ros2 launch realsense2_camera rs_launch.py \
+  pointcloud.enable:=true \
   align_depth.enable:=true \
   decimation_filter.enable:=true \
   spatial_filter.enable:=true \

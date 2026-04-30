@@ -10,6 +10,7 @@ import time
 from ultralytics import YOLO
 import os
 import sys
+import json
 import open3d as o3d
 HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../../../../../high_level/src"))
 if HIGH_LEVEL_PATH not in sys.path:
@@ -400,6 +401,18 @@ class Intention():
     #     print(f"YOLO ROI & label image saved: {output_path}")
     #     return labels
     
+    def _format_label_info(self, labels, scores=None):
+        if scores is None:
+            scores = [None] * len(labels)
+        info = []
+        for label, score in zip(labels, scores):
+            item = {"label": label}
+            if score is not None:
+                item["score"] = float(score)
+            info.append(item)
+        info.sort(key=lambda item: item.get("score", float("-inf")), reverse=True)
+        return json.dumps(info, ensure_ascii=False)
+    
     def detect_and_draw_yolo(self, img, u, v, yolo_model, output_path, depth=None, camera_intrinsics=None, T_wc=None, ref_world_point=None, ray_mcp=None, ray_direction=None):
         """
         img: bgr8 (cv2)
@@ -449,6 +462,7 @@ class Intention():
                                 yc = (center_y - cy) * z / fy
                                 p_cam = np.array([xc, yc, z, 1.0])
                                 xyz = (T_wc @ p_cam)[:3]
+                                xyz[2] *= 0.6
                                 world_xy = xyz
                                 # print(f"  [{label}] center pixel ({center_x},{center_y}) -> world xyz: {xyz}")
                     if world_xy is not None:
@@ -492,6 +506,7 @@ class Intention():
                                 ray_dir_norm = np.array(ray_direction) / nd
                         gaussian_scores = [0.0] * len(detections)
                         for i, (bx1, by1, bx2, by2, lbl, _, world_xyz) in enumerate(detections):
+                            labels.append(lbl)
                             cx_bbox = (bx1 + bx2) // 2
                             cy_bbox = (by1 + by2) // 2
                             dist = float(np.linalg.norm(np.array([cx_bbox, cy_bbox]) - ref_pixel))
@@ -506,24 +521,15 @@ class Intention():
                                     gaussian_scores[i] = float(np.exp(
                                         -angle_deg ** 2 / (2 * self.gaussian_sigma_deg ** 2)
                                     ))
-                        normalized_scores = gaussian_scores
-
-                    selected_indices = list(range(len(detections)))
-                    for i in selected_indices:
-                        bx1, by1, bx2, by2, label, conf, _ = detections[i]
-                        cv2.rectangle(img, (bx1, by1), (bx2, by2), (0, 0, 255), 2)
-                        cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                        cx_bb, cy_bb = (bx1 + bx2) // 2, (by1 + by2) // 2
-                        cv2.circle(img, (cx_bb, cy_bb), 5, (0, 0, 255), -1)
-                        labels.append(label)
-                        label_scores.append(normalized_scores[i])
+                        label_scores = gaussian_scores
                 else:
                     # No ref point: draw and return all in blue
                     for bx1, by1, bx2, by2, lbl, conf, _ in detections:
                         cv2.rectangle(img, (bx1, by1), (bx2, by2), (255, 0, 0), 2)
                         cv2.putText(img, f"{lbl} {conf:.2f}", (bx1, by1 - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                        cx_bb, cy_bb = (bx1 + bx2) // 2, (by1 + by2) // 2
+                        cv2.circle(img, (cx_bb, cy_bb), 5, (255, 0, 0), -1)
                         labels.append(lbl)
                         label_scores.append(0.0)
 

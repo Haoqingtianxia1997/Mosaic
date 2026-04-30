@@ -241,8 +241,8 @@ class IntentionLLM(Node):
             
             input = (
                 f"I have a speech command: {cmd_str}, "
-                f"gesture label: {gesture_str} and "
-                f"gaze label: {gaze_str}."
+                f"gesture info: {gesture_str} and "
+                f"gaze info: {gaze_str}."
                 f"scenario labels: {scenario_labels_str}."
             )
         

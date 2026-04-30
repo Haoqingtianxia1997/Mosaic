@@ -727,13 +727,38 @@ class GraspGeneration:
             # print(f"Grasp center: {grasp_center}, Rotation matrix: {R}")
             gripper_meshes = create_grasp_mesh(center_point=grasp_center, rotation_matrix=R)
             all_grasp_meshes.append(gripper_meshes)
-        # Visualize all grasp meshes
+        # Visualize all grasp candidates
         print("\nVisualizing all grasp candidates...")
         # Create triangle mesh from point cloud for visualization
         obj_triangle_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
             pcd=merged_pcd, 
             alpha=0.08
         )
+        # # Create box mesh (0.1 x 0.09 x 0.06) and fit to merged_pcd via ICP
+        # _box_dims = np.array([0.1, 0.09, 0.06])
+        # _box_src = o3d.geometry.TriangleMesh.create_box(width=_box_dims[0], height=_box_dims[1], depth=_box_dims[2])
+        # _box_src.translate(-_box_dims / 2)  # center at origin
+        # _box_src.compute_vertex_normals()
+
+        # _init_T = np.eye(4)
+        # _init_T[:3, :3] = rotation_matrix
+        # _init_T[:3, 3] = center
+
+        # _box_pcd = _box_src.sample_points_uniformly(number_of_points=5000)
+        # _icp = o3d.pipelines.registration.registration_icp(
+        #     _box_pcd,
+        #     merged_pcd,
+        #     max_correspondence_distance=0.02,
+        #     init=_init_T,
+        #     estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+        #     criteria=o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=200),
+        # )
+        # print(f"Box ICP fitness: {_icp.fitness:.4f}, RMSE: {_icp.inlier_rmse:.6f}")
+
+        # obj_triangle_mesh = o3d.geometry.TriangleMesh.create_box(width=_box_dims[0], height=_box_dims[1], depth=_box_dims[2])
+        # obj_triangle_mesh.translate(-_box_dims / 2)
+        # obj_triangle_mesh.compute_vertex_normals()
+        # obj_triangle_mesh.transform(_icp.transformation)
         
         # Prepare list of meshes for visualization
         vis_meshes = [obj_triangle_mesh]

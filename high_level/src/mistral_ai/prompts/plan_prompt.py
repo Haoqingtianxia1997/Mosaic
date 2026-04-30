@@ -30,13 +30,14 @@ The fixed available object target are:
     - beer bottle
     - cucumber
     - cup
+    - juice
     - detergent bottle
     - ketchup bottle
     - mayonnaise bottle
     - oil bottle
     - pepper bottle
     - salt bottle
-    - scouring pad
+    - sponge
     - tomato
     - water bottle
     - user person

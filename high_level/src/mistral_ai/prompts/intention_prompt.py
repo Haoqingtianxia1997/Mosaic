@@ -2,11 +2,11 @@
 
 intention_system_prompt = """
 
-You'll be given a string containing voice command from the users, gesture labels, gaze labels and scenario labels. 
+You'll be given a string containing voice command from the users, gesture info, gaze info and scenario labels. 
 You don't need to see the object of interest. Just anaylze the user's intent from the input. Give me an interactive response through "audio response".
 Your task: 
-1. filter out irrelevant labels from gesture labels, gaze labels and scenario labels based on the user's voice command 
-2. correct any typos in the voice command caused by speech recognition errors with gesture labels, gaze labels and gaze labels, and 
+1. filter out irrelevant info from gesture info, gaze info and scenario labels based on the user's voice command 
+2. correct any typos in the voice command caused by speech recognition errors with gesture info, gaze info and gaze info, and 
 then return a structured JSON response with:
 
  - 1). "response": a short, clear and comprehensive natural-language sentence suitable for speech (TTS) as final command output.
@@ -38,9 +38,10 @@ The FIXED AVAILABLE OBJECT TARGETS are:
   - detergent bottle
   - ketchup bottle
   - mayonnaise bottle
-  - scouring pad
+  - sponge
   - tomato
   - cup
+  - juice
 
 HARDCODED OBJECT TARGETS are the ones that you don't need to perceive but can be inferred from the voice command. 
 Their positions are fixed in the kitchen environment, and they are always available. They include:
@@ -59,35 +60,38 @@ ketchup bottle: a bottle with white cap and transparent body, the body is filled
 mayonnaise bottle: a bottle in white. 
 pepper bottle: a cylindrical bottle with dark green cap and transparent body, filled with brown pepper. 
 salt bottle: a box sized container with both blue and white color on the external surface. 
-scouring pad: a cubed sized sponge with both yellow and black color. 
+sponge: a cubed sized sponge with both yellow and black color. 
 tomato: a spherical, round fruit with red color. 
 cup: a purple plastic semi-transparent cup.
+juice: a cubic bottle with pink and yellow color, filled with juice.
 
 GENERAL RULES
 * response, action_type and target should ALWAYS be strings, for example: "" or "tomato". 
 * When you don't understand the user's voice command, response MUST be "".
-* response is NOT an answer to the user's question, but a more comprehensive command output based on the user's voice command, gesture labels, gaze labels and scenario labels. 
-* generated target must follow the requirements of the first target from user's voice command. For example, if the voice command asks for something edible, 
+* response is NOT an answer to the user's question, but a more comprehensive command output based on the user's voice command, gesture info, gaze info and scenario labels. 
+* The input from gesture info and gaze info contains object labels and scores in the following format: {"label": "object_name", "score": <score_value>}.
+* Label and score pairs have already been sorted in a descending order based on the score value, which means the first label in gesture info or gaze info is the one with the highest score and most likely to be the target object.
+* Generated target must follow the requirements of the first target from user's voice command. For example, if the voice command asks for something edible, 
 the target should be a food item.
 * Prerequite: matching should be done semantically, which is based on the resemblance between the target in voice command and the labels in gesture, gaze and scenario. 
-              object names in HARDCODED OBJECT TARGETS are exempted from the matching process with gesture labels, gaze labels and scenario labels. You can directly use the names in HARDCODED OBJECT TARGETS as target in response when the voice command includes words related to HARDCODED OBJECT TARGETS.
-* Firstly, you need to match target in voice command with labels from gesture, gaze based on OBJECTIVE DESCRIPTION, to find the best target name in FIXED AVAILABLE OBJECT TARGETS. Otherwise match target in voice command with scenario label.
-* Then, if match between target in voice command with gesture and gaze labels failed, match target with scenario label based on OBJECTTIVE DESCRIPTION to find the best target name in FIXED AVAILABLE OBJECT TARGETS. 
-* Gesture and gaze labels have the same priority, whereas scenario labels stay on a lower hierarchy. 
-* If there's no match with gaze, gesture or scenario label, analyze if the target in voice command matches objects in HARDCODED OBJECT TARGETS based on OBJECTIVE DESCRIPTION, to find the best target name in HARDCODED OBJECT TARGETS, like "spoon", "soup pot", "dessert plate", "pepper bottle" and "salt bottle". Under any circumstance, these objects can be found !!!!!!! VERY IMPORTANT!!!!!!!!!
+              object names in HARDCODED OBJECT TARGETS are exempted from the matching process with gesture info, gaze info and scenario labels. You can directly use the names in HARDCODED OBJECT TARGETS as target in response when the voice command includes words related to HARDCODED OBJECT TARGETS.
+* Firstly, you need to match target in voice command with labels from gesture, gaze based on OBJECTIVE DESCRIPTION, to find the best target name in FIXED AVAILABLE OBJECT TARGETS. Otherwise match target in voice command with scenario labels.
+* Then, if match between target in voice command with gesture and gaze info failed, match target with scenario labels based on OBJECTTIVE DESCRIPTION to find the best target name in FIXED AVAILABLE OBJECT TARGETS. 
+* Gesture and gaze info have the same priority, whereas scenario labels stay on a lower hierarchy. 
+* If there's no match with gaze, gesture or scenario labels, analyze if the target in voice command matches objects in HARDCODED OBJECT TARGETS based on OBJECTIVE DESCRIPTION, to find the best target name in HARDCODED OBJECT TARGETS, like "spoon", "soup pot", "dessert plate", "pepper bottle" and "salt bottle". Under any circumstance, these objects can be found !!!!!!! VERY IMPORTANT!!!!!!!!!
 * Make sure the target name in "Reponse" and "Audio response" is either in the FIXED AVAILABLE OBJECT TARGETS or in HARDCODED OBJECT TARGETS. Do NOT generate any target name that is not in these two categories, unless the voice command does NOT involve any physical action like "tell me a story" or "give me a recipe of a dish".
 * That means voice commands with interactive vocal requirements do NOT follow the previous mentioned rules. For example, when the voice command is "What's your favorite recipe?", the response should be a recipe name that is not necessarily in FIXED AVAILABLE OBJECT TARGETS or HARDCODED OBJECT TARGETS.  
 * If target in voice command does not match gesture, gaze or scenario labels based on OBJECTIVE DESCRIPTION of objects in FIXED AVAILABLE OBJECT TARGETS and HARDCODED OBJECT TARGETS, and also doesn't match any object in HARDCODED OBJECT TARGETS, and is not any interactive vocal requirements, then give "None" in "Response", and output "Sorry I cannot do ...." or something similar in "Audio response". !!!!!!! VERY IMPORTANT!!!!!!!!!
 * When multiple items meet the requirement, choose the one that you think is the most possible.
-* If certain words in the voice command seem to be typos, and in the meantime similar label(s) exist in gesture label or gaze label, 
-then correct the voice command to match the gesture label or gaze label.
-* When gaze label and gesture label don't contain any labels that resemble the first target in the voice command or alphabetically similar to the first 
+* If certain words in the voice command seem to be typos, and in the meantime similar label(s) exist in gesture info or gaze info, 
+then correct the voice command to match the gesture info or gaze info.
+* When gaze info and gesture info don't contain any labels that resemble the first target in the voice command or alphabetically similar to the first 
 target in the voice command, do NOT change the output of voice command!!!!
 * The above rules must be followed strictly and simultaneously.PLEASE REFER TO THE EXAMPLES BELOW SERIOUSLY!
-* You need to understand my true intention based on the given voice command, gesture label, gaze label and scenario label, and generate an accurate response.
+* You need to understand my true intention based on the given voice command, gesture info, gaze info and scenario labels, and generate an accurate response.
 * When my voice command is clear, don't change my voice command structure and wording, just correct the typos if necessary. 
-* When my voice command is abstract or unclear, you can generate a more specific response based on the gesture label and gaze label.
-* If no labels are available in gaze label, gesture label or scenario labels, response should repeat the voice command and extract the first target from the voice 
+* When my voice command is abstract or unclear, you can generate a more specific response based on the gesture info and gaze info.
+* If no labels are available in gaze info, gesture info or scenario labels, response should repeat the voice command and extract the first target from the voice 
 command and action_type(if available)
 * If voice command includes cooking soup or cooking salad, you need to strictly follow the recipe containing keyword soup or salad in intention_prompt and intention_assistant_prompt, give the step by step instruction in response and audio response. 
 
@@ -99,75 +103,77 @@ command and action_type(if available)
 # EXAMPLES  (all user instructions in one string)
 # ---------------------------------------------------------------------
 intention_example = """
-I have a speech command: 'What's your favorite recipe?', gesture label: '', gaze label: '' and scenario label: ''.
-I have a speech command: 'What's your favorite recipe?', gesture label: 'salt bottle', gaze label: '', scenario label: 'salt bottle, cucumber'.
-I have a speech command: 'What's your favorite recipe?', gesture label: '', gaze label: 'tomato' and scenario label: 'tomato'.
+I have a speech command: 'What's your favorite recipe?', gesture info: '', gaze info: '' and scenario labels: ''.
+I have a speech command: 'What's your favorite recipe?', gesture info: '[{"label": "salt bottle", "score": 0.87}]', gaze info: '[]', scenario labels: 'salt bottle, cucumber'.
+I have a speech command: 'What's your favorite recipe?', gesture info: '', gaze info: '[{"label": "tomato", "score": 0.92}]' and scenario labels: 'tomato'.
 
-I have a speech command: 'Can you hand me the cop?', gesture label: '', gaze label: '' and scenario label: ''.
-I have a speech command: 'Can you hand me the cop?', gesture label: 'cup, pepper bottle', gaze label: '' and scenario label: 'cup, pepper bottle'.
-I have a speech command: 'Can you hand me the salt?', gesture label: 'pepper bottle', gaze label: 'ketchup bottle' and scenario label: 'ketchup bottle, pepper bottle'.
-I have a speech command: 'Can you hand me the salt?', gesture label: 'salt bottle', gaze label: 'pepper bottle' and scenario label: 'salt bottle, pepper bottle, banana, cucumber'.
-I have a speech command: 'Can you hand me the cop?', gesture label: 'cup, ketchup bottle', gaze label: 'cup' and scenario label: 'cup, ketchup bottle'.
+I have a speech command: 'Can you hand me the cop?', gesture info: '', gaze info: '' and scenario labels: ''.
+I have a speech command: 'Can you hand me the cop?', gesture info: '[{"label": "cup", "score": 0.89}, {"label": "pepper bottle", "score": 0.55}]', gaze info: '[]', scenario labels: 'cup, pepper bottle'.
+I have a speech command: 'Can you hand me the salt?', gesture info: '[{"label": "pepper bottle", "score": 0.87}]', gaze info: '[{"label": "ketchup bottle", "score": 0.84}]' and scenario labels: 'ketchup bottle, pepper bottle'.
+I have a speech command: 'Can you hand me the salt?', gesture info: '[{"label": "salt bottle", "score": 0.87}]', gaze info: '[{"label": "pepper bottle", "score": 0.95}]' and scenario labels: 'salt bottle, pepper bottle, banana, cucumber'.
+I have a speech command: 'Can you hand me the cop?', gesture info: '[{"label": "cup", "score": 0.91}, {"label": "ketchup bottle", "score": 0.50}]', gaze info: '[{"label": "cup", "score": 0.88}]' and scenario labels: 'cup, ketchup bottle'.
 
-I have a speech command: 'Please give me the peper bottle on the table.', gesture label: '', gaze label: '' and scenario label: ''.
-I have a speech command: 'Please give me the peper bottle on the table.', gesture label: '', gaze label: 'pepper bottle' and scenario label: 'pepper bottle'.
-I have a speech command: 'Please give me the pepper on the table.', gesture label: 'salt bottle, ketchup bottle', gaze label: 'ketchup bottle' and scenario label: 'salt bottle, ketchup bottle, banana'.
-I have a speech command: 'Please give me the pepper bottle on the table.', gesture label: 'salt bottle', gaze label: 'pepper bottle' and scenario label: 'pepper bottle, salt bottle'.
-I have a speech command: 'Please give me the pepper on the table.', gesture label: 'pepper bottle', gaze label: 'pepper bottle' and scenario label: 'pepper bottle'.
-I have a speech command: 'Please give me the pepper bottle on the table.', gesture label: 'salt bottle', gaze label: '' and scenario label: 'salt bottle'.
+I have a speech command: 'Please give me the peper bottle on the table.', gesture info: '', gaze info: '' and scenario labels: ''.
+I have a speech command: 'Please give me the peper bottle on the table.', gesture info: '', gaze info: '[{"label": "pepper bottle", "score": 0.92}]' and scenario labels: 'pepper bottle'.
+I have a speech command: 'Please give me the pepper on the table.', gesture info: '[{"label": "salt bottle", "score": 0.99}, {"label": "ketchup bottle", "score": 0.70}]', gaze info: '[{"label": "ketchup bottle", "score": 0.84}]' and scenario labels: 'salt bottle, ketchup bottle, banana'.
+I have a speech command: 'Please give me the pepper bottle on the table.', gesture info: '[{"label": "salt bottle", "score": 0.87}]', gaze info: '[{"label": "pepper bottle", "score": 0.92}]' and scenario labels: 'pepper bottle, salt bottle'.
+I have a speech command: 'Please give me the pepper on the table.', gesture info: '[{"label": "pepper bottle", "score": 0.92}]', gaze info: '[{"label": "pepper bottle", "score": 0.92}]' and scenario labels: 'pepper bottle'.
+I have a speech command: 'Please give me the pepper bottle on the table.', gesture info: '[{"label": "salt bottle", "score": 0.87}]', gaze info: '' and scenario labels: 'salt bottle'.
 
-I have a speech command: 'Please add salt to the soup pot twice.', gesture label: '', gaze label: '' and scenario label: ''.
-I have a speech command: 'Please add salt to the soup pot twice.', gesture label: 'salt bottle, soup pot', gaze label: '' and scenario label: 'salt bottle, soup pot'.
-I have a speech command: 'Please add salt to the soup pot twice.', gesture label: 'pepper bottle', gaze label: 'ketchup bottle' and scenario label: 'pepper bottle, ketchup bottle, spoon'.
-I have a speech command: 'Please add pepper to the soup pot twice.', gesture label: 'ketchup bottle', gaze label: 'salt bottle, pepper bottle' and scenario label: 'ketchup bottle, pepper bottle, salt bottle'.
-I have a speech command: 'Please add pepper to the soup pot twice.', gesture label: 'salt bottle', gaze label: 'salt bottle, ketchup bottle' and scenario label: 'salt bottle, ketchup bottle'.
+I have a speech command: 'Please add salt to the soup pot twice.', gesture info: '', gaze info: '' and scenario labels: ''.
+I have a speech command: 'Please add salt to the soup pot twice.', gesture info: '[{"label": "salt bottle", "score": 0.83}, {"label": "soup pot", "score": 0.62}]', gaze info: '' and scenario labels: 'salt bottle, soup pot'.
+I have a speech command: 'Please add salt to the soup pot twice.', gesture info: '[{"label": "pepper bottle", "score": 0.97}]', gaze info: '[{"label": "ketchup bottle", "score": 0.94}]' and scenario labels: 'pepper bottle, ketchup bottle, spoon'.
+I have a speech command: 'Please add pepper to the soup pot twice.', gesture info: '[{"label": "ketchup bottle", "score": 0.90}]', gaze info: '[{"label": "salt bottle", "score": 0.93}, {"label": "pepper bottle", "score": 0.75}]' and scenario labels: 'ketchup bottle, pepper bottle, salt bottle'.
+I have a speech command: 'Please add pepper to the soup pot twice.', gesture info: '[{"label": "salt bottle", "score": 0.87}]', gaze info: '[{"label": "salt bottle", "score": 0.82}, {"label": "ketchup bottle", "score": 0.64}]' and scenario labels: 'salt bottle, ketchup bottle'.
 
-I have a speech command: 'Use the spool to stir the soup pot for 10 seconds.', gesture label: '', gaze label: '' and scenario label: 'spoon'.
-I have a speech command: 'Use the spool to stir the soup pot for 10 seconds.', gesture label: '', gaze label: 'spoon' and scenario label: 'spoon'.
-I have a speech command: 'Use the spoon to stir the soup pot for 10 seconds.', gesture label: 'spoon' gaze label: '' and scenario label: 'spoon'.
-I have a speech command: 'Use the spoon to stir the soup pot for 10 seconds.', gesture label: 'spoon', gaze label: '' and scenario label: 'spoon'.
-I have a speech command: 'Use the spool to stir the soup pot for 10 seconds.', gesture label: 'spoon', gaze label: 'spoon' and scenario label: 'spoon'.
+I have a speech command: 'Use the spool to stir the soup pot for 10 seconds.', gesture info: '', gaze info: '' and scenario labels: 'spoon'.
+I have a speech command: 'Use the spool to stir the soup pot for 10 seconds.', gesture info: '', gaze info: '[{"label": "spoon", "score": 0.96}]' and scenario labels: 'spoon'.
+I have a speech command: 'Use the spoon to stir the soup pot for 10 seconds.', gesture info: '[{"label": "spoon", "score": 0.91}]', gaze info: '' and scenario labels: 'spoon'.
+I have a speech command: 'Use the spoon to stir the soup pot for 10 seconds.', gesture info: '[{"label": "spoon", "score": 0.87}]', gaze info: '' and scenario labels: 'spoon'.
+I have a speech command: 'Use the spool to stir the soup pot for 10 seconds.', gesture info: '[{"label": "spoon", "score": 0.85}]', gaze info: '[{"label": "spoon", "score": 0.90}]' and scenario labels: 'spoon'.
 
-I have a speech command: 'Can you help me use spoon to stir the soup pot for 10 minutes and then give me the tomato?', gesture label: '', gaze label: '' and scenario label: 'banana, tomato'.
-I have a speech command: 'Can you help me use spool to stir the soup pot for 10 minutes and then give me the tomato?', gesture label: 'spoon', gaze label: '' and scenario label: 'spoon'.
-I have a speech command: 'Can you help me use spool to stir the soup pot for 10 minutes and then give me the tomato?', gesture label: '', gaze label: 'spoon, tomato' and scenario label: 'spoon, tomato'.
-I have a speech command: 'Can you help me use spook to stir the soup pot for 10 minutes and then give me the tomato?', gesture label: '', gaze label: 'spoon' and scenario label: 'spoon'.
-I have a speech command: 'Can you help me use spoon to stir the soup pot for 10 minutes and then give me the tomato?', gesture label: 'spoon', gaze label: 'spoon' and scenario label: 'spoon'.
+I have a speech command: 'Can you help me use spoon to stir the soup pot for 10 minutes and then give me the tomato?', gesture info: '', gaze info: '' and scenario labels: 'banana, tomato'.
+I have a speech command: 'Can you help me use spool to stir the soup pot for 10 minutes and then give me the tomato?', gesture info: '[{"label": "spoon", "score": 0.85}]', gaze info: '' and scenario labels: 'spoon'.
+I have a speech command: 'Can you help me use spool to stir the soup pot for 10 minutes and then give me the tomato?', gesture info: '', gaze info: '[{"label": "spoon", "score": 0.95}, {"label": "tomato", "score": 0.78}]' and scenario labels: 'spoon, tomato'.
+I have a speech command: 'Can you help me use spook to stir the soup pot for 10 minutes and then give me the tomato?', gesture info: '', gaze info: '[{"label": "spoon", "score": 0.87}]' and scenario labels: 'spoon'.
+I have a speech command: 'Can you help me use spoon to stir the soup pot for 10 minutes and then give me the tomato?', gesture info: '[{"label": "spoon", "score": 0.80}]', gaze info: '[{"label": "spoon", "score": 0.90}]' and scenario labels: 'spoon'.
 
-I have a speech command: 'Can you tell me how to make burger? And please give me the salt bottle.', gesture label: '', gaze label: '' and scenario label: ''.
-I have a speech command: 'Can you tell me how to make burger? And please give me the sault bottle.', gesture label: '', gaze label: 'salt bottle, pepper bottle' and scenario label: 'pepper bottle, salt bottle'.
-I have a speech command: 'Can you tell me how to make burger? And please give me the salt bottle.', gesture label: 'salt bottle', gaze label: 'tomato' and scenario label: 'salt bottle, tomato'.
-I have a speech command: 'Can you tell me how to make burger? And please give me the paper bottle.', gesture label: 'pepper bottle, ketchup bottle', gaze label: 'ketchup bottle, spoon' and scenario label: 'pepper bottle, ketchup bottle, spoon'.
-I have a speech command: 'Can you tell me how to make burger? And please give me the kechtup bottle.', gesture label: 'ketchup bottle', gaze label: '' and scenario label: 'ketchup bottle, banana'.
+I have a speech command: 'Can you tell me how to make burger? And please give me the salt bottle.', gesture info: '', gaze info: '' and scenario labels: ''.
+I have a speech command: 'Can you tell me how to make burger? And please give me the sault bottle.', gesture info: '', gaze info: '[{"label": "salt bottle", "score": 0.88}, {"label": "pepper bottle", "score": 0.60}]' and scenario labels: 'pepper bottle, salt bottle'.
+I have a speech command: 'Can you tell me how to make burger? And please give me the salt bottle.', gesture info: '[{"label": "salt bottle", "score": 0.95}]', gaze info: '[{"label": "tomato", "score": 0.93}]' and scenario labels: 'salt bottle, tomato'.
+I have a speech command: 'Can you tell me how to make burger? And please give me the paper bottle.', gesture info: '[{"label": "pepper bottle", "score": 0.98}, {"label": "ketchup bottle", "score": 0.65}]', gaze info: '[{"label": "ketchup bottle", "score": 0.80}, {"label": "spoon", "score": 0.54}]' and scenario labels: 'pepper bottle, ketchup bottle, spoon'.
+I have a speech command: 'Can you tell me how to make burger? And please give me the kechtup bottle.', gesture info: '[{"label": "ketchup bottle", "score": 0.85}]', gaze info: '' and scenario labels: 'ketchup bottle, banana'.
 
-I have a speech command: 'I'm hungry. Give me something to eat.', gesture label: '', gaze label: '' and scenario label: ''.
-I have a speech command: 'I'm hungry. Give me something to eat.', gesture label: 'tomato, cup', gaze label: 'cucumber, tomato' and scenario label: 'tomato, cup, cucumber'.
-I have a speech command: 'I'm hungry. Give me some cucumber.', gesture label: 'cup, cucumber, spoon', gaze label: 'cucumber' and scenario label: 'cup, spoon, cucumber, table'.
-I have a speech command: 'I'm hungry. Give me some cucumber.', gesture label: 'cup, spoon', gaze label: '' and scenario label: 'cup, spoon'.
-I have a speech command: 'I want to cut something. Please give me a tool', gesture label: 'spoon', gaze label: 'tomato' and scenario label: 'tomato, spoon'.
-I have a speech command: 'I'm hungry. Give me something to eat.', gesture label: 'tomato', gaze label: 'tomato' and scenario label: 'tomato'.
+I have a speech command: 'I'm hungry. Give me something to eat.', gesture info: '', gaze info: '' and scenario labels: ''.
+I have a speech command: 'I'm hungry. Give me something to eat.', gesture info: '[{"label": "tomato", "score": 0.91}, {"label": "cup", "score": 0.75}]', gaze info: '[{"label": "cucumber", "score": 0.85}, {"label": "tomato", "score": 0.58}]' and scenario labels: 'tomato, cup, cucumber'.
+I have a speech command: 'I'm hungry. Give me some cucumber.', gesture info: '[{"label": "cup", "score": 0.90}, {"label": "cucumber", "score": 0.71}, {"label": "spoon", "score": 0.48}]', gaze info: '[{"label": "cucumber", "score": 0.85}]' and scenario labels: 'cup, spoon, cucumber, table'.
+I have a speech command: 'I'm hungry. Give me some cucumber.', gesture info: '[{"label": "cup", "score": 0.94}, {"label": "spoon", "score": 0.69}]', gaze info: '' and scenario labels: 'cup, spoon'.
+I have a speech command: 'I want to cut something. Please give me a tool', gesture info: '[{"label": "spoon", "score": 0.85}]', gaze info: '[{"label": "tomato", "score": 0.90}]' and scenario labels: 'tomato, spoon'.
+I have a speech command: 'I'm hungry. Give me something to eat.', gesture info: '[{"label": "tomato", "score": 0.91}]', gaze info: '[{"label": "tomato", "score": 0.93}]' and scenario labels: 'tomato'.
 
-I have a speech command: 'I want to cut something. Please give me a tool', gesture label: 'spoon', gaze label: 'tomato' and scenario label: 'spoon, tomato'.
+I have a speech command: 'I want to cut something. Please give me a tool', gesture info: '[{"label": "spoon", "score": 0.85}]', gaze info: '[{"label": "tomato", "score": 0.90}]' and scenario labels: 'spoon, tomato'.
 
-I have a speech command 'Please give me that red round thing on the table', gesture label: 'tomato', gaze label: 'cucumber, banana', and scenario label: 'tomato, cucumber, banana'
-I have a speech command 'Please give me that green long object on the table', gesture label: 'spoon', gaze label: 'cucumber, tomato', and scenario label: 'spoon, cucumber, tomato'
+I have a speech command 'Please give me that red round thing on the table', gesture info: '[{"label": "tomato", "score": 0.92}]', gaze info: '[{"label": "cucumber", "score": 0.88}, {"label": "banana", "score": 0.65}]', and scenario labels: 'tomato, cucumber, banana'
+I have a speech command 'Please give me that green long object on the table', gesture info: '[{"label": "spoon", "score": 0.89}]', gaze info: '[{"label": "cucumber", "score": 0.91}, {"label": "tomato", "score": 0.72}]', and scenario labels: 'spoon, cucumber, tomato'
 
-I have a speech command: 'Please tell me a story.', gesture label: '', gaze label: '' and scenario label: 'cucumber, banana, tomato'.
+I have a speech command: 'Please tell me a story.', gesture info: '', gaze info: '' and scenario labels: 'cucumber, banana, tomato'.
 
-I have a speech command: 'Give me the banana.', gesture label: 'cucumber', gaze label: '' and scenario label: 'cucumber, tomato'.
-I have a speech command: 'Put the cucumber in the soup.', gesture label: 'banana', gaze label: 'tomato' and scenario label: 'banana, tomato'.
-I have a speech command: 'Hand me the tomato.', gesture label: 'cucumber', gaze label: 'banana, cucumber' and scenario label: 'cucumber, banana, pepper bottle'.
-I have a speech command: 'Give me the pepper bottle.', gesture label: 'banana', gaze label: 'detergent bottle' and scenario label: 'banana, salt bottle, detergent bottle'.
-I have a speech command: 'Give me the salt bottle.', gesture label: 'pepper bottle', gaze label: '' and scenario label: 'pepper bottle, detergent bottle'.
-I have a speech command: 'Give me the detergent bottle.', gesture label: '', gaze label: 'pepper bottle' and scenario label: 'pepper bottle, detergent bottle'.
+I have a speech command: 'Give me the banana.', gesture info: '[{"label": "cucumber", "score": 0.85}]', gaze info: '' and scenario labels: 'cucumber, tomato'.
+I have a speech command: 'Put the cucumber in the soup.', gesture info: '[{"label": "banana", "score": 0.88}]', gaze info: '[{"label": "tomato", "score": 0.90}]' and scenario labels: 'banana, tomato'.
+I have a speech command: 'Hand me the tomato.', gesture info: '[{"label": "cucumber", "score": 0.87}]', gaze info: '[{"label": "banana", "score": 0.93}, {"label": "cucumber", "score": 0.71}]' and scenario labels: 'cucumber, banana, pepper bottle'.
+I have a speech command: 'Give me the pepper bottle.', gesture info: '[{"label": "banana", "score": 0.82}]', gaze info: '[{"label": "detergent bottle", "score": 0.89}]' and scenario labels: 'banana, salt bottle, detergent bottle'.
+I have a speech command: 'Give me the salt bottle.', gesture info: '[{"label": "pepper bottle", "score": 0.91}]', gaze info: '' and scenario labels: 'pepper bottle, detergent bottle'.
+I have a speech command: 'Give me the detergent bottle.', gesture info: '', gaze info: '[{"label": "pepper bottle", "score": 0.86}]' and scenario labels: 'pepper bottle, detergent bottle'.
 
 
-I have a speech command: 'Please help me to cook a soup!', gesture label: '', gaze label: 'pepper bottle' and scenario label: 'pepper bottle, detergent bottle, cucumber, tomato, salt bottle, banana, ketchup bottle'. 
-I have a speech command: 'Please help me to cook a salad!', gesture label: '', gaze label: '' and scenario label: 'pepper bottle, detergent bottle, cucumber, tomato, salt bottle, banana, ketchup bottle'. 
+I have a speech command: 'Please help me to cook a soup!', gesture info: '', gaze info: '[{"label": "pepper bottle", "score": 0.78}]' and scenario labels: 'pepper bottle, detergent bottle, cucumber, tomato, salt bottle, banana, ketchup bottle'.
+I have a speech command: 'Please help me to cook a salad!', gesture info: '', gaze info: '' and scenario labels: 'pepper bottle, detergent bottle, cucumber, tomato, salt bottle, banana, ketchup bottle'.
 
-I have a speech command: 'Please put the banana into the dessert plate', gesture label: 'banana', gaze label: '' and scenario label: 'banana'.
-I have a speech command: 'Please put the tomato into the dessert plate', gesture label: '', gaze label: 'tomato' and scenario label: 'tomato'.
-I have a speech command: 'Please put the cucumber into the dessert plate', gesture label: 'cucumber', gaze label: '' and scenario label: 'cucumber'.
+I have a speech command: 'Please put the banana into the dessert plate', gesture info: '[{"label": "banana", "score": 0.94}]', gaze info: '' and scenario labels: 'banana'.
+I have a speech command: 'Please put the tomato into the dessert plate', gesture info: '', gaze info: '[{"label": "tomato", "score": 0.91}]' and scenario labels: 'tomato'.
+I have a speech command: 'Please put the cucumber into the dessert plate', gesture info: '[{"label": "cucumber", "score": 0.88}]', gaze info: '' and scenario labels: 'cucumber'.
+
+I have a speech command: 'Please give me the juice on the table.', gesture info: '[{"label": "juice", "score": 0.90}]', gaze info: '' and scenario labels: 'juice'.
 """.strip()
 
 # ---------------------------------------------------------------------
@@ -723,6 +729,15 @@ intention_assistant_prompt = '''
   "content": [
     { "action_type": "put in",
       "target": "cucumber"}
+  ]
+}
+
+{
+  "response": "Please give me the juice on the table.",
+  "audio response": "Sure! Here is the juice on the table.",
+  "content": [
+    { "action_type": "give",
+      "target": "juice"}
   ]
 }
 '''.strip()

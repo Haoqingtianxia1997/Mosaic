@@ -9,7 +9,7 @@ import cv2
 import open3d as o3d
 from scipy.spatial import cKDTree
 from src.VLM_agent.agent import VLM_agent
-
+import os
 
 ROS2_SERVICE_TIMEOUT_SEC = 15
 
@@ -280,7 +280,7 @@ def open3d_show(all_points_arr, all_colors_arr, *args):
     2) open3d_show(points, colors, target_center, target_max_z, center_world)
     3) open3d_show(points_l, colors_l, center_l, points_r, colors_r, center_r)
     """
-    import open3d as o3d
+
 
     def _as_point(point):
         arr = np.asarray(point).reshape(-1)
@@ -410,6 +410,13 @@ def get_cam_world_points(
     agent_image_path: If you want to specify an image to send to VLM_agent, you can use this, otherwise it will use rgb_path
     """
     img_path = agent_image_path if agent_image_path else rgb_path
+    if not os.path.exists(img_path):
+        print(f"❌ Image path does not exist: {img_path}")
+        return False, "", None, None, None
+    if not os.path.exists(depth_path):
+        print(f"❌ Depth path does not exist: {depth_path}")
+        return False, "", None, None, None
+ 
     if_find, response,  box_center_point, seg_center_point, all_seg_points = VLM_agent(target, img_path, name, client, segmenter, bbox_only= bbox_only)  # Call VLM agent to perceive target and get pixel coordinates
     if not if_find or box_center_point is None or seg_center_point is None or all_seg_points is None:
         print(f"❌ Failed to perceive target: {target}")
