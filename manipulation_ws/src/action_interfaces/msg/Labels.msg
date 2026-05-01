@@ -1,2 +1,2 @@
-string[] gaze_labels
-string[] gesture_labels
+string gaze_info
+string gesture_info

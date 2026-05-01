@@ -40,7 +40,7 @@ ros2 launch zed_wrapper zed_camera.launch.py \
   publish_imu_tf:=false \
   ros_params_override_path:=/home/mosaic/zed_cfg/zed_no_tracking.yaml
 
-# gaze camera
+# gesture camera
 # ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true depth_module.depth_profile:=848x480x30 rgb_camera.color_profile:=848x480x30
 ros2 launch realsense2_camera rs_launch.py \
   pointcloud.enable:=true \
