@@ -44,6 +44,7 @@ class ImageSaver(Node):
         self.bridge = CvBridge()
         self.latest_right = None
         self.latest_left = None
+        self.latest_rs = None
 
         self.declare_parameter(
             'output_dir', f'/home/mosaic/mosaic/manipulation_ws/saved_images')
@@ -61,6 +62,10 @@ class ImageSaver(Node):
             '/zedl/zed_node/rgb/image_rect_color')
         self.l_depth_sub = Subscriber(self, Image,
             '/zedl/zed_node/depth/depth_registered')
+        self.rs_rgb_sub = Subscriber(self, Image,
+            '/camera/camera/color/image_raw')
+        self.rs_depth_sub = Subscriber(self, Image,
+            '/camera/camera/aligned_depth_to_color/image_raw')
 
         # Sync
         self.ts_right = ApproximateTimeSynchronizer(
@@ -70,6 +75,10 @@ class ImageSaver(Node):
         self.ts_left = ApproximateTimeSynchronizer(
             [self.l_rgb_sub, self.l_depth_sub], queue_size=10, slop=0.1)
         self.ts_left.registerCallback(self.callback_left)
+
+        self.ts_rs = ApproximateTimeSynchronizer(
+            [self.rs_rgb_sub, self.rs_depth_sub], queue_size=10, slop=0.1)
+        self.ts_rs.registerCallback(self.callback_rs)
 
         # Save every 3s
         self.timer = self.create_timer(3.0, self.save_images_callback)
@@ -85,6 +94,13 @@ class ImageSaver(Node):
 
     def callback_left(self, rgb_msg, depth_msg):
         self.latest_left = (
+            self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8'),
+            self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough'),
+            rgb_msg.header.stamp,
+        )
+
+    def callback_rs(self, rgb_msg, depth_msg):
+        self.latest_rs = (
             self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8'),
             self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough'),
             rgb_msg.header.stamp,
@@ -121,11 +137,20 @@ class ImageSaver(Node):
         else:
             self.get_logger().warn("Left camera not ready, skipping save.")
 
+        rs_ready = self._camera_ready(
+            self.latest_rs,
+            '/camera/camera/color/image_raw',
+            '/camera/camera/aligned_depth_to_color/image_raw')
+        if rs_ready:
+            rgb, depth, _ = self.latest_rs
+            self.save_images(rgb, depth / 1000.0, prefix='rs_', save_depth_vis=False)
+        else:
+            self.get_logger().warn("RealSense camera not ready, skipping save.")
+
     def save_images(self, rgb_image: np.ndarray, depth_image: np.ndarray,
-                    prefix=''):
+                    prefix='', save_depth_vis=True):
 
         rgb_path = os.path.join(self.output_dir, f'{prefix}rgb.png')
-        depth_vis_path = os.path.join(self.output_dir, f'{prefix}depth.png')
         depth_raw_path = os.path.join(self.output_dir, f'{prefix}depth.npy')
 
         # --- RGB ---
@@ -136,15 +161,15 @@ class ImageSaver(Node):
         atomic_npsave(depth_raw_path, depth_image)
 
         # --- Depth visualization ---
-        depth_clip = np.nan_to_num(
-            np.clip(depth_image, 0, 3.0),
-            nan=0.0, posinf=3.0, neginf=0.0
-        )
-        depth_vis = cv2.normalize(
-            depth_clip, None, 0, 255, cv2.NORM_MINMAX
-        ).astype('uint8')
-
-        atomic_imwrite(depth_vis_path, depth_vis)
+        if save_depth_vis:
+            depth_clip = np.nan_to_num(
+                np.clip(depth_image, 0, 3.0),
+                nan=0.0, posinf=3.0, neginf=0.0
+            )
+            depth_vis = cv2.normalize(
+                depth_clip, None, 0, 255, cv2.NORM_MINMAX
+            ).astype('uint8')
+            atomic_imwrite(os.path.join(self.output_dir, f'{prefix}depth.png'), depth_vis)
 
         # --- Timestamp ---
         timestamp, _ = self.get_clock().now().seconds_nanoseconds()

@@ -135,7 +135,7 @@ class HandDetectionWithPointCloudNode(Node):
 
     def _gaze_label_callback(self, msg):
         with self.lock:
-            labels = [label.strip() for label in msg.data.split(',') if label.strip()]
+            labels = json.loads(msg.data) if msg.data else []
             self.label_msg.gaze_info = self.intention._format_label_info(labels)
             
     def _new_label_msg(self):

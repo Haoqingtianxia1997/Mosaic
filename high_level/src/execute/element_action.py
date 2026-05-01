@@ -2,7 +2,7 @@ import time
 import os
 import traceback
 import numpy as np
-from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_right
+from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_realsense, pixels_to_world_right
 from src.transcribe.tts import play_text_to_speech
 from src.grasp.bounding_box import compute_obb
 from src.grasp.grasp_generation import GraspGeneration
@@ -24,10 +24,10 @@ class ActionExecutor:
         self.IMAGE_FOLDER_PATH = os.path.abspath(os.path.join(
             CURRENT_DIR, "../../../manipulation_ws/saved_images"
         ))
-        self.l_img_path = os.path.join(self.IMAGE_FOLDER_PATH, "l_rgb.png")
-        self.l_depth_path = os.path.join(self.IMAGE_FOLDER_PATH, "l_depth.npy")
         self.r_img_path = os.path.join(self.IMAGE_FOLDER_PATH, "r_rgb.png")
         self.r_depth_path = os.path.join(self.IMAGE_FOLDER_PATH, "r_depth.npy")
+        self.rs_img_path = os.path.join(self.IMAGE_FOLDER_PATH, "rs_rgb.png")
+        self.rs_depth_path = os.path.join(self.IMAGE_FOLDER_PATH, "rs_depth.npy")
 
         # Action parameters as class variables
         self.move_target_point = None  # perceived target point
@@ -66,7 +66,7 @@ class ActionExecutor:
         self.add_times = 2
         
         # Z-axis height threshold to filter out table/background points
-        self.z_filter_threshold = 0.005  # points with z below this value are removed
+        self.z_filter_threshold = 0.01  # points with z below this value are removed
 
         # Action move offset
         self.delta = 0.0
@@ -230,63 +230,71 @@ class ActionExecutor:
 
         else:  
             print(f"Perceiving target: {self.target}")
+            
+            all_world_points_rs = None
+            all_world_points_r = None
+            
+            if self.target == "cucumber" or self.target == "banana" or self.target == "tomato" or self.target == "sponge" or self.target == "juice":
+
+                if_find_r, response_r, center_world_points_r, all_world_points_r, color_r  = get_cam_world_points(
+                    vlm_client,
+                    self.target,
+                    rgb_path= self.r_img_path,
+                    depth_path= self.r_depth_path,
+                    pixels_to_world_func = pixels_to_world_right,
+                    name= "right",
+                    segmenter=self.segmenter,
+                    bbox_only= self.bbox_only
+                )
+            else:
+                if_find_rs, response_rs, center_world_points_rs, all_world_points_rs ,color_rs = get_cam_world_points(
+                    vlm_client,
+                    self.target,
+                    rgb_path= self.rs_img_path,
+                    depth_path= self.rs_depth_path,
+                    pixels_to_world_func = pixels_to_world_realsense,
+                    name= "realsense",
+                    segmenter=self.segmenter,
+                    bbox_only= self.bbox_only
+                )
+
         
-            if_find_r, response_r, center_world_points_r, all_world_points_r ,color_r = get_cam_world_points(
-                vlm_client,
-                self.target,
-                rgb_path= self.r_img_path,
-                depth_path= self.r_depth_path,
-                pixels_to_world_func = pixels_to_world_right,
-                name= "right",
-                segmenter=self.segmenter,
-                bbox_only= self.bbox_only
-            )
+            z_filter_threshold = self.z_filter_threshold
 
-            if_find_l, response_l, center_world_points_l, all_world_points_l, color_l  = get_cam_world_points(
-                vlm_client,
-                self.target,
-                rgb_path= self.l_img_path,
-                depth_path= self.l_depth_path,
-                pixels_to_world_func = pixels_to_world_left,
-                name= "left",
-                segmenter=self.segmenter,
-                bbox_only= self.bbox_only
-            )
-
-            if all_world_points_r is not None and all_world_points_l is not None: 
+            if all_world_points_r is not None and all_world_points_rs is not None: 
                 mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
                 all_world_points_r = all_world_points_r[mask_valid]
                 color_r = color_r[mask_valid]
 
-                mask_valid = ~np.isnan(all_world_points_l).any(axis=1)
-                all_world_points_l = all_world_points_l[mask_valid]
-                color_l = color_l[mask_valid]
+                mask_valid = ~np.isnan(all_world_points_rs).any(axis=1)
+                all_world_points_rs = all_world_points_rs[mask_valid]
+                color_rs = color_rs[mask_valid]
                 
                 
                 all_world_points_r = np.asarray(all_world_points_r)
-                all_world_points_l = np.asarray(all_world_points_l)
+                all_world_points_rs = np.asarray(all_world_points_rs)
                 color_r = np.asarray(color_r) if color_r is not None else None
-                color_l = np.asarray(color_l) if color_l is not None else None
+                color_rs = np.asarray(color_rs) if color_rs is not None else None
 
                 all_world_points_r, color_r = filter_out_pcd_by_z(
-                    all_world_points_r, color_r, self.z_filter_threshold
+                    all_world_points_r, color_r, z_filter_threshold
                 )
-                all_world_points_l, color_l = filter_out_pcd_by_z(
-                    all_world_points_l, color_l, self.z_filter_threshold
+                all_world_points_rs, color_rs = filter_out_pcd_by_z(
+                    all_world_points_rs, color_rs, z_filter_threshold
                 )
                 if self.if_visualize:   
-                    open3d_show(all_world_points_l, color_l, center_world_points_l, all_world_points_r, color_r, center_world_points_r)
-                print(f"World point in right camera: {all_world_points_r}, in left camera: {all_world_points_l}")
+                    open3d_show(all_world_points_rs, color_rs, center_world_points_rs, all_world_points_r, color_r, center_world_points_r)
+                print(f"World point in right camera: {all_world_points_r}, in realsense camera: {all_world_points_rs}")
                 
                 # If both sides have point clouds, use ICP to align and merge
                 all_points, all_colors, T = filter_and_merge_icp_translation_only(
-                    all_world_points_l, color_l, all_world_points_r, color_r
+                    all_world_points_rs, color_rs, all_world_points_r, color_r
                 )           
 
-                self.center_world_points = (center_world_points_l + center_world_points_r)/2
+                self.center_world_points = (center_world_points_rs + center_world_points_r)/2
                 self.success = True
                 
-            elif all_world_points_r is not None and all_world_points_l is None:
+            elif all_world_points_r is not None and all_world_points_rs is None:
 
                 mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
                 all_world_points_r = all_world_points_r[mask_valid]
@@ -296,7 +304,7 @@ class ActionExecutor:
                 color_r = np.asarray(color_r) if color_r is not None else None
 
                 all_world_points_r, color_r = filter_out_pcd_by_z(
-                    all_world_points_r, color_r, self.z_filter_threshold
+                    all_world_points_r, color_r, z_filter_threshold
                 )
                 if self.if_visualize:
                     open3d_show(all_world_points_r, color_r, center_world_points_r)
@@ -312,29 +320,29 @@ class ActionExecutor:
                 self.center_world_points = center_world_points_r
                 self.success = True
                 
-            elif all_world_points_r is None and all_world_points_l is not None:
-                mask_valid = ~np.isnan(all_world_points_l).any(axis=1)
-                all_world_points_l = all_world_points_l[mask_valid]
-                color_l = color_l[mask_valid]
+            elif all_world_points_r is None and all_world_points_rs is not None:
+                mask_valid = ~np.isnan(all_world_points_rs).any(axis=1)
+                all_world_points_rs = all_world_points_rs[mask_valid]
+                color_rs = color_rs[mask_valid]
                 
-                all_world_points_l = np.asarray(all_world_points_l)
-                color_l = np.asarray(color_l) if color_l is not None else None
+                all_world_points_rs = np.asarray(all_world_points_rs)
+                color_rs = np.asarray(color_rs) if color_rs is not None else None
 
-                all_world_points_l, color_l = filter_out_pcd_by_z(
-                    all_world_points_l, color_l, self.z_filter_threshold
+                all_world_points_rs, color_rs = filter_out_pcd_by_z(
+                    all_world_points_rs, color_rs, z_filter_threshold
                 )
                 if self.if_visualize:
-                    open3d_show(all_world_points_l, color_l, center_world_points_l)
-                print(f"World point in right camera: None, in left camera: {all_world_points_l}")
+                    open3d_show(all_world_points_rs, color_rs, center_world_points_rs)
+                print(f"World point in right camera: None, in realsense camera: {all_world_points_rs}")
 
-                # If only the left side has point clouds, use the left side's point clouds directly
-                pcd_l = preprocess_pointcloud(all_world_points_l, color_l, voxel_size=0.005, nb_points=10, radius=0.02)
-                all_world_points_l = np.asarray(pcd_l.points)
-                color_l = np.asarray(pcd_l.colors)
+                # If only the realsense side has point clouds, use the realsense side's point clouds directly
+                pcd_rs = preprocess_pointcloud(all_world_points_rs, color_rs, voxel_size=0.005, nb_points=10, radius=0.02)
+                all_world_points_rs = np.asarray(pcd_rs.points)
+                color_rs = np.asarray(pcd_rs.colors)
 
-                all_points = list(all_world_points_l)
-                all_colors = list(color_l)
-                self.center_world_points = center_world_points_l
+                all_points = list(all_world_points_rs)
+                all_colors = list(color_rs)
+                self.center_world_points = center_world_points_rs
                 self.success = True
             else:
                 print("❌ Failed to perceive target points in both cameras.")

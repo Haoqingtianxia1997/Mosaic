@@ -137,6 +137,9 @@ def pixels_to_world_left(pixels, depths, rgb_img=None):
 def pixels_to_world_right(pixels, depths, rgb_img=None):
     return pixels_to_world(pixels, depths, right_cam, rgb_img)
 
+def pixels_to_world_realsense(pixels, depths, rgb_img=None):
+    return pixels_to_world(pixels, depths, realsense_cam, rgb_img)
+
 def world_to_pixels_left(points_world, return_depth=False):
     return world_to_pixels(points_world, left_cam, return_depth)
 

@@ -105,7 +105,7 @@ class MoveCartesianService(Node):
                 self.get_logger().info(f"position: {self.current_js.position}, target: {traj.points[-1].positions}")
                 if self.current_js.name:
                     # Check if the robot is still moving
-                    if all(abs(pos - self.current_js.position[i]) < 0.02 for i, pos in enumerate(traj.points[-1].positions)):
+                    if all(abs(pos - self.current_js.position[i]) < 0.05 for i, pos in enumerate(traj.points[-1].positions)):
                         break
 
             self.get_logger().info('✅ Cartesian path sent, fraction=%.2f' % cartesian_res.fraction)

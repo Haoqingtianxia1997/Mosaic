@@ -702,7 +702,7 @@ class GraspGeneration:
         if grasp_type == 'flavoring':
             sampled_grasps_state = self.sample_grasps_state_for_flavoring(
                 center, 
-                num_grasps=50, 
+                num_grasps=500, 
                 rotation_matrix=rotation_matrix,
                 min_point_rotated=min_point_rotated,
                 max_point_rotated=max_point_rotated,
@@ -711,7 +711,7 @@ class GraspGeneration:
         else:
             sampled_grasps_state = self.sample_grasps_state(
                 center, 
-                num_grasps=50, 
+                num_grasps=500, 
                 rotation_matrix=rotation_matrix,
                 min_point_rotated=min_point_rotated,
                 max_point_rotated=max_point_rotated,
@@ -755,10 +755,27 @@ class GraspGeneration:
         # )
         # print(f"Box ICP fitness: {_icp.fitness:.4f}, RMSE: {_icp.inlier_rmse:.6f}")
 
+        # # Constrain: box Y axis (height 0.09) must align with world Z so the
+        # # 0.1x0.06 face is parallel to the XY plane.
+        # _R = _icp.transformation[:3, :3]
+        # _t = _icp.transformation[:3, 3]
+        # _z_sign = np.sign(_R[2, 1]) if abs(_R[2, 1]) > 1e-6 else 1.0
+        # _new_y = np.array([0.0, 0.0, _z_sign])
+        # _x_proj = _R[:, 0].copy(); _x_proj[2] = 0.0
+        # _x_norm = np.linalg.norm(_x_proj)
+        # if _x_norm < 1e-6:
+        #     _x_proj = _R[:, 2].copy(); _x_proj[2] = 0.0
+        #     _x_norm = np.linalg.norm(_x_proj)
+        # _new_x = _x_proj / _x_norm
+        # _new_z = np.cross(_new_x, _new_y)
+        # _T_constrained = np.eye(4)
+        # _T_constrained[:3, :3] = np.column_stack([_new_x, _new_y, _new_z])
+        # _T_constrained[:3, 3] = _t
+
         # obj_triangle_mesh = o3d.geometry.TriangleMesh.create_box(width=_box_dims[0], height=_box_dims[1], depth=_box_dims[2])
         # obj_triangle_mesh.translate(-_box_dims / 2)
         # obj_triangle_mesh.compute_vertex_normals()
-        # obj_triangle_mesh.transform(_icp.transformation)
+        # obj_triangle_mesh.transform(_T_constrained)
         
         # Prepare list of meshes for visualization
         vis_meshes = [obj_triangle_mesh]
