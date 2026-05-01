@@ -4,6 +4,7 @@ from typing import Any, Optional
 import cv2
 import numpy as np
 import rclpy
+from rclpy.time import Time
 from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rclpy.node import Node
@@ -70,7 +71,7 @@ class ImageSaver(Node):
             [self.l_rgb_sub, self.l_depth_sub], queue_size=10, slop=0.1)
         self.ts_left.registerCallback(self.callback_left)
 
-        # Save every 10s
+        # Save every 3s
         self.timer = self.create_timer(3.0, self.save_images_callback)
 
         self.get_logger().info('ImageSaver node started (atomic writes).')
@@ -78,25 +79,47 @@ class ImageSaver(Node):
     def callback_right(self, rgb_msg, depth_msg):
         self.latest_right = (
             self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8'),
-            self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')
+            self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough'),
+            rgb_msg.header.stamp,
         )
 
     def callback_left(self, rgb_msg, depth_msg):
         self.latest_left = (
             self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8'),
-            self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough')
+            self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough'),
+            rgb_msg.header.stamp,
         )
 
-    def save_images_callback(self):
-        if self.latest_right:
-            self.save_images(*self.latest_right, prefix='r_')
-        else:
-            self.get_logger().warn("No right camera images yet.")
+    def _camera_ready(self, latest, rgb_topic: str, depth_topic: str) -> bool:
+        if (self.count_publishers(rgb_topic) == 0 or
+                self.count_publishers(depth_topic) == 0):
+            return False
+        if latest is None:
+            return False
+        _, _, stamp = latest
+        age = (self.get_clock().now() - Time.from_msg(stamp)).nanoseconds / 1e9
+        return age < 5.0
 
-        if self.latest_left:
-            self.save_images(*self.latest_left, prefix='l_')
+    def save_images_callback(self):
+        right_ready = self._camera_ready(
+            self.latest_right,
+            '/zedr/zed_node/rgb/image_rect_color',
+            '/zedr/zed_node/depth/depth_registered')
+        if right_ready:
+            rgb, depth, _ = self.latest_right
+            self.save_images(rgb, depth, prefix='r_')
         else:
-            self.get_logger().warn("No left camera images yet.")
+            self.get_logger().warn("Right camera not ready, skipping save.")
+
+        left_ready = self._camera_ready(
+            self.latest_left,
+            '/zedl/zed_node/rgb/image_rect_color',
+            '/zedl/zed_node/depth/depth_registered')
+        if left_ready:
+            rgb, depth, _ = self.latest_left
+            self.save_images(rgb, depth, prefix='l_')
+        else:
+            self.get_logger().warn("Left camera not ready, skipping save.")
 
     def save_images(self, rgb_image: np.ndarray, depth_image: np.ndarray,
                     prefix=''):
