@@ -227,7 +227,11 @@ class ActionExecutor:
             self.success = True
             print("✅ Perceived dessert plate, moving to target point.")
             return
-
+        elif self.target == "juice":
+            self.move_params = {"move_x" : 0.35, "move_y" :  0.411, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
+            self.success = True
+            print("✅ Perceived juice, moving to target point.")
+            return
         else:  
             print(f"Perceiving target: {self.target}")
             
@@ -533,7 +537,9 @@ class ActionExecutor:
         elif self.target == "salt bottle":
             self.grasp_params = {"x_prep": 0.434, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
                         "x_grasp": 0.434, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
-
+        elif self.target == "juice":
+            self.grasp_params = {"x_prep": 0.35, "y_prep":  0.411, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
+                        "x_grasp": 0.35, "y_grasp":  0.411, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
         else:
             if self.all_points_arr is None:
                 print("❌ Failed to perceive target points in both cameras.")

@@ -74,7 +74,7 @@ class Intention():
         #Yolo confidence
         self.yolo_conf = 0.80
         self.intention_yolo_conf = 0.80
-        self.gaussian_sigma_deg = 15.0   # half-cone width for Gaussian pointing score
+        self.gaussian_sigma_deg = 13.0   # half-cone width for Gaussian pointing score
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -131,8 +131,8 @@ class Intention():
             return None, None, None, None, None
 
         # get pixel coordinates (INDEX_FINGER_MCP=5, INDEX_FINGER_TIP=8)
-        index_mcp = hand[5]
-        index_tip = hand[8]
+        index_mcp = hand[0]
+        index_tip = hand[12]
 
         u1, v1 = int(index_mcp.x * w), int(index_mcp.y * h)
         u2, v2 = int(index_tip.x * w), int(index_tip.y * h)
@@ -523,15 +523,13 @@ class Intention():
                                     ))
                         label_scores = gaussian_scores
                 else:
-                    # No ref point: draw and return all in blue
+                    # No ref point: draw only, return empty labels
                     for bx1, by1, bx2, by2, lbl, conf, _ in detections:
                         cv2.rectangle(img, (bx1, by1), (bx2, by2), (255, 0, 0), 2)
                         cv2.putText(img, f"{lbl} {conf:.2f}", (bx1, by1 - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
                         cx_bb, cy_bb = (bx1 + bx2) // 2, (by1 + by2) // 2
                         cv2.circle(img, (cx_bb, cy_bb), 5, (255, 0, 0), -1)
-                        labels.append(lbl)
-                        label_scores.append(0.0)
 
                 print(f"YOLO detected (ROI): {', '.join(labels)} with scores: {label_scores}")
 
