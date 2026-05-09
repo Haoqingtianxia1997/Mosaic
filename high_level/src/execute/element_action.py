@@ -1,6 +1,7 @@
 import time
 import os
 import traceback
+import subprocess
 import numpy as np
 from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_realsense, pixels_to_world_right
 from src.transcribe.tts import play_text_to_speech
@@ -38,7 +39,7 @@ class ActionExecutor:
         self.all_colors_arr = None  # all colors in world coordinates
         self.target = None  # current target, used to update the target in each action
         self.if_visualize = False  # whether to visualize the point cloud and grasp poses
-        self.bbox_only = True  # whether to use bbox-only segmentation for perception
+        self.bbox_only = False  # whether to use bbox-only segmentation for perception
         # Move parameters
         self.move_params = {
             "move_x": None, "move_y": None, "move_z": None, 
@@ -175,6 +176,43 @@ class ActionExecutor:
                 raise
         print("✅ Action sequence completed.")
 
+    def _try_remote_seg_cloud(self):
+        """Set target_label, trigger inference via segment_pcd node, return raw cloud.
+
+        param set runs here (high-level process has stable DDS discovery of the
+        remote /seg_service); the segment_pcd node only handles trigger + receive.
+
+        Returns:
+            (points_list, colors_list) on success, or (None, None) on failure.
+        """
+        TMP = '/tmp/seg_cloud.npz'
+        try:
+            msg = subprocess.check_output(
+                ['ros2', 'param', 'set', '/seg_service', 'target_label', self.target],
+                stderr=subprocess.STDOUT, text=True
+            ).strip()
+            print(f"Set target_label param: {msg}")
+        except Exception as e:
+            print(f"⚠️ Failed to set target_label param: {e}")
+            return None, None
+        success = call_ros2_service(
+            '/fetch_seg_cloud',
+            'action_interfaces/srv/FetchSegCloud',
+            {'target_label': self.target},
+        )
+        if not success:
+            return None, None
+        try:
+            data = np.load(TMP)
+            pts = data['points']
+            cols = data['colors']
+            if len(pts) == 0:
+                return None, None
+            return list(pts), list(cols)
+        except Exception as e:
+            print(f"⚠️ Failed to load cloud NPZ: {e}")
+            return None, None
+
     def action_perceive(self, vlm_client):
         """Perceive the target object using VLM_agent and point cloud processing.
         Uses class variables for all parameters and updates them accordingly.
@@ -232,132 +270,148 @@ class ActionExecutor:
             self.success = True
             print("✅ Perceived juice, moving to target point.")
             return
-        else:  
+        else:
             print(f"Perceiving target: {self.target}")
-            
-            all_world_points_rs = None
-            all_world_points_r = None
-            
-            if self.target == "cucumber" or self.target == "banana" or self.target == "tomato" or self.target == "sponge" or self.target == "juice":
 
-                if_find_r, response_r, center_world_points_r, all_world_points_r, color_r  = get_cam_world_points(
-                    vlm_client,
-                    self.target,
-                    rgb_path= self.r_img_path,
-                    depth_path= self.r_depth_path,
-                    pixels_to_world_func = pixels_to_world_right,
-                    name= "right",
-                    segmenter=self.segmenter,
-                    bbox_only= self.bbox_only
-                )
-            else:
-                if_find_rs, response_rs, center_world_points_rs, all_world_points_rs ,color_rs = get_cam_world_points(
-                    vlm_client,
-                    self.target,
-                    rgb_path= self.rs_img_path,
-                    depth_path= self.rs_depth_path,
-                    pixels_to_world_func = pixels_to_world_realsense,
-                    name= "realsense",
-                    segmenter=self.segmenter,
-                    bbox_only= self.bbox_only
-                )
+            all_points = None
+            all_colors = None
 
-        
-            z_filter_threshold = self.z_filter_threshold
+            # ---- Try remote SAM service first ----
+            remote_pts, remote_cols = self._try_remote_seg_cloud()
 
-            if all_world_points_r is not None and all_world_points_rs is not None: 
-                mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
-                all_world_points_r = all_world_points_r[mask_valid]
-                color_r = color_r[mask_valid]
-
-                mask_valid = ~np.isnan(all_world_points_rs).any(axis=1)
-                all_world_points_rs = all_world_points_rs[mask_valid]
-                color_rs = color_rs[mask_valid]
-                
-                
-                all_world_points_r = np.asarray(all_world_points_r)
-                all_world_points_rs = np.asarray(all_world_points_rs)
-                color_r = np.asarray(color_r) if color_r is not None else None
-                color_rs = np.asarray(color_rs) if color_rs is not None else None
-
-                all_world_points_r, color_r = filter_out_pcd_by_z(
-                    all_world_points_r, color_r, z_filter_threshold
-                )
-                all_world_points_rs, color_rs = filter_out_pcd_by_z(
-                    all_world_points_rs, color_rs, z_filter_threshold
-                )
-                if self.if_visualize:   
-                    open3d_show(all_world_points_rs, color_rs, center_world_points_rs, all_world_points_r, color_r, center_world_points_r)
-                print(f"World point in right camera: {all_world_points_r}, in realsense camera: {all_world_points_rs}")
-                
-                # If both sides have point clouds, use ICP to align and merge
-                all_points, all_colors, T = filter_and_merge_icp_translation_only(
-                    all_world_points_rs, color_rs, all_world_points_r, color_r
-                )           
-
-                self.center_world_points = (center_world_points_rs + center_world_points_r)/2
-                self.success = True
-                
-            elif all_world_points_r is not None and all_world_points_rs is None:
-
-                mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
-                all_world_points_r = all_world_points_r[mask_valid]
-                color_r = color_r[mask_valid]
-                
-                all_world_points_r = np.asarray(all_world_points_r)
-                color_r = np.asarray(color_r) if color_r is not None else None
-
-                all_world_points_r, color_r = filter_out_pcd_by_z(
-                    all_world_points_r, color_r, z_filter_threshold
-                )
-                if self.if_visualize:
-                    open3d_show(all_world_points_r, color_r, center_world_points_r)
-                print(f"World point in right camera: {all_world_points_r}, in left camera: None")
-
-                # If only the right side has point clouds, use the right side's point clouds directly
-                pcd_r = preprocess_pointcloud(all_world_points_r, color_r, voxel_size=0.005, nb_points=10, radius=0.02)
-                all_world_points_r = np.asarray(pcd_r.points)
-                color_r = np.asarray(pcd_r.colors)
-
-                all_points = list(all_world_points_r)
-                all_colors = list(color_r)
-                self.center_world_points = center_world_points_r
-                self.success = True
-                
-            elif all_world_points_r is None and all_world_points_rs is not None:
-                mask_valid = ~np.isnan(all_world_points_rs).any(axis=1)
-                all_world_points_rs = all_world_points_rs[mask_valid]
-                color_rs = color_rs[mask_valid]
-                
-                all_world_points_rs = np.asarray(all_world_points_rs)
-                color_rs = np.asarray(color_rs) if color_rs is not None else None
-
-                all_world_points_rs, color_rs = filter_out_pcd_by_z(
-                    all_world_points_rs, color_rs, z_filter_threshold
-                )
-                if self.if_visualize:
-                    open3d_show(all_world_points_rs, color_rs, center_world_points_rs)
-                print(f"World point in right camera: None, in realsense camera: {all_world_points_rs}")
-
-                # If only the realsense side has point clouds, use the realsense side's point clouds directly
-                pcd_rs = preprocess_pointcloud(all_world_points_rs, color_rs, voxel_size=0.005, nb_points=10, radius=0.02)
-                all_world_points_rs = np.asarray(pcd_rs.points)
-                color_rs = np.asarray(pcd_rs.colors)
-
-                all_points = list(all_world_points_rs)
-                all_colors = list(color_rs)
-                self.center_world_points = center_world_points_rs
+            if remote_pts is not None:
+                print("✅ Remote SAM point cloud received, skipping local SAM.")
+                pts_arr = np.asarray(remote_pts, dtype=np.float32)
+                cols_arr = np.asarray(remote_cols, dtype=np.float32)
+                pts_arr, cols_arr = filter_out_pcd_by_z(pts_arr, cols_arr, self.z_filter_threshold)
+                pcd = preprocess_pointcloud(pts_arr, cols_arr, voxel_size=0.005, nb_points=10, radius=0.02)
+                all_points = list(np.asarray(pcd.points))
+                all_colors = list(np.asarray(pcd.colors))
+                self.center_world_points = np.mean(np.asarray(pcd.points), axis=0, keepdims=True)
                 self.success = True
             else:
-                print("❌ Failed to perceive target points in both cameras.")
-                if response_r:
-                    play_text_to_speech(response_r, language='en')
+                # ---- Fall back to local SAM ----
+                print("⚠️ Remote SAM unavailable, using local SAM.")
+                all_world_points_rs = None
+                all_world_points_r = None
+                response_r = None
+                response_rs = None
+
+                if self.target == "cucumber" or self.target == "banana" or self.target == "tomato" or self.target == "sponge" or self.target == "juice":
+                    _, response_r, center_world_points_r, all_world_points_r, color_r = get_cam_world_points(
+                        vlm_client,
+                        self.target,
+                        rgb_path=self.r_img_path,
+                        depth_path=self.r_depth_path,
+                        pixels_to_world_func=pixels_to_world_right,
+                        name="right",
+                        segmenter=self.segmenter,
+                        bbox_only=self.bbox_only
+                    )
                 else:
-                    play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
-                self.action_open()
-                self.action_reset()
-                self.success = False
-                return
+                    _, response_rs, center_world_points_rs, all_world_points_rs, color_rs = get_cam_world_points(
+                        vlm_client,
+                        self.target,
+                        rgb_path=self.rs_img_path,
+                        depth_path=self.rs_depth_path,
+                        pixels_to_world_func=pixels_to_world_realsense,
+                        name="realsense",
+                        segmenter=self.segmenter,
+                        bbox_only=self.bbox_only
+                    )
+
+                z_filter_threshold = self.z_filter_threshold
+
+                if all_world_points_r is not None and all_world_points_rs is not None:
+                    mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
+                    all_world_points_r = all_world_points_r[mask_valid]
+                    color_r = color_r[mask_valid]
+
+                    mask_valid = ~np.isnan(all_world_points_rs).any(axis=1)
+                    all_world_points_rs = all_world_points_rs[mask_valid]
+                    color_rs = color_rs[mask_valid]
+
+                    all_world_points_r = np.asarray(all_world_points_r)
+                    all_world_points_rs = np.asarray(all_world_points_rs)
+                    color_r = np.asarray(color_r) if color_r is not None else None
+                    color_rs = np.asarray(color_rs) if color_rs is not None else None
+
+                    all_world_points_r, color_r = filter_out_pcd_by_z(
+                        all_world_points_r, color_r, z_filter_threshold
+                    )
+                    all_world_points_rs, color_rs = filter_out_pcd_by_z(
+                        all_world_points_rs, color_rs, z_filter_threshold
+                    )
+                    if self.if_visualize:
+                        open3d_show(all_world_points_rs, color_rs, center_world_points_rs, all_world_points_r, color_r, center_world_points_r)
+                    print(f"World point in right camera: {all_world_points_r}, in realsense camera: {all_world_points_rs}")
+
+                    all_points, all_colors, _ = filter_and_merge_icp_translation_only(
+                        all_world_points_rs, color_rs, all_world_points_r, color_r
+                    )
+
+                    self.center_world_points = (center_world_points_rs + center_world_points_r) / 2
+                    self.success = True
+
+                elif all_world_points_r is not None and all_world_points_rs is None:
+                    mask_valid = ~np.isnan(all_world_points_r).any(axis=1)
+                    all_world_points_r = all_world_points_r[mask_valid]
+                    color_r = color_r[mask_valid]
+
+                    all_world_points_r = np.asarray(all_world_points_r)
+                    color_r = np.asarray(color_r) if color_r is not None else None
+
+                    all_world_points_r, color_r = filter_out_pcd_by_z(
+                        all_world_points_r, color_r, z_filter_threshold
+                    )
+                    if self.if_visualize:
+                        open3d_show(all_world_points_r, color_r, center_world_points_r)
+                    print(f"World point in right camera: {all_world_points_r}, in left camera: None")
+
+                    pcd_r = preprocess_pointcloud(all_world_points_r, color_r, voxel_size=0.005, nb_points=10, radius=0.02)
+                    all_world_points_r = np.asarray(pcd_r.points)
+                    color_r = np.asarray(pcd_r.colors)
+
+                    all_points = list(all_world_points_r)
+                    all_colors = list(color_r)
+                    self.center_world_points = center_world_points_r
+                    self.success = True
+
+                elif all_world_points_r is None and all_world_points_rs is not None:
+                    mask_valid = ~np.isnan(all_world_points_rs).any(axis=1)
+                    all_world_points_rs = all_world_points_rs[mask_valid]
+                    color_rs = color_rs[mask_valid]
+
+                    all_world_points_rs = np.asarray(all_world_points_rs)
+                    color_rs = np.asarray(color_rs) if color_rs is not None else None
+
+                    all_world_points_rs, color_rs = filter_out_pcd_by_z(
+                        all_world_points_rs, color_rs, z_filter_threshold
+                    )
+                    if self.if_visualize:
+                        open3d_show(all_world_points_rs, color_rs, center_world_points_rs)
+                    print(f"World point in right camera: None, in realsense camera: {all_world_points_rs}")
+
+                    pcd_rs = preprocess_pointcloud(all_world_points_rs, color_rs, voxel_size=0.005, nb_points=10, radius=0.02)
+                    all_world_points_rs = np.asarray(pcd_rs.points)
+                    color_rs = np.asarray(pcd_rs.colors)
+
+                    all_points = list(all_world_points_rs)
+                    all_colors = list(color_rs)
+                    self.center_world_points = center_world_points_rs
+                    self.success = True
+
+                else:
+                    print("❌ Failed to perceive target points in both cameras.")
+                    response = response_r or response_rs or ""
+                    if response:
+                        play_text_to_speech(response, language='en')
+                    else:
+                        play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
+                    self.action_open()
+                    self.action_reset()
+                    self.success = False
+                    return
 
             # Calculate centroid
             self.all_points_arr = np.array(all_points)

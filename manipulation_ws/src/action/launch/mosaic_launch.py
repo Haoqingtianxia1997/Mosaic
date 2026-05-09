@@ -97,6 +97,12 @@ def generate_launch_description():
             name='receive_transcription_node',
             output='screen',
         ),
+        Node(
+            package='action',
+            executable='seg_cloud_bridge',
+            name='seg_cloud_bridge',
+            output='screen',
+        ),
 
         # ExecuteProcess(
         #     cmd=[

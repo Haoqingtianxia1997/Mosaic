@@ -4,9 +4,7 @@ import subprocess
 import re
 import shlex
 import yaml
-import numpy as np
 import cv2
-import open3d as o3d
 from scipy.spatial import cKDTree
 from src.VLM_agent.agent import VLM_agent
 import os
