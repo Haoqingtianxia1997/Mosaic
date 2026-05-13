@@ -74,7 +74,7 @@ class Intention():
         #Yolo confidence
         self.yolo_conf = 0.80
         self.intention_yolo_conf = 0.80
-        self.gaussian_sigma_deg = 13.0   # half-cone width for Gaussian pointing score
+        self.gaussian_sigma_deg = 20.0   # half-cone width for Gaussian pointing score
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -440,7 +440,17 @@ class Intention():
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
             print("ROI empty, skip YOLO")
         else:
-            result = self.yolo_model(img, verbose=False, conf=self.intention_yolo_conf)[0]
+            # Mask out pixels above the line y = 1.5x + 120 (origin upper-left, y downward)
+            # and run YOLO only on the remaining area.
+            img_for_yolo = img.copy()
+            ys = np.arange(h, dtype=np.float32)[:, None]
+            xs = np.arange(w, dtype=np.float32)[None, :]
+            mask = ys > 1.4 * xs + 80.0
+            img_for_yolo[mask] = 0
+            # Draw the line on the output image.
+            cv2.line(img, (0, 120), (w - 1, int(1.4 * (w - 1) + 80)), (0, 255, 0), 2)
+
+            result = self.yolo_model(img_for_yolo, verbose=False, conf=self.intention_yolo_conf)[0]
             if result.boxes.shape[0]:
                 # First pass: collect all bbox info and world XY
                 detections = []  # list of (bx1,by1,bx2,by2, label, conf, world_xy)

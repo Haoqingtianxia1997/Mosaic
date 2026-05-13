@@ -245,7 +245,7 @@ class IntentionLLM(Node):
                 f"gaze info: {gaze_str}."
                 f"scenario labels: {scenario_labels_str}."
             )
-        
+            print(f"📝 Intention Input: {input}")
             input_msg = String()
             input_msg.data = input
             self.intention_llm_input_publishers.publish(input_msg)
