@@ -2,6 +2,7 @@ import threading
 import time
 import sys
 import os
+import argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from transcribe.stt import run_stt, NEW_TEXT_EVENT, VoiceTranscriber
 from transcribe.tts import run_tts
@@ -20,7 +21,6 @@ LLM_JSON_FILE = "src/mistral_ai/scripts/llm_script.json"
 import json
 
 transcriber=VoiceTranscriber()
-executor = ActionExecutor()
 
 def stt_thread():
     # run in background
@@ -33,6 +33,12 @@ def stt_thread():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--participant", default="unknown", help="Participant ID, e.g. P001")
+    args, _ = parser.parse_known_args()
+
+    executor = ActionExecutor(participant=args.participant)
+
     # clear transcription.txt
     with open(SPEECH_FILE, "w", encoding="utf-8") as f:
         f.write("")

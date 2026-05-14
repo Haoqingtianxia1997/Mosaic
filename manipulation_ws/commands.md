@@ -68,6 +68,23 @@ cd manipulation_ws
 ros2 launch action mosaic_launch.py
 ```
 
+## high level main:
+```bash
+cd high_level
+# 根据 --participant 自动将夹爪及物体 mesh 保存到
+# saved_intention_data/<participant>_folder/grasp/ 或 unknown_folder/grasp/
+python3 1.main.py --participant P001
+```
+
+## visualize grasp results:
+```bash
+# 逐个浏览某 participant 的所有 grasp 结果（关闭窗口跳下一个）
+python3 saved_intention_data/visualize_grasp.py --participant P001
+
+# 只查看第 N 个
+python3 saved_intention_data/visualize_grasp.py --participant P001 --idx 2
+```
+
 ## intention
 ```bash
 
@@ -85,6 +102,12 @@ ros2 topic pub /file_status action_interfaces/msg/FileStatus "{changed: true, co
 
 #intention_llm:
 python3 src/action/action/intention_llm.py --participant_code P001  # P001 is a participant code example.
+
+# bag_record: 录制 ROS bag 并保存点云数据
+# 根据 --participant 自动选择存储路径：
+#   - 若 saved_intention_data/<participant>_folder/ 存在 → 存入该文件夹下的 NN/bag/
+#   - 否则 → 存入 saved_intention_data/unknown_folder/NN/bag/
+python3 src/action/action/bag_record.py --participant P001
 
 
 

@@ -3,6 +3,7 @@ import os
 import traceback
 import subprocess
 import numpy as np
+from pathlib import Path
 from src.pixel_world.pixel_and_world import pixels_to_world_left, pixels_to_world_realsense, pixels_to_world_right
 from src.transcribe.tts import play_text_to_speech
 from src.grasp.bounding_box import compute_obb
@@ -17,11 +18,18 @@ class ActionExecutor:
     Parameters are stored as class variables for easy access across methods.
     """
     
-    def __init__(self):
+    def __init__(self, participant="unknown"):
         """Initialize the ActionExecutor with all necessary parameters as class variables."""
-        self.segmenter = TextDrivenSegmenter() 
+        self.segmenter = TextDrivenSegmenter()
         # Image paths
         CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+        # Grasp save path: saved_intention_data/<participant>_folder/grasp/ or unknown_folder/grasp/
+        _data_root = (Path(CURRENT_DIR) / "../../../manipulation_ws/saved_intention_data").resolve()
+        _participant_folder = _data_root / f"{participant}_folder"
+        if _participant_folder.exists():
+            self.grasp_save_dir = _participant_folder / "grasp"
+        else:
+            self.grasp_save_dir = _data_root / "unknown_folder" / "grasp"
         self.IMAGE_FOLDER_PATH = os.path.abspath(os.path.join(
             CURRENT_DIR, "../../../manipulation_ws/saved_images"
         ))
@@ -613,7 +621,7 @@ class ActionExecutor:
                 grasp_generator.bbox_center = center
                 grasp_generator.bbox_rotation_matrix = rotation_matrix
 
-            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=self.if_visualize, grasp_type='otherthings')
+            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=self.if_visualize, grasp_type='otherthings', save_dir=self.grasp_save_dir)
 
             if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
                 play_text_to_speech('Sorry, I cannot find the suitable grasp poses.', language='en')
@@ -893,7 +901,7 @@ class ActionExecutor:
 
         _, rotation_matrix, center = compute_obb(self.all_points_arr)
         grasp_generator = GraspGeneration(center, rotation_matrix)
-        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=False, grasp_type='otherthings')
+        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=False, grasp_type='otherthings', save_dir=self.grasp_save_dir)
         best_pose = [pose1_pos, pose1_orn, pose2_pos, pose2_orn]
         print("Best grasp pose:", best_pose)
         print("Top 10 grasps:", top_10_grasps)

@@ -67,6 +67,7 @@ class HandDetectionWithPointCloudNode(Node):
         self._marker_pub = self.create_publisher(Marker, '/finger/markers', 10)
         self._yolo_bbox_marker_pub = self.create_publisher(Marker, '/yolo/bbox_centers', 10)
         self.hand_img_pub = self.create_publisher(Image, '/hand_landmarks_image', 10)
+        self.yolo_img_pub = self.create_publisher(Image, '/yolo_result_image', 10)
         self._hand_marker_pub = self.create_publisher(Marker, '/hand/landmarks_markers', 10)
         self._mcp_to_bbox_marker_pub = self.create_publisher(Marker, '/finger/mcp_to_bbox_lines', 10)
         self.label_msg = self._new_label_msg()
@@ -389,6 +390,8 @@ class HandDetectionWithPointCloudNode(Node):
 
         self.label_msg.gesture_info = self.intention._format_label_info(finger_label_output, finger_score_output)
         self._publish_bbox_centers(finger_bbox_world_points, "gesture_yolo_bbox_centers", 20, (1.0, 0.35, 0.05))
+        if hasattr(self.intention, 'last_yolo_img') and self.intention.last_yolo_img is not None:
+            self.yolo_img_pub.publish(self.bridge.cv2_to_imgmsg(self.intention.last_yolo_img, 'bgr8'))
 
         if finger_origin_ema is not None and finger_bbox_world_points:
             self._publish_mcp_to_bbox_lines(finger_origin_ema, finger_bbox_world_points)

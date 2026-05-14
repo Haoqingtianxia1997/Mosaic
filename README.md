@@ -59,12 +59,36 @@ chmod +x launch.sh
 ./launch.sh
 
 cd high_level
-python3 1.main.py
+python3 1.main.py --participant P001
 ```
 Tmux is used to manage all the necessary components. Use Ctrl + b then a number in 0~6 to switch among all the sessions.
 
 To close the multiplexer(first detach with Ctrl+b then d) : 
 ```bash
 tmux kill-session -t mosaic
+```
+
+## Data Recording
+
+All scripts use `--participant` to route saved data. If the corresponding `<participant>_folder/` does not exist under `manipulation_ws/saved_intention_data/`, data falls back to `unknown_folder/`.
+
+**ROS bag + point cloud** (`bag_record.py`):
+```bash
+cd manipulation_ws
+python3 src/action/action/bag_record.py --participant P001
+```
+Sessions are saved under numbered subfolders: `<participant>_folder/NN/bag/` for bags and `<participant>_folder/NN/<label>.ply` for point clouds.
+
+**Grasp meshes** (`1.main.py`):
+
+During grasp execution, the best gripper and object meshes are automatically saved to `<participant>_folder/grasp/` as sequentially numbered PLY pairs (`001_object.ply` / `001_gripper.ply`, `002_object.ply` / `002_gripper.ply`, …).
+
+To visualize saved grasp results:
+```bash
+# Browse all pairs one by one (close window to advance)
+python3 manipulation_ws/saved_intention_data/visualize_grasp.py --participant P001
+
+# Show only a specific pair
+python3 manipulation_ws/saved_intention_data/visualize_grasp.py --participant P001 --idx 2
 ```
 

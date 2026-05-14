@@ -545,6 +545,7 @@ class Intention():
 
         cv2.imwrite(output_path, img)
         print(f"YOLO ROI & label image saved: {output_path}")
+        self.last_yolo_img = img
         return labels, label_scores, bbox_world_points
     
     
