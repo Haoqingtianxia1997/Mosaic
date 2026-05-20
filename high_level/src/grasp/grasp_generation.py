@@ -405,40 +405,54 @@ class GraspGeneration:
         self,
         grasp_meshes: Sequence[o3d.geometry.TriangleMesh],
         object_mesh: o3d.geometry.TriangleMesh = None,
-        object_pcd = None,
+        object_pcd=None,
         num_colisions: int = 10,
-        tolerance: float = 0.00001) -> bool:
+        tolerance: float = 0.005) -> bool:
 
         # Combine gripper meshes
         combined_gripper = o3d.geometry.TriangleMesh()
         for mesh in grasp_meshes:
             combined_gripper += mesh
 
-        # Sample points from mesh
-        num_points = 500  # Number of points for subsampling both meshes
+        # Ground collision check on all vertices (fast, no sampling needed)
+        vertices = np.asarray(combined_gripper.vertices)
+        if np.any(vertices[:, 2] < 0.005):
+            return True
+
+        # Sample gripper surface points
+        num_points = 500
         gripper_pcl = combined_gripper.sample_points_uniformly(number_of_points=num_points)
-        
-        # Determine which object representation to use
+        query_points = np.asarray(gripper_pcl.points, dtype=np.float32)
+
         if object_mesh is not None:
-            object_pcl = object_mesh.sample_points_uniformly(number_of_points=num_points)
+            # Use RaycastingScene for accurate mesh intersection detection.
+            # compute_signed_distance returns negative values for points inside the mesh
+            # and positive values for points outside. Points with signed_distance < tolerance
+            # are either inside the mesh or within `tolerance` meters of its surface.
+            obj_mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(object_mesh)
+            scene = o3d.t.geometry.RaycastingScene()
+            scene.add_triangles(obj_mesh_t)
+
+            query_tensor = o3d.core.Tensor(query_points, dtype=o3d.core.Dtype.Float32)
+            signed_distances = scene.compute_signed_distance(query_tensor).numpy()
+
+            collision_count = int(np.sum(signed_distances < tolerance))
+            return collision_count >= num_colisions
+
         elif object_pcd is not None:
-            object_pcl = object_pcd
+            # Fallback for point cloud: KD-tree nearest-neighbour with a sane tolerance
+            object_kd_tree = o3d.geometry.KDTreeFlann(object_pcd)
+            collision_count = 0
+            for point in query_points:
+                [_, _idx, dist] = object_kd_tree.search_knn_vector_3d(point, 1)
+                if dist[0] < tolerance:
+                    collision_count += 1
+                    if collision_count >= num_colisions:
+                        return True
+            return False
+
         else:
             raise ValueError("Must provide at least one parameter from object_mesh or object_pcd")
-        # Build KD tree for object points
-        is_collision = False
-        object_kd_tree = o3d.geometry.KDTreeFlann(object_pcl)
-        collision_count = 0
-        for point in gripper_pcl.points:
-            if point[2] < 0.005:
-                return True
-            [_, idx, distance] = object_kd_tree.search_knn_vector_3d(point, 1)
-            if distance[0] < tolerance:
-                collision_count += 1
-                if collision_count >= num_colisions:
-                    return True  # Collision detected
-
-        return is_collision
 
     def check_grasp_containment(
         self,

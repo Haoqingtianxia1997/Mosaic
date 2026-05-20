@@ -194,14 +194,27 @@ class ActionExecutor:
             (points_list, colors_list) on success, or (None, None) on failure.
         """
         TMP = '/tmp/seg_cloud.npz'
-        try:
-            msg = subprocess.check_output(
-                ['ros2', 'param', 'set', '/seg_service', 'target_label', self.target],
-                stderr=subprocess.STDOUT, text=True
-            ).strip()
-            print(f"Set target_label param: {msg}")
-        except Exception as e:
-            print(f"⚠️ Failed to set target_label param: {e}")
+        # Retry param set to tolerate slow DDS discovery at startup
+        _param_set_ok = False
+        for _attempt in range(3):
+            try:
+                msg = subprocess.check_output(
+                    ['ros2', 'param', 'set', '/seg_service', 'target_label', self.target],
+                    stderr=subprocess.STDOUT, text=True
+                ).strip()
+                print(f"Set target_label param: {msg}")
+                _param_set_ok = True
+                break
+            except subprocess.CalledProcessError as e:
+                # e.output contains the actual ros2 error message
+                print(f"⚠️ param set attempt {_attempt+1}/3 failed (exit {e.returncode}): {e.output.strip()}")
+                if _attempt < 2:
+                    import time; time.sleep(2.0)
+            except Exception as e:
+                print(f"⚠️ param set attempt {_attempt+1}/3 failed: {e}")
+                if _attempt < 2:
+                    import time; time.sleep(2.0)
+        if not _param_set_ok:
             return None, None
         success = call_ros2_service(
             '/fetch_seg_cloud',
@@ -305,7 +318,7 @@ class ActionExecutor:
                 response_r = None
                 response_rs = None
 
-                if self.target == "cucumber" or self.target == "banana" or self.target == "tomato" or self.target == "sponge" or self.target == "juice":
+                if self.target == "cucumber" or self.target == "banana" or self.target == "tomato" or self.target == "sponge": #or self.target == "juice"
                     _, response_r, center_world_points_r, all_world_points_r, color_r = get_cam_world_points(
                         vlm_client,
                         self.target,
