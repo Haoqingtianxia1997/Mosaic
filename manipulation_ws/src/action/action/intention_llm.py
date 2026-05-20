@@ -88,8 +88,8 @@ class IntentionLLM(Node):
         
         CUR_DIR = os.path.dirname(os.path.abspath(__file__))
        
-        self.r_rgb_path = os.path.abspath(
-            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_images/r_rgb.png')
+        self.rs_rgb_path = os.path.abspath(
+            os.path.join(CUR_DIR, '../../../../manipulation_ws/saved_images/rs_rgb.png')
         )
         
         self.scenario_img_path = os.path.abspath(
@@ -148,12 +148,34 @@ class IntentionLLM(Node):
         self.gesture_history = []  # Store the latest gesture_info JSON strings
         self.gaze_history = []     # Store the latest gaze_info JSON strings
         self.max_history_size = 5 # TODO: tune this size based on gaze label frequency
-        
+
+        self.llm_call_index = 0
+
         self.get_logger().info('Intention LLM Node has been started.')
         self.get_logger().info(f'participant_code: {self.participant_code}')
 
+    def _save_images_before_llm(self):
+        self.llm_call_index += 1
+        idx = self.llm_call_index
+        sensor_data_dir = os.path.join(self.saved_intention_data_path, "sensor_data")
+        os.makedirs(sensor_data_dir, exist_ok=True)
+        for src_filename, dst_filename in [
+            ("rs_rgb.png", f"{idx:03d}_rs_rgb.png"),
+            ("r_scenario.png", f"{idx:03d}_r_scenario.png"),
+        ]:
+            src_path = os.path.join(self.copy_rgbd_path, src_filename)
+            dst_path = os.path.join(sensor_data_dir, dst_filename)
+            if not os.path.isfile(src_path):
+                self.get_logger().warn(f"Source file not found, skip: {src_path}")
+                continue
+            try:
+                shutil.copy2(src_path, dst_path)
+                self.get_logger().info(f"Saved pre-LLM image [{idx}]: {dst_path}")
+            except OSError as e:
+                self.get_logger().error(f"Failed to save {src_path} -> {dst_path}: {e}")
+
     def _copy_rgbd_files_to_participant_folder(self):
-        files_to_copy = ["l_depth.npy", "l_rgb.png", "r_depth.npy", "r_rgb.png"]
+        files_to_copy = ["l_depth.npy", "l_rgb.png", "rs_depth.npy", "rs_rgb.png"]
         sensor_data_dir = os.path.join(self.saved_intention_data_path, "sensor_data")
         os.makedirs(sensor_data_dir, exist_ok=True)
 
@@ -235,14 +257,14 @@ class IntentionLLM(Node):
             gaze_str = self.latest_gaze_info if self.latest_gaze_info else "None"
             
             
-            r_rgb = cv2.imread(self.r_rgb_path)
-            scenario_labels =self.intention.get_scenario_yolo_labels(r_rgb, self.scenario_img_path)
+            rs_rgb = cv2.imread(self.rs_rgb_path)
+            scenario_labels =self.intention.get_scenario_yolo_labels(rs_rgb, self.scenario_img_path)
             scenario_labels_str = ", ".join(scenario_labels) if scenario_labels else "None"
             
             input = (
                 f"I have a speech command: {cmd_str}, "
                 f"gesture info: {gesture_str} and "
-                f"gaze info: {gaze_str}."
+                f"gaze info: {gaze_str}."   
                 f"scenario labels: {scenario_labels_str}."
             )
             print(f"📝 Intention Input: {input}")
@@ -250,6 +272,7 @@ class IntentionLLM(Node):
             input_msg.data = input
             self.intention_llm_input_publishers.publish(input_msg)
             
+            self._save_images_before_llm()
             response, audio_response, content, json_blocks = run_mistral_llm_direct(
                 input,
                 self.client,

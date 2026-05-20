@@ -58,7 +58,7 @@ def create_grasp_mesh(
         depth=hei     # Z-axis - height
     )
     left_finger.paint_uniform_color(color_left)
-    left_finger.translate((-0.01, -0.045, 0.085) + center_point)
+    left_finger.translate((-0.01, -0.05, 0.085) + center_point)
     left_finger.rotate(final_rotation, center=center_point)
     grasp_geometries.append(left_finger)
 
@@ -69,7 +69,7 @@ def create_grasp_mesh(
         depth=hei     # Z-axis - height
     )
     right_finger.paint_uniform_color(color_right)
-    right_finger.translate((-0.01, 0.04, 0.085) + center_point)
+    right_finger.translate((-0.01, 0.045, 0.085) + center_point)
     right_finger.rotate(final_rotation, center=center_point)
     grasp_geometries.append(right_finger)
 

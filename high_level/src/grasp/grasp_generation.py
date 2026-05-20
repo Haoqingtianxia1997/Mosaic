@@ -415,7 +415,7 @@ class GraspGeneration:
             combined_gripper += mesh
 
         # Sample points from mesh
-        num_points = 5000  # Number of points for subsampling both meshes
+        num_points = 500  # Number of points for subsampling both meshes
         gripper_pcl = combined_gripper.sample_points_uniformly(number_of_points=num_points)
         
         # Determine which object representation to use

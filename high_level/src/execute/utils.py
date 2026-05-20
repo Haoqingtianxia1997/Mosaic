@@ -329,19 +329,22 @@ def call_ros2_service(service_name, service_type, args_dict):
     ]
     print(f"\n🚀 Calling service: {' '.join(cmd)}")
 
-    # try:
-    result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
-    print("✅ Service call returned:")
-    print(result)
-    if "success=True" in result:
-        return True
-    else:
-        print("❌ Service reported failure.")
+    try:
+        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True, timeout=ROS2_SERVICE_TIMEOUT_SEC)
+        print("✅ Service call returned:")
+        print(result)
+        if "success=True" in result:
+            return True
+        else:
+            print("❌ Service reported failure.")
+            return False
+    except subprocess.TimeoutExpired:
+        print(f"❌ Service call timed out after {ROS2_SERVICE_TIMEOUT_SEC}s: {service_name}")
         return False
-    # except subprocess.CalledProcessError as e:
-    #     print("❌ Service call failed:")
-    #     print(e.output)
-        # return False
+    except subprocess.CalledProcessError as e:
+        print("❌ Service call failed:")
+        print(e.output)
+        return False
 
 def call_fk_service():
     """
