@@ -64,6 +64,8 @@ class HandDetectionWithPointCloudNode(Node):
         available_topics = dict(self.get_topic_names_and_types())
         
         self.label_pub = self.create_publisher(Labels, 'label_output', 10)
+        self._last_valid_gesture_info = None
+        self._last_label_time = None
         self._marker_pub = self.create_publisher(Marker, '/finger/markers', 10)
         self._yolo_bbox_marker_pub = self.create_publisher(Marker, '/yolo/bbox_centers', 10)
         self.hand_img_pub = self.create_publisher(Image, '/hand_landmarks_image', 10)
@@ -144,7 +146,27 @@ class HandDetectionWithPointCloudNode(Node):
         msg.gaze_info = "[]"
         msg.gesture_info = "[]"
         return msg
-            
+
+    def _try_publish_label(self):
+        now = time.time()
+
+        # gesture: 2s hold-then-expire logic
+        if self.label_msg.gesture_info != "[]":
+            self._last_label_time = now
+            self._last_valid_gesture_info = self.label_msg.gesture_info
+            gesture_to_pub = self.label_msg.gesture_info
+        elif self._last_label_time is not None and (now - self._last_label_time) < 2.0:
+            gesture_to_pub = self._last_valid_gesture_info
+        else:
+            gesture_to_pub = "[]"
+
+        # gaze: publish independently whenever it has content
+        if gesture_to_pub != "[]" or self.label_msg.gaze_info != "[]":
+            out = Labels()
+            out.gesture_info = gesture_to_pub
+            out.gaze_info = self.label_msg.gaze_info
+            self.label_pub.publish(out)
+
     def buffer_callback(self, msg, side, kind):
         with self.lock:
             print(side, kind)
@@ -449,7 +471,7 @@ class HandDetectionWithPointCloudNode(Node):
 
             if any(x is None for x in [rgb_msg_l, depth_msg_l, rgb_msg_r, depth_msg_r]):
                 self._reset_detection_state()
-                self.label_pub.publish(self.label_msg)
+                self._try_publish_label()
                 return
 
             dir_l, orig_l, hand_img_l, lm_world_l, tip_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
@@ -478,7 +500,7 @@ class HandDetectionWithPointCloudNode(Node):
 
             if rgb_msg is None or depth_msg is None:
                 self._reset_detection_state()
-                self.label_pub.publish(self.label_msg)
+                self._try_publish_label()
                 return
 
             T_wc = self.T_wc_r if side == 'right' else self.T_wc_l
@@ -497,7 +519,7 @@ class HandDetectionWithPointCloudNode(Node):
             cam_side = side
 
         else:
-            self.label_pub.publish(self.label_msg)
+            self._try_publish_label()
             print("There are not any rgb_msg and depth_msg !")
             return
 
@@ -513,7 +535,7 @@ class HandDetectionWithPointCloudNode(Node):
                                      depth_msg=depth_msg, camera_intrinsics=intrinsics, T_wc=T_wc)
 
         # Publish labels and markers
-        self.label_pub.publish(self.label_msg)
+        self._try_publish_label()
         print(
             f"Published labels: gesture_info={self.label_msg.gesture_info}, "
             f"gaze_info={self.label_msg.gaze_info}"
