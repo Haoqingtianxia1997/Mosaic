@@ -329,8 +329,10 @@ def call_ros2_service(service_name, service_type, args_dict):
     ]
     print(f"\n🚀 Calling service: {' '.join(cmd)}")
 
+    timeout = ROS2_SERVICE_TIMEOUT_SEC if service_name == '/fetch_seg_cloud' else None
+
     try:
-        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True, timeout=ROS2_SERVICE_TIMEOUT_SEC)
+        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True, timeout=timeout)
         print("✅ Service call returned:")
         print(result)
         if "success=True" in result:

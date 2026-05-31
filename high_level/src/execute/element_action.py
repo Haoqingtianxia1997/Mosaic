@@ -84,6 +84,7 @@ class ActionExecutor:
         # State flags
         self.grasped_thing = ""
         self.success = True
+        self.if_grasp_closed = False
 
     def execute_action_sequence(self, actions, vlm_client):
         """
@@ -98,7 +99,8 @@ class ActionExecutor:
             if not self.success:
                 print(f"⛔ Aborting action sequence due to failure at step {i}.")
                 play_text_to_speech('Sorry, I cannot do that. Please help me.', language='en')
-                self.action_open()
+                if self.if_grasp_closed:
+                    self.action_open()
                 self.action_reset()
                 break
 
@@ -177,8 +179,9 @@ class ActionExecutor:
 
             except Exception as e:
                 print("❌ Exception inside execute_action_sequence:")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
+                # play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                if self.if_grasp_closed:
+                    self.action_open()
                 self.action_reset()
                 traceback.print_exc()
                 raise
@@ -271,11 +274,11 @@ class ActionExecutor:
             self.success = True
             print("✅ Perceived soup pot, moving to target point.")
             return
-        elif self.target == "salt bottle":
-            self.move_params = {"move_x" : 0.434, "move_y" : 0.561, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
-            self.success = True
-            print("✅ Perceived salt bottle, moving to target point.")
-            return
+        # elif self.target == "salt bottle":
+        #     self.move_params = {"move_x" : 0.434, "move_y" : 0.561, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
+        #     self.success = True
+        #     print("✅ Perceived salt bottle, moving to target point.")
+        #     return
         elif self.target == "pepper bottle":
             self.move_params = {"move_x" : 0.27, "move_y" : 0.561, "move_z" : 0.523, "move_qx" : 0.725, "move_qy" : 0.688, "move_qz" : 0.023, "move_qw" : -0.007}
             self.success = True
@@ -429,8 +432,6 @@ class ActionExecutor:
                         play_text_to_speech(response, language='en')
                     else:
                         play_text_to_speech("Sorry, I can't find that. Please try again.", language='en')
-                    self.action_open()
-                    self.action_reset()
                     self.success = False
                     return
 
@@ -444,8 +445,6 @@ class ActionExecutor:
             if len(self.all_points_arr) == 0:
                 print("❌ All points are invalid (contain NaNs)")
                 self.success = False
-                self.action_open()
-                self.action_reset()
                 return
 
             # Calculate center point
@@ -499,8 +498,6 @@ class ActionExecutor:
             print(f"❌ Failed to get FK position: {e}")
             self.success = False
             play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-            self.action_open()
-            self.action_reset()
             return
 
         print(f"Current position: {current_position}")
@@ -528,9 +525,7 @@ class ActionExecutor:
                 print("✅ Lift-to-safe-height step succeeded.")
             else:
                 print("❌ Lift-to-safe-height step failed.")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
+                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en') 
                 return
         
         if self.move_params["move_z"] < 0.5:   
@@ -557,8 +552,6 @@ class ActionExecutor:
             else:
                 print("❌ Pre-move safe-height step failed.")
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
                 return
         
         try:
@@ -584,8 +577,7 @@ class ActionExecutor:
         else:
             print("❌ Move action failed.")
             play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-            self.action_open()
-            self.action_reset()
+
 
     def action_grasp(self):
         """Grasp an object using predefined parameters or computed grasp poses.
@@ -609,9 +601,9 @@ class ActionExecutor:
         elif self.target == "pepper bottle":
             self.grasp_params = {"x_prep": 0.27, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
                         "x_grasp": 0.27, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
-        elif self.target == "salt bottle":
-            self.grasp_params = {"x_prep": 0.434, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
-                        "x_grasp": 0.434, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
+        # elif self.target == "salt bottle":
+        #     self.grasp_params = {"x_prep": 0.434, "y_prep": 0.561, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
+        #                 "x_grasp": 0.434, "y_grasp": 0.561, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
         # elif self.target == "juice":
         #     self.grasp_params = {"x_prep": 0.35, "y_prep":  0.411, "z_prep": 0.523, "qx_prep": 0.725, "qy_prep": 0.688, "qz_prep": 0.023, "qw_prep": -0.007,
         #                 "x_grasp": 0.35, "y_grasp":  0.411, "z_grasp": 0.223, "qx_grasp": 0.725, "qy_grasp": 0.688, "qz_grasp": 0.023, "qw_grasp": -0.007}
@@ -620,8 +612,6 @@ class ActionExecutor:
                 print("❌ Failed to perceive target points in both cameras.")
                 self.success = False
                 play_text_to_speech('Sorry, I cannot perceive target points in both cameras.', language='en')
-                self.action_open()
-                self.action_reset()
                 return
 
             # use_anygrasp=True: AnyGrasp neural network method (no OBB needed)
@@ -639,8 +629,6 @@ class ActionExecutor:
             if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
                 play_text_to_speech('Sorry, I cannot find the suitable grasp poses.', language='en')
                 print("❌ Failed to compute grasp poses.")
-                self.action_open()
-                self.action_reset()
                 self.success = False
                 return
 
@@ -687,8 +675,6 @@ class ActionExecutor:
             else:
                 print("❌ Grasp other things action failed, retrying...")
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
 
     def action_stir(self):
         """Stir a pot for a specified duration using class variables.
@@ -722,8 +708,7 @@ class ActionExecutor:
             else:
                 print("❌ Stir action failed, retrying...")
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
+    
 
     def action_reset(self):
         """Reset the robot to its home position.
@@ -767,8 +752,7 @@ class ActionExecutor:
             else:
                 print("❌ Add action failed, retrying...")
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')  
-                self.action_open()
-                self.action_reset()
+      
 
     def action_return_back(self):
         """Return the robot to its original position after placing an object.
@@ -802,8 +786,6 @@ class ActionExecutor:
             # Check if there are any unassigned parameters in rb_params
             if any(v is None for v in self.rb_params.values()):
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
                 raise ValueError("Missing return_back parameters in rb_params.")
                 
             else:
@@ -839,8 +821,7 @@ class ActionExecutor:
                 print("❌ Return back action failed, retrying...")
                 self.grasped_thing = ""
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
+
 
     def action_open(self):
         """Open the robot's gripper.
@@ -854,6 +835,7 @@ class ActionExecutor:
             if self.success:
                 self.grasped_thing = ""
                 print("✅ Open action executed successfully.")
+                self.if_grasp_closed = False
                 break
             else:
                 self.grasped_thing = ""
@@ -870,6 +852,7 @@ class ActionExecutor:
         while True:
             if self.success:
                 print("✅ Close action executed successfully.")
+                self.if_grasp_closed = True
                 break
             else:
                 print("❌ Close action failed, retrying...")
@@ -889,8 +872,7 @@ class ActionExecutor:
             else:
                 print("❌ Grasp detection action failed, retrying...")
                 play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                self.action_open()
-                self.action_reset()
+
 
     def get_grasps(self):
         """

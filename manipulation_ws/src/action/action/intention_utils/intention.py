@@ -74,6 +74,7 @@ class Intention():
         #Yolo confidence
         self.yolo_conf = 0.80
         self.intention_yolo_conf = 0.80
+        self.mask_labels = {"beer bottle", "mayonnaise bottle", "oil bottle", "water bottle"}
         self.gaussian_sigma_deg = 20.0   # half-cone width for Gaussian pointing score
         self.output_dir = './saved_images'
         os.makedirs(self.output_dir, exist_ok=True)
@@ -475,9 +476,18 @@ class Intention():
                                 xyz[2] *= 0.6
                                 world_xy = xyz
                                 # print(f"  [{label}] center pixel ({center_x},{center_y}) -> world xyz: {xyz}")
-                    if world_xy is not None:
-                        bbox_world_points.append(world_xy)
                     detections.append((bx1, by1, bx2, by2, label, conf, world_xy))
+
+                # Mask out unwanted classes and keep only the top-conf detection per label
+                best = {}
+                for det in detections:
+                    lbl, cf = det[4], det[5]
+                    if lbl.lower() in self.mask_labels:
+                        continue
+                    if lbl not in best or cf > best[lbl][5]:
+                        best[lbl] = det
+                detections = list(best.values())
+                bbox_world_points = [d[6] for d in detections if d[6] is not None]
 
                 # Find nearest bbox to ref_world_point
                 if ref_world_point is not None:
@@ -564,11 +574,22 @@ class Intention():
         labels = []
         result = self.yolo_model(img, verbose=False,  conf=self.yolo_conf)[0]
         if result.boxes.shape[0]:
+            # Collect all detections, mask unwanted classes, keep top-conf per label
+            raw = []
             for box in result.boxes:
                 bx1, by1, bx2, by2 = map(int, box.xyxy[0].cpu().numpy())
                 cls = int(box.cls[0].cpu().numpy())
                 label = self.yolo_model.names[cls]
                 conf = float(box.conf[0].cpu().numpy())
+                raw.append((bx1, by1, bx2, by2, label, conf))
+            best = {}
+            for det in raw:
+                lbl, cf = det[4], det[5]
+                if lbl.lower() in self.mask_labels:
+                    continue
+                if lbl not in best or cf > best[lbl][5]:
+                    best[lbl] = det
+            for bx1, by1, bx2, by2, label, conf in best.values():
                 cv2.rectangle(img, (bx1, by1), (bx2, by2), (0,0,255), 2)
                 cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)

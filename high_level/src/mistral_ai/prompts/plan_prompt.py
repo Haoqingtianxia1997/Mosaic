@@ -27,26 +27,19 @@ JSON FORMAT
 
 The fixed available object target are:
     - banana
-    - beer bottle
     - cucumber
-    - cup
     - juice
     - detergent bottle
     - ketchup bottle
-    - mayonnaise bottle
-    - oil bottle
     - pepper bottle
     - salt bottle
     - sponge
     - tomato
-    - water bottle
     - user person
     - soup pot
     - dessert plate
     - home
     - spoon
-    - gripper
-    - hand
     
 -----------------------------------------------------------------------
 ACTION TYPES

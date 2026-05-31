@@ -136,7 +136,8 @@ class TextDrivenSegmenter:
         self.trans_tok = MarianTokenizer.from_pretrained(trans_name)
         self.trans_mod = MarianMTModel.from_pretrained(trans_name)
         self.trans_mod.to(self.device)      # in the same device
-
+        self.mask_labels = {"beer bottle", "mayonnaise bottle", "oil bottle", "water bottle"}
+    
     @functools.lru_cache(maxsize=512)
     @torch.inference_mode()
     def _en_word2de(self, word: str) -> str:
@@ -177,6 +178,8 @@ class TextDrivenSegmenter:
                 keep   = torch.topk(scores, k=min(5, len(scores))).indices  # Top 5 candidates
 
             elif method == "yolo":
+                YOLO_MASKED_CLASSES = self.mask_labels 
+
                 yolo_results = yolo_model(image, conf=0.7)
                 boxes_xyxy = yolo_results[0].boxes.xyxy.cpu().numpy()
                 confs      = yolo_results[0].boxes.conf.cpu().numpy()
@@ -189,6 +192,21 @@ class TextDrivenSegmenter:
                     conf = confs[i]
                     bbox = boxes_xyxy[i]
                     print(f"  - Class: {name:>10s}, Confidence: {conf:.3f}, BBox: [{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]")
+
+                # Remove masked classes and keep only the top-scoring detection per label
+                valid_mask = [
+                    i for i, c in enumerate(labels_idx)
+                    if class_names[int(c)].lower() not in YOLO_MASKED_CLASSES
+                ]
+                best_per_label = {}
+                for i in valid_mask:
+                    name = class_names[int(labels_idx[i])].lower()
+                    if name not in best_per_label or confs[i] > confs[best_per_label[name]]:
+                        best_per_label[name] = i
+                kept_indices = list(best_per_label.values())
+                boxes_xyxy  = boxes_xyxy[kept_indices]
+                confs       = confs[kept_indices]
+                labels_idx  = labels_idx[kept_indices]
 
                 # Filter categories based on prompt
                 prompt_lower = prompt.lower()
