@@ -497,7 +497,6 @@ class ActionExecutor:
         except Exception as e:
             print(f"❌ Failed to get FK position: {e}")
             self.success = False
-            play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
             return
 
         print(f"Current position: {current_position}")
@@ -525,7 +524,6 @@ class ActionExecutor:
                 print("✅ Lift-to-safe-height step succeeded.")
             else:
                 print("❌ Lift-to-safe-height step failed.")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en') 
                 return
         
         if self.move_params["move_z"] < 0.5:   
@@ -551,7 +549,6 @@ class ActionExecutor:
                 print("✅ Pre-move safe-height step succeeded.")
             else:
                 print("❌ Pre-move safe-height step failed.")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
                 return
         
         try:
@@ -576,7 +573,7 @@ class ActionExecutor:
             print("✅ Move action executed successfully.")
         else:
             print("❌ Move action failed.")
-            play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+            
 
 
     def action_grasp(self):
@@ -674,7 +671,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Grasp other things action failed, retrying...")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                break
 
     def action_stir(self):
         """Stir a pot for a specified duration using class variables.
@@ -707,7 +704,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Stir action failed, retrying...")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                break
     
 
     def action_reset(self):
@@ -725,6 +722,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Reset action failed, retrying...")
+                break
 
     def action_add(self):
         """Add an ingredient a specified number of times using class variables.
@@ -751,7 +749,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Add action failed, retrying...")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')  
+                break 
       
 
     def action_return_back(self):
@@ -820,7 +818,7 @@ class ActionExecutor:
             else:
                 print("❌ Return back action failed, retrying...")
                 self.grasped_thing = ""
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                break
 
 
     def action_open(self):
@@ -840,6 +838,7 @@ class ActionExecutor:
             else:
                 self.grasped_thing = ""
                 print("❌ Open action failed, retrying...")
+                break
 
     def action_close(self):
         """Close the robot's gripper.
@@ -856,6 +855,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Close action failed, retrying...")
+                break
 
     def action_grasp_detection(self):
         """Detect if the robot has successfully grasped an object.
@@ -871,7 +871,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Grasp detection action failed, retrying...")
-                play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
+                break
 
 
     def get_grasps(self):
@@ -917,6 +917,7 @@ class ActionExecutor:
                 break
             else:
                 print("❌ Move offset action failed, retrying...")
+                break
 
     def get_object_pos(self, vlm_client, object_name):
         """Get the position of a specified object using the VLM client.
