@@ -149,7 +149,7 @@ class ActionExecutor:
                     self.action_reset()
 
                 elif act_type == "add":
-                    self.action_add()
+                    self.action_add(vlm_client)
 
                 elif act_type == "return_back":
                     self.action_return_back()
@@ -436,9 +436,14 @@ class ActionExecutor:
                     return
 
             # Calculate centroid
-            self.all_points_arr = np.array(all_points)
-            self.all_colors_arr = np.array(all_colors)
-            
+            self.all_points_arr = np.array(all_points) if all_points else np.empty((0, 3))
+            self.all_colors_arr = np.array(all_colors) if all_colors else np.empty((0, 3))
+
+            if self.all_points_arr.ndim < 2:
+                print("❌ All points are invalid (point cloud is empty after preprocessing)")
+                self.success = False
+                return
+
             mask_valid = ~np.isnan(self.all_points_arr).any(axis=1)
             self.all_points_arr = self.all_points_arr[mask_valid]
             self.all_colors_arr = self.all_colors_arr[mask_valid]
@@ -724,7 +729,7 @@ class ActionExecutor:
                 print("❌ Reset action failed, retrying...")
                 break
 
-    def action_add(self):
+    def action_add(self, vlm_client):
         """Add an ingredient a specified number of times using class variables.
         Uses self.add_times and updates self.success.
 
@@ -733,14 +738,21 @@ class ActionExecutor:
         """
         self.success = False  # Reset success status
         print("Execute add action")
-        
-        try:
-            if self.add_times is None:
-                raise ValueError("Missing add times.")
-            self.success = call_ros2_service("/add_service", "action_interfaces/srv/Add", 
-                {"times": self.add_times})
-        except ValueError as e:
-            print(e)
+        if self.grasped_thing == "ketchup bottle":
+            self.action_perceive(vlm_client) # Perceive to update move_params for ketchup bottle
+            self.action_move()
+            self.direction = "z"
+            self.delta = 0.13 
+            self.action_move_offset()
+                        
+        else:
+            try:
+                if self.add_times is None:
+                    raise ValueError("Missing add times.")
+                self.success = call_ros2_service("/add_service", "action_interfaces/srv/Add", 
+                    {"times": self.add_times})
+            except ValueError as e:
+                print(e)
 
         # time.sleep(3)  # Wait for service call to complete
         while True:

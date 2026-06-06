@@ -146,8 +146,16 @@ class TextDrivenSegmenter:
         return self.trans_tok.decode(gen[0], skip_special_tokens=True)
 
     # ---------------- Main Process ----------------
-    def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False, method="yolo", bbox_only=True):
+    def detect_and_segment(self, image_path, text_prompts, text_label, multi_task=False, if_sam=True, if_translate=False, method="yolo", bbox_only=True, name=None):
         image = Image.open(image_path).convert("RGB")
+        if name == "realsense":
+            img_arr = np.array(image)
+            h, w = img_arr.shape[:2]
+            ys = np.arange(h, dtype=np.float32)[:, None]
+            xs = np.arange(w, dtype=np.float32)[None, :]
+            img_arr[ys > 1.4 * xs + 80.0] = 0
+            image = Image.fromarray(img_arr)
+            
         W, H  = image.size
         draw_img   = image.copy()
         all_boxes, all_masks, all_points = [], [], []
@@ -376,7 +384,7 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
         seg = get_segmenter() #TextDrivenSegmenter(fastsam_model_path="src/VLM_agent/FastSAM/FastSAM-x.pt")
     else:
         seg = segmenter # Allow passing a segmenter instance to avoid repeated loading in multi-turn interactions
-    img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate, bbox_only = bbox_only)
+    img, boxes, points = seg.detect_and_segment(image_path, [target], [text],  multi_task = False, if_sam = is_sam, if_translate = if_translate, bbox_only = bbox_only, name= name)
     if img is None or boxes is None or points is None:
         print(f"Cannot find target '{target}' in the image.")
         return None, None, None, None, None, None
@@ -385,6 +393,14 @@ def find_object_central_pixel(target: str, text: str, image_path, is_sam: bool =
         img.save("images/result_l.jpg")
     elif name == "right":
         img.save("images/result_r.jpg")
+    elif name == "realsense":
+        img_arr = np.array(img)
+        h, w = img_arr.shape[:2]
+        ys = np.arange(h, dtype=np.float32)[:, None]
+        xs = np.arange(w, dtype=np.float32)[None, :]
+        img_arr[ys > 1.4 * xs + 80.0] = 0
+        img = Image.fromarray(img_arr)
+        img.save("images/realsense.jpg")
 
     for (b,l,s),pt in zip(boxes, points):
         print(f"{l} @ {b}  conf={s:.2f}")

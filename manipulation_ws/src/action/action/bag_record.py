@@ -143,15 +143,14 @@ def main() -> None:
     global _participant, _save_base
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--participant", required=True, help="Participant ID, e.g. P001")
+    parser.add_argument("--participant", default=None, help="Participant ID, e.g. P001")
     args, _ = parser.parse_known_args()
     _participant = args.participant
 
     _cur_dir = Path(__file__).resolve().parent
     _data_root = (_cur_dir / "../../../../manipulation_ws/saved_intention_data").resolve()
-    _participant_folder = _data_root / f"{_participant}_folder" 
-    if _participant_folder.exists():
-        _save_base = _participant_folder
+    if _participant:
+        _save_base = _data_root / f"{_participant}_folder"
     else:
         _save_base = _data_root / "unknown_folder"
     _save_base = _save_base / "intention_data"

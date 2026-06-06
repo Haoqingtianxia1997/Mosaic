@@ -6,23 +6,35 @@ from mistralai import Mistral
 from openai import OpenAI
 
 class Mistralmodel:
-    def __init__(self, if_openAI=True):
-        self.if_openAI = if_openAI
+    def __init__(self, provider="claude"): # "mistral", "chatgpt", or "claude"
+        self.provider = provider
 
-        if not self.if_openAI:
+        if provider == "mistral":
             self.api_key = os.environ.get("MISTRAL_API_KEY")
             if not self.api_key:
                 raise ValueError("MISTRAL_API_KEY not found in environment variables")
             self.client = Mistral(api_key=self.api_key)
             self.text_model = "mistral-large-latest"
             self.vision_model = "pixtral-large-latest" # "pixtral-12b-2409"
-        else:
+        elif provider == "chatgpt":
             self.api_key = os.environ.get("OPENAI_API_KEY")
             if not self.api_key:
                 raise ValueError("OPENAI_API_KEY not found in environment variables")
             self.client = OpenAI(api_key=self.api_key)
             self.text_model = "gpt-4o"
             self.vision_model = "gpt-4o"
+        elif provider == "claude":
+            self.api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not self.api_key:
+                raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url="https://api.anthropic.com/v1/",
+            )
+            self.text_model = "claude-sonnet-4-6"
+            self.vision_model = "claude-sonnet-4-6"
+        else:
+            raise ValueError(f"Unknown provider '{provider}'. Choose from: 'mistral', 'chatgpt', 'claude'")
 
     def _get_prompt_cache_key(self, mode, model_name, system_prompt, example, assistant_prompt):
         """Build a stable key so repeated static prefixes can hit prompt caching."""
@@ -35,7 +47,7 @@ class Mistralmodel:
         ])
         prompt_hash = hashlib.sha256(static_prefix.encode("utf-8")).hexdigest()[:16]
         return f"mosaic:{mode}:{model_name}:{prompt_hash}"
- 
+
     def encode_image(self, image_path):
         """Encode image to base64 format"""
         try:
@@ -47,7 +59,7 @@ class Mistralmodel:
         except Exception as e:
             print(f"❌ Image encoding error: {e}")
             return None
-    
+
     def get_image_mime_type(self, image_path):
         """Determine MIME type based on file extension"""
         file_ext = os.path.splitext(image_path)[1].lower()
@@ -60,12 +72,11 @@ class Mistralmodel:
             '.jpeg': 'image/jpeg'
         }
         return mime_types.get(file_ext, 'image/jpeg')
-    
+
     def chat_with_text(self, text, system_prompt, example, assistant_prompt):
         """Text-only conversation"""
         try:
-
-            if self.if_openAI:
+            if self.provider == "chatgpt":
                 prompt_cache_key = self._get_prompt_cache_key(
                     mode="text",
                     model_name=self.text_model,
@@ -77,74 +88,54 @@ class Mistralmodel:
                     model=self.text_model,
                     prompt_cache_key=prompt_cache_key,
                     input=[
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
-                        # Example
-                        {
-                            "role": "user",
-                            "content": example
-                        },
-                        {
-                            "role": "assistant",
-                            "content": assistant_prompt
-                        },
-                        {
-                            "role": "user",
-                            "content": text,
-                        }
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": example},
+                        {"role": "assistant", "content": assistant_prompt},
+                        {"role": "user", "content": text},
                     ]
                 )
-                
                 response_text = chat_response.output_text
-            else:
+
+            elif self.provider == "claude":
+                chat_response = self.client.chat.completions.create(
+                    model=self.text_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": example},
+                        {"role": "assistant", "content": assistant_prompt},
+                        {"role": "user", "content": text},
+                    ]
+                )
+                response_text = chat_response.choices[0].message.content
+
+            else:  # mistral
                 chat_response = self.client.chat.complete(
                     model=self.text_model,
                     messages=[
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
-                        # Example
-                        {
-                            "role": "user",
-                            "content": example
-                        },
-                        {
-                            "role": "assistant",
-                            "content": assistant_prompt
-                        },
-                        {
-                            "role": "user",
-                            "content": text,
-                        }
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": example},
+                        {"role": "assistant", "content": assistant_prompt},
+                        {"role": "user", "content": text},
                     ]
                 )
-                
                 response_text = chat_response.choices[0].message.content
 
-            
             return response_text
-            
+
         except Exception as e:
             print(f"❌ Text model call error: {e}")
             return None
-    
+
     def chat_with_vision(self, text, image_path, system_prompt, example, assistant_prompt):
         """Image + text conversation (using vision model)"""
         # try:
         print(f"🖼️  Encoding image: {os.path.basename(image_path)}")
         base64_image = self.encode_image(image_path)
-        
         mime_type = self.get_image_mime_type(image_path)
-        
-        # Prepare message content
 
-        
         print("🤖 Calling vision model...")
 
-        if self.if_openAI:
+        if self.provider == "chatgpt":
             prompt_cache_key = self._get_prompt_cache_key(
                 mode="vision",
                 model_name=self.vision_model,
@@ -153,91 +144,60 @@ class Mistralmodel:
                 assistant_prompt=assistant_prompt,
             )
             content = [
-                {
-                    "type": "input_text",
-                    "text": text
-                },
-                {
-                    "type": "input_image",
-                    "image_url": f"data:{mime_type};base64,{base64_image}"
-                }
+                {"type": "input_text", "text": text},
+                {"type": "input_image", "image_url": f"data:{mime_type};base64,{base64_image}"}
             ]
             chat_response = self.client.responses.create(
                 model=self.vision_model,
                 prompt_cache_key=prompt_cache_key,
                 input=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    # Example
-                    {
-                        "role": "user",
-                        "content": example
-                    },
-                    {
-                        "role": "assistant",
-                        "content": assistant_prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": text,
-                    },
-                    {
-                        "role": "user",
-                        "content": content
-                    }
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": example},
+                    {"role": "assistant", "content": assistant_prompt},
+                    {"role": "user", "content": text},
+                    {"role": "user", "content": content}
                 ]
             )
             response_text = chat_response.output_text
-        else:
+
+        elif self.provider == "claude":
             content = [
-                {
-                    "type": "text",
-                    "text": text
-                },
+                {"type": "text", "text": text},
                 {
                     "type": "image_url",
-                    "image_url": f"data:{mime_type};base64,{base64_image}"
+                    "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}
                 }
             ]
+            chat_response = self.client.chat.completions.create(
+                model=self.vision_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": example},
+                    {"role": "assistant", "content": assistant_prompt},
+                    {"role": "user", "content": content}
+                ]
+            )
+            response_text = chat_response.choices[0].message.content
 
+        else:  # mistral
+            content = [
+                {"type": "text", "text": text},
+                {"type": "image_url", "image_url": f"data:{mime_type};base64,{base64_image}"}
+            ]
             chat_response = self.client.chat.complete(
                 model=self.vision_model,
                 messages=[
-                    {
-                        "role": "system",
-                    "content": system_prompt
-                    },
-                    # Example
-                    {
-                        "role": "user",
-                        "content": example
-                    },
-                    {
-                        "role": "assistant",
-                        "content": assistant_prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": text,
-                    },
-                    {
-                        "role": "user",
-                        "content": content
-                    }
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": example},
+                    {"role": "assistant", "content": assistant_prompt},
+                    {"role": "user", "content": text},
+                    {"role": "user", "content": content}
                 ]
             )
-        
             response_text = chat_response.choices[0].message.content
 
-        
         return response_text
-            
+
         # except Exception as e:
         #     print(f"❌ Vision model call error: {e}")
             # return None
-    
-
-    
-

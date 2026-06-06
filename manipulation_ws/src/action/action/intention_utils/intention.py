@@ -66,7 +66,7 @@ class Intention():
         self.yaw = None
 
         # stable point pos
-        self.SLIDING_WINDOW_SEC = 1.0
+        self.SLIDING_WINDOW_SEC = 0.5
         self.OUTLIER_THRESHOLD = 0.05
         self.OUTLIER_COUNT = 15
         self.AVG_LAST_N = 5
@@ -572,7 +572,14 @@ class Intention():
         output_path: 
         """
         labels = []
-        result = self.yolo_model(img, verbose=False,  conf=self.yolo_conf)[0]
+        h, w = img.shape[:2]
+        img_for_yolo = img.copy()
+        ys = np.arange(h, dtype=np.float32)[:, None]
+        xs = np.arange(w, dtype=np.float32)[None, :]
+        mask = ys > 1.4 * xs + 80.0
+        img_for_yolo[mask] = 0
+        cv2.line(img, (0, 120), (w - 1, int(1.4 * (w - 1) + 80)), (0, 255, 0), 2)
+        result = self.yolo_model(img_for_yolo, verbose=False,  conf=self.yolo_conf)[0]
         if result.boxes.shape[0]:
             # Collect all detections, mask unwanted classes, keep top-conf per label
             raw = []
