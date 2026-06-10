@@ -117,7 +117,7 @@ class IntentionLLM(Node):
             FileStatus,
             'file_status',
             self.file_status_cb,
-            1
+            10
         )
         self.speech_changed = False
         self.new_file_content = None
@@ -126,19 +126,19 @@ class IntentionLLM(Node):
             Labels,
             'label_output',
             self.label_cb,
-            1
+            10
         )
 
         # Publish plain string input/output for intention LLM pipeline.
         self.intention_llm_input_publishers = self.create_publisher(
             String,
             'intention_llm_input',
-            1
+            10
         )
         self.intention_llm_output_publishers = self.create_publisher(
             String,
             'intention_llm_output',
-            1
+            10
         )
         
         self.latest_gesture_info = None
@@ -147,7 +147,7 @@ class IntentionLLM(Node):
 
         self.gesture_history = []  # Store the latest gesture_info JSON strings
         self.gaze_history = []     # Store the latest gaze_info JSON strings
-        self.max_history_size = 5 # TODO: tune this size based on gaze label frequency
+        self.max_history_size = 10 # TODO: tune this size based on gaze label frequency
 
         self.llm_call_index = 0
 
