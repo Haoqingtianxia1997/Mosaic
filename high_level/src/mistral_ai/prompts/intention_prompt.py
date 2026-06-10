@@ -60,7 +60,7 @@ ketchup bottle: a bottle with white cap and transparent body, the body is filled
 mayonnaise bottle: a bottle in white. 
 pepper bottle: a cylindrical bottle with dark green cap and transparent body, filled with brown pepper. 
 salt bottle: a box sized container with both blue and white color on the external surface. 
-sponge: a cubed sized sponge with both yellow and black color. 
+sponge: a cubed sized sponge with both yellow and black color for cleaning dishes.
 tomato: a spherical, round fruit with red color. 
 cup: a purple plastic semi-transparent cup.
 juice: a cubic bottle with pink and yellow color, filled with juice.
@@ -77,7 +77,7 @@ the target should be a food item.
               object names in HARDCODED OBJECT TARGETS are exempted from the matching process with gesture info, gaze info and scenario labels. You can directly use the names in HARDCODED OBJECT TARGETS as target in response when the voice command includes words related to HARDCODED OBJECT TARGETS.
 * Firstly, you need to match target in voice command with labels from gesture, gaze based on OBJECTIVE DESCRIPTION, to find the best target name in FIXED AVAILABLE OBJECT TARGETS. Otherwise match target in voice command with scenario labels.
 * Then, if match between target in voice command with gesture and gaze info failed, match target with scenario labels based on OBJECTTIVE DESCRIPTION to find the best target name in FIXED AVAILABLE OBJECT TARGETS. 
-* Gesture and gaze info have the same priority, whereas scenario labels stay on a lower hierarchy. 
+* Gesture and gaze info have the same priority, whereas scenario labels stay on a lower hierarchy. You should firstly consider the match between voice command and gesture or gaze labels based on their order (the same as score), then consider the match between voice command and scenario labels. This is very import！！！！！  
 * If there's no match with gaze, gesture or scenario labels, analyze if the target in voice command matches objects in HARDCODED OBJECT TARGETS based on OBJECTIVE DESCRIPTION, to find the best target name in HARDCODED OBJECT TARGETS, like "spoon", "soup pot", "dessert plate", "pepper bottle" and "salt bottle". Under any circumstance, these objects can be found !!!!!!! VERY IMPORTANT!!!!!!!!!
 * Make sure the target name in "Reponse" and "Audio response" is either in the FIXED AVAILABLE OBJECT TARGETS or in HARDCODED OBJECT TARGETS. Do NOT generate any target name that is not in these two categories, unless the voice command does NOT involve any physical action like "tell me a story" or "give me a recipe of a dish".
 * That means voice commands with interactive vocal requirements do NOT follow the previous mentioned rules. For example, when the voice command is "What's your favorite recipe?", the response should be a recipe name that is not necessarily in FIXED AVAILABLE OBJECT TARGETS or HARDCODED OBJECT TARGETS.  
