@@ -71,7 +71,8 @@ class HandDetectionWithPointCloudNode(Node):
         self._gesture_allowed = False       # True only between /recording/start and 2s after /transcription
         self._transcription_time = None     # wall-clock time when /transcription arrived
         self._score_accumulator = {}        # label -> cumulative score  (accumulation mode)
-        self._label_frame_count = {}        # label -> number of frames it appeared (accumulation mode)
+        # self._total_frame_count = 0         # total frames processed (accumulation mode)
+        self._label_frame_count = {}      # label -> number of frames it appeared (old)
         self._sliding_window_data = deque() # (timestamp, labels, scores) entries  (sliding mode)
         self._marker_pub = self.create_publisher(Marker, '/finger/markers', 10)
         self._yolo_bbox_marker_pub = self.create_publisher(Marker, '/yolo/bbox_centers', 10)
@@ -161,7 +162,8 @@ class HandDetectionWithPointCloudNode(Node):
             self._gesture_allowed = True
             self._transcription_time = None
             self._score_accumulator = {}
-            self._label_frame_count = {}
+            # self._total_frame_count = 0
+            self._label_frame_count = {}  # (old)
             self._sliding_window_data.clear()
             self.get_logger().info("Recording started — gesture window open")
 
@@ -179,7 +181,8 @@ class HandDetectionWithPointCloudNode(Node):
             self._gesture_allowed = False
             self._transcription_time = None
             self._score_accumulator = {}
-            self._label_frame_count = {}
+            # self._total_frame_count = 0
+            self._label_frame_count = {}  # (old)
             self._sliding_window_data.clear()
             self.label_msg.gesture_info = "[]"
             self.get_logger().info("Gesture window closed — all state reset")
@@ -452,20 +455,25 @@ class HandDetectionWithPointCloudNode(Node):
                             win_counts[l] = win_counts.get(l, 0) + 1
                     avg_labels = list(win_totals.keys())
                     avg_scores = [win_totals[l] / win_counts[l] for l in avg_labels]
-                    self.label_msg.gesture_info = self.intention._format_label_info(avg_labels, avg_scores)
+                    self.label_msg.gesture_info = self.intention._format_label_info_last_time(avg_labels, avg_scores)
                 else:
                     self.label_msg.gesture_info = "[]"
             else:
                 # Full-window accumulation average
+                self._total_frame_count += 1
                 if finger_label_output:
                     for label, score in zip(finger_label_output, finger_score_output):
                         self._score_accumulator[label] = self._score_accumulator.get(label, 0.0) + score
-                        self._label_frame_count[label] = self._label_frame_count.get(label, 0) + 1
+                        self._label_frame_count[label] = self._label_frame_count.get(label, 0) + 1  # per-label frame count (old)
+                
                 # No detection this frame → keep last accumulated average, don't overwrite with "[]"
                 if self._score_accumulator:
                     avg_labels = list(self._score_accumulator.keys())
-                    avg_scores = [self._score_accumulator[l] / self._label_frame_count[l] for l in avg_labels]
-                    self.label_msg.gesture_info = self.intention._format_label_info(avg_labels, avg_scores)
+                    
+                    # avg_scores = [self._score_accumulator[l] / self._total_frame_count for l in avg_labels]
+                    avg_scores = [self._score_accumulator[l] / self._label_frame_count[l] for l in avg_labels]  # divide by per-label count (old)
+                    
+                    self.label_msg.gesture_info = self.intention._format_label_info_last_time(avg_labels, avg_scores)
                 else:
                     self.label_msg.gesture_info = "[]"
         else:

@@ -281,7 +281,7 @@ class Intention():
         return origin + best_t * direction
 
     def in_valid_area(self, pt):
-        return pt is not None and (0.0 <= pt[0] <= 1.0) and (-0.7 <= pt[1] <= 0.7)
+        return pt is not None and (-1.0 <= pt[0] <= 1.0) and (-2.0 <= pt[1] <= 2.0)
 
     def _normalize_cos_scores(self, scores):
         """Min-max normalize current-frame cosine scores to [0, 1]."""
@@ -411,6 +411,23 @@ class Intention():
             if score is not None:
                 item["score"] = float(score)
             info.append(item)
+        info.sort(key=lambda item: item.get("score", float("-inf")), reverse=True)
+        return json.dumps(info, ensure_ascii=False)
+    
+    def _format_label_info_last_time(self, labels, scores=None):
+        if scores is None:
+            scores = [None] * len(labels)
+        info = []
+        for label, score in zip(labels, scores):
+            item = {"label": label}
+            if score is not None:
+                item["score"] = float(score)
+            info.append(item)
+        total = sum(item["score"] for item in info if "score" in item)
+        if total > 0:
+            for item in info:
+                if "score" in item:
+                    item["score"] = item["score"] / total
         info.sort(key=lambda item: item.get("score", float("-inf")), reverse=True)
         return json.dumps(info, ensure_ascii=False)
     
@@ -710,16 +727,17 @@ class Intention():
                 else:
                     img = self.bridge.imgmsg_to_cv2(rgb, 'bgr8')
                 depth_np = self.bridge.imgmsg_to_cv2(dm, 'passthrough') if dm is not None else None
-                if stable is not None:
+                ref_world = stable if stable is not None else intersect
+                if ref_world is not None:
                     if side == "right":
-                        print(f"[Stable finger pos R:] {stable}")
-                        pixel, _ = world_to_pixels_realsense(stable)
+                        print(f"[Stable finger pos R:] {ref_world}")
+                        pixel, _ = world_to_pixels_realsense(ref_world)
                     elif side == "left":
-                        print(f"[Stable finger pos L:] {stable}")
-                        pixel, _ = world_to_pixels_left(stable)
+                        print(f"[Stable finger pos L:] {ref_world}")
+                        pixel, _ = world_to_pixels_left(ref_world)
                     u, v = int(round(pixel[0])), int(round(pixel[1]))
                     print(f"Projected pixel: ({u}, {v})")
-                    ref_pt = stable
+                    ref_pt = ref_world
                 else:
                     h_img, w_img = img.shape[:2]
                     u, v = w_img // 2, h_img // 2
@@ -746,19 +764,20 @@ class Intention():
             else:
                 img = self.bridge.imgmsg_to_cv2(rgb_msg, 'bgr8')
             depth_np = self.bridge.imgmsg_to_cv2(depth_msg, 'passthrough') if depth_msg is not None else None
-            if stable is not None:
+            ref_world = stable if stable is not None else intersect
+            if ref_world is not None:
                 if camera_side == "right":
-                    print(f"[Stable finger pos R:] {stable}")
-                    pixel, _ = world_to_pixels_realsense(stable)
+                    print(f"[Stable finger pos R:] {ref_world}")
+                    pixel, _ = world_to_pixels_realsense(ref_world)
                 elif camera_side == "left":
-                    print(f"[Stable finger pos L:] {stable}")
-                    pixel, _ = world_to_pixels_left(stable)
+                    print(f"[Stable finger pos L:] {ref_world}")
+                    pixel, _ = world_to_pixels_left(ref_world)
                 elif camera_side == "realsense":
-                    print(f"[Stable finger pos RealSense:] {stable}")
-                    pixel, _ = world_to_pixels_realsense(stable)
+                    print(f"[Stable finger pos RealSense:] {ref_world}")
+                    pixel, _ = world_to_pixels_realsense(ref_world)
                 u, v = int(round(pixel[0])), int(round(pixel[1]))
                 print(f"Projected pixel: ({u}, {v})")
-                ref_pt = stable
+                ref_pt = ref_world
             else:
                 h_img, w_img = img.shape[:2]
                 u, v = w_img // 2, h_img // 2
