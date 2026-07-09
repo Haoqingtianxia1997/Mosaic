@@ -152,7 +152,7 @@ class Intention():
         # z2 = float(depth[v2, u2])
         
         if z1 <= 0 or z2 <= 0:
-            print(f"⚠️ index finger depth abnormal: z1={z1}, z2={z2}")
+            # print(f"⚠️ index finger depth abnormal: z1={z1}, z2={z2}")
             return None, None, None, None, None
 
         # Camera coordinate system back-projection
@@ -170,7 +170,7 @@ class Intention():
 
         direction = tip - origin
         if np.linalg.norm(direction) < 1e-6:
-            print("⚠️ index finger direction length too short")
+            # print("⚠️ index finger direction length too short")
             return None, None, None
 
         direction /= np.linalg.norm(direction)
@@ -194,7 +194,7 @@ class Intention():
             else:
                 hand_landmarks_world.append(None)
 
-        print(f"origin:{origin}, direction: {direction}, tip:{finger_tip_world}")
+        # print(f"origin:{origin}, direction: {direction}, tip:{finger_tip_world}")
         return direction, origin, drawn_img_bgr, hand_landmarks_world, finger_tip_world
 
     def compute_gaze_from_aria(self, pitch, yaw, cam_position, cam_quaternion):
@@ -221,7 +221,7 @@ class Intention():
         gaze_dir_world = rot @ dir_cam
         gaze_origin_world = cam_position.copy()
 
-        print(f"aria gaze_dir_world: {gaze_dir_world}, gaze_origin_world: {gaze_origin_world}")
+        # print(f"aria gaze_dir_world: {gaze_dir_world}, gaze_origin_world: {gaze_origin_world}")
         return gaze_dir_world, gaze_origin_world
 
     def line_plane_intersect(self, origin, direction, z_plane=0.0):
@@ -456,7 +456,8 @@ class Intention():
         label_scores = []
         bbox_world_points = []
         if roi.size == 0 or roi.shape[0] < 5 or roi.shape[1] < 5:
-            print("ROI empty, skip YOLO")
+            # print("ROI empty, skip YOLO")
+            pass
         else:
             # Mask out pixels above the line y = 1.5x + 120 (origin upper-left, y downward)
             # and run YOLO only on the remaining area.
@@ -568,10 +569,10 @@ class Intention():
                         cx_bb, cy_bb = (bx1 + bx2) // 2, (by1 + by2) // 2
                         cv2.circle(img, (cx_bb, cy_bb), 5, (255, 0, 0), -1)
 
-                print(f"YOLO detected (ROI): {', '.join(labels)} with scores: {label_scores}")
+                # print(f"YOLO detected (ROI): {', '.join(labels)} with scores: {label_scores}")
 
         cv2.imwrite(output_path, img)
-        print(f"YOLO ROI & label image saved: {output_path}")
+        # print(f"YOLO ROI & label image saved: {output_path}")
         self.last_yolo_img = img
         return labels, label_scores, bbox_world_points
     
@@ -618,7 +619,7 @@ class Intention():
                 cv2.putText(img, f"{label} {conf:.2f}", (bx1, by1 - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
                 labels.append(label)
-            print(f" scenario YOLO detected: {', '.join(labels)}")
+            # print(f" scenario YOLO detected: {', '.join(labels)}")
         cv2.imwrite(scenario_img_path, img)
         return labels
     
@@ -730,13 +731,13 @@ class Intention():
                 ref_world = stable if stable is not None else intersect
                 if ref_world is not None:
                     if side == "right":
-                        print(f"[Stable finger pos R:] {ref_world}")
+                        # print(f"[Stable finger pos R:] {ref_world}")
                         pixel, _ = world_to_pixels_realsense(ref_world)
                     elif side == "left":
-                        print(f"[Stable finger pos L:] {ref_world}")
+                        # print(f"[Stable finger pos L:] {ref_world}")
                         pixel, _ = world_to_pixels_left(ref_world)
                     u, v = int(round(pixel[0])), int(round(pixel[1]))
-                    print(f"Projected pixel: ({u}, {v})")
+                    # print(f"Projected pixel: ({u}, {v})")
                     ref_pt = ref_world
                 else:
                     h_img, w_img = img.shape[:2]
@@ -767,16 +768,16 @@ class Intention():
             ref_world = stable if stable is not None else intersect
             if ref_world is not None:
                 if camera_side == "right":
-                    print(f"[Stable finger pos R:] {ref_world}")
+                    # print(f"[Stable finger pos R:] {ref_world}")
                     pixel, _ = world_to_pixels_realsense(ref_world)
                 elif camera_side == "left":
-                    print(f"[Stable finger pos L:] {ref_world}")
+                    # print(f"[Stable finger pos L:] {ref_world}")
                     pixel, _ = world_to_pixels_left(ref_world)
                 elif camera_side == "realsense":
-                    print(f"[Stable finger pos RealSense:] {ref_world}")
+                    # print(f"[Stable finger pos RealSense:] {ref_world}")
                     pixel, _ = world_to_pixels_realsense(ref_world)
                 u, v = int(round(pixel[0])), int(round(pixel[1]))
-                print(f"Projected pixel: ({u}, {v})")
+                # print(f"Projected pixel: ({u}, {v})")
                 ref_pt = ref_world
             else:
                 h_img, w_img = img.shape[:2]

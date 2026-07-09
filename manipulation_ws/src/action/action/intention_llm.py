@@ -1,8 +1,11 @@
 import cv2
 import argparse
+import threading
 from matplotlib import text
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup
 from action_interfaces.msg import FileStatus
 from action_interfaces.msg import Labels
 from std_msgs.msg import String
@@ -112,12 +115,15 @@ class IntentionLLM(Node):
 
         self._copy_rgbd_files_to_participant_folder()
 
+        self._cb_group = ReentrantCallbackGroup()
+        self._gaze_event = threading.Event()
 
         self.file_status_sub = self.create_subscription(
             FileStatus,
             'file_status',
             self.file_status_cb,
-            10
+            10,
+            callback_group=self._cb_group
         )
         self.speech_changed = False
         self.new_file_content = None
@@ -126,7 +132,8 @@ class IntentionLLM(Node):
             Labels,
             'label_output',
             self.label_cb,
-            10
+            10,
+            callback_group=self._cb_group
         )
 
         # Publish plain string input/output for intention LLM pipeline.
@@ -234,24 +241,38 @@ class IntentionLLM(Node):
         
         self.get_logger().info(f"Received gesture info: {msg.gesture_info}, Received gaze info: {msg.gaze_info}")
         self.get_logger().info(f"Latest non-empty gesture info: {self.latest_gesture_info}, Latest non-empty gaze info: {self.latest_gaze_info}")
+
+        if self.latest_gaze_info is not None and self.latest_gaze_info != "None" and self.latest_gaze_info != "[]":
+            self._gaze_event.set()
     
     def _find_latest_non_empty(self, history_list):
         """Find the latest non-empty labels from history"""
         # Start searching from the latest
         for info in reversed(history_list):
-            if info and info.strip() and info.strip() != "[]":
+            if info and info.strip() and info.strip() != "[]" and info.strip() != "None":
                 return info
         return None
 
     def file_status_cb(self, msg):
+        call_llm = False
+        wait_time = 2  # seconds
         self.speech_changed = msg.changed
         self.new_file_content = msg.content
-        print(f"File status changed: {self.speech_changed}, New content: {self.new_file_content}")
         if self.speech_changed:
             self.get_logger().info(f"File changed: {self.speech_changed}, Content: {self.new_file_content}")
 
 
-        if self.speech_changed == True and self.new_file_content is not None and self.new_file_content != "": #and self.latest_gaze_labels is not None and self.latest_gesture_labels is not None
+        if self.speech_changed == True and self.new_file_content is not None and self.new_file_content != "":
+            self._gaze_event.clear()
+            self.get_logger().info(f"Waiting up to {wait_time}s for gaze info...")
+            got_gaze = self._gaze_event.wait(timeout=wait_time)
+            if got_gaze:
+                self.get_logger().info(f"Got gaze info within {wait_time}s, calling LLM.")
+            else:
+                self.get_logger().info(f"{wait_time}s timeout: no gaze info, calling LLM anyway.")
+            call_llm = True
+        
+        if call_llm:    
             cmd_str = self.new_file_content if self.new_file_content else "None"
             gesture_str = self.latest_gesture_info if self.latest_gesture_info else "None"
             gaze_str = self.latest_gaze_info if self.latest_gaze_info else "None"
@@ -300,6 +321,9 @@ class IntentionLLM(Node):
                     f.write(response)
 
             self.latest_gesture_info, self.latest_gaze_info, self.new_file_content = None, None, None
+            self.gesture_history.clear()
+            self.gaze_history.clear()
+            
         else:
             response, content, json_blocks = "", "", ""
             output = None   
@@ -330,8 +354,9 @@ class IntentionLLM(Node):
             #         content = None
             #         json_blocks = None
             #         output = None
-            print(f"=====: {response}, Content: {content}, json blocks: {json_blocks}")
-            print(f"📝 Intention Output: {output}")
+            
+            # print(f"=====: {response}, Content: {content}, json blocks: {json_blocks}")
+            # print(f"📝 Intention Output: {output}")
             
 
 
@@ -345,7 +370,9 @@ def main(args=None):
 
     rclpy.init(args=remaining_args)
     node = IntentionLLM(participant_code=known_args.participant_code)
-    rclpy.spin(node)
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+    executor.spin()
     node.destroy_node()
     rclpy.shutdown()
 

@@ -58,6 +58,8 @@ class HandDetectionWithPointCloudNode(Node):
         self.gaze_euler = None
         self.cam_pose = None
         self.gaze_intersect_pos = None
+        self._last_gaze_info = "[]"
+        self._gaze_info_fresh = False  # True only until the next frame consumes it
         self.lock = Lock()
 
         time.sleep(5)
@@ -87,7 +89,7 @@ class HandDetectionWithPointCloudNode(Node):
         # Aria gaze subscription
         self.create_subscription(PointStamped, '/aria/gaze_xy_intersect', self.gaze_intersect_callback, 10)
         # label_msg from /gaze_label only(aria glass)
-        self.create_subscription(Strings, '/gaze_label', self._gaze_label_callback, 1)
+        self.create_subscription(Strings, '/gaze_label', self._gaze_label_callback, 10)
         
         #=================================right/left zed camera========================================
         
@@ -147,13 +149,19 @@ class HandDetectionWithPointCloudNode(Node):
             self.gaze_intersect_pos = np.array([msg.point.x, msg.point.y, msg.point.z])
 
     def _gaze_label_callback(self, msg):
+        labels = json.loads(msg.data) if msg.data else []
+        # print(f"Received gaze labels: {labels}")
         with self.lock:
-            labels = json.loads(msg.data) if msg.data else []
-            self.label_msg.gaze_info = self.intention._format_label_info(labels)
-            
+            self._last_gaze_info = self.intention._format_label_info(labels)
+            self._gaze_info_fresh = True
+        
     def _new_label_msg(self):
         msg = Labels()
-        msg.gaze_info = "[]"
+        if self._gaze_info_fresh:
+            msg.gaze_info = self._last_gaze_info
+            self._gaze_info_fresh = False  # consume once
+        else:
+            msg.gaze_info = "[]"
         msg.gesture_info = "[]"
         return msg
 
@@ -165,6 +173,8 @@ class HandDetectionWithPointCloudNode(Node):
             # self._total_frame_count = 0
             self._label_frame_count = {}  # (old)
             self._sliding_window_data.clear()
+            self._last_gaze_info = "[]"
+            self._gaze_info_fresh = False
             self.get_logger().info("Recording started — gesture window open")
 
     def _on_transcription(self, msg):
@@ -193,12 +203,13 @@ class HandDetectionWithPointCloudNode(Node):
             out = Labels()
             out.gesture_info = gesture_to_pub
             out.gaze_info = self.label_msg.gaze_info
+            # print(f"Publishing labels: gaze_info={out.gaze_info}")
             self.label_pub.publish(out)
 
     def buffer_callback(self, msg, side, kind):
         with self.lock:
-            print(side, kind)
-            print("----------------------")
+            # print(side, kind)
+            # print("----------------------")
             if kind == 'rgb':
                 self.rgb_buffer[side] = msg
             elif kind == 'depth':
@@ -460,7 +471,7 @@ class HandDetectionWithPointCloudNode(Node):
                     self.label_msg.gesture_info = "[]"
             else:
                 # Full-window accumulation average
-                self._total_frame_count += 1
+                # self._total_frame_count += 1
                 if finger_label_output:
                     for label, score in zip(finger_label_output, finger_score_output):
                         self._score_accumulator[label] = self._score_accumulator.get(label, 0.0) + score
@@ -487,7 +498,7 @@ class HandDetectionWithPointCloudNode(Node):
 
         for label, score, pt in zip(finger_label_output, finger_score_output, finger_bbox_world_points):
             pt_str = f"({pt[0]:.3f}, {pt[1]:.3f}, {pt[2]:.3f})" if pt is not None else "None"
-            print(f"  bbox: label={label}, score={score:.4f}, 3d={pt_str}")
+            # print(f"  bbox: label={label}, score={score:.4f}, 3d={pt_str}")
 
         return finger_intersect
 
@@ -539,6 +550,7 @@ class HandDetectionWithPointCloudNode(Node):
             if any(x is None for x in [rgb_msg_l, depth_msg_l, rgb_msg_r, depth_msg_r]):
                 self._reset_detection_state()
                 self._try_publish_label()
+                self.label_msg = self._new_label_msg()
                 return
 
             dir_l, orig_l, hand_img_l, lm_world_l, tip_l = self.intention.get_hand_pose(rgb_msg_l, depth_msg_l, self.T_wc_l, self.intrinsics_l)
@@ -568,6 +580,7 @@ class HandDetectionWithPointCloudNode(Node):
             if rgb_msg is None or depth_msg is None:
                 self._reset_detection_state()
                 self._try_publish_label()
+                self.label_msg = self._new_label_msg()
                 return
 
             T_wc = self.T_wc_r if side == 'right' else self.T_wc_l
@@ -587,6 +600,7 @@ class HandDetectionWithPointCloudNode(Node):
 
         else:
             self._try_publish_label()
+            self.label_msg = self._new_label_msg()
             print("There are not any rgb_msg and depth_msg !")
             return
 
@@ -603,10 +617,10 @@ class HandDetectionWithPointCloudNode(Node):
 
         # Publish labels and markers
         self._try_publish_label()
-        print(
-            f"Published labels: gesture_info={self.label_msg.gesture_info}, "
-            f"gaze_info={self.label_msg.gaze_info}"
-        )
+        # print(
+        #     f"Published labels: gesture_info={self.label_msg.gesture_info}, "
+        #     f"gaze_info={self.label_msg.gaze_info}"
+        # )
         self.label_msg = self._new_label_msg()
         if self.intention.in_valid_area(finger_intersect):
             self._publish_finger_ray(finger_direction, finger_origin)
