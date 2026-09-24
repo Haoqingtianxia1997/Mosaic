@@ -10,6 +10,7 @@ from src.grasp.bounding_box import compute_obb
 from src.grasp.grasp_generation import GraspGeneration
 from src.execute.utils import *
 from src.VLM_agent.OwlViT_FastSAM_SAM import TextDrivenSegmenter
+from src.subscribe.switch_subscriber import reset_requested, mark_reset_done
 
 
 class ActionExecutor:
@@ -95,13 +96,17 @@ class ActionExecutor:
         self.success = True
 
         for i, action in enumerate(actions):
+            # reset_switch received: skip remaining actions, open gripper if closed, then reset
+            if reset_requested():
+                print(f"🔴 reset_switch: stopping action sequence at step {i+1}/{len(actions)}.")
+                self.open_and_reset()
+                break
+
             # Check if the service was successful
             if not self.success:
                 print(f"⛔ Aborting action sequence due to failure at step {i}.")
                 play_text_to_speech('Sorry, I cannot do that. Please help me.', language='en')
-                if self.if_grasp_closed:
-                    self.action_open()
-                self.action_reset()
+                self.open_and_reset()
                 break
 
             try:
@@ -180,12 +185,19 @@ class ActionExecutor:
             except Exception as e:
                 print("❌ Exception inside execute_action_sequence:")
                 # play_text_to_speech('Sorry, something went wrong. Please help me.', language='en')
-                if self.if_grasp_closed:
-                    self.action_open()
-                self.action_reset()
+                self.open_and_reset()
                 traceback.print_exc()
                 raise
         print("✅ Action sequence completed.")
+
+    def open_and_reset(self):
+        """Open the gripper only if it is closed, then reset the robot.
+        A pending reset_switch is covered by this reset, so its state goes back to False."""
+        if self.if_grasp_closed:
+            self.action_open()
+        self.action_reset()
+        if reset_requested():
+            mark_reset_done()
 
     def _try_remote_seg_cloud(self):
         """Set target_label, trigger inference via segment_pcd node, return raw cloud.
@@ -203,11 +215,16 @@ class ActionExecutor:
             try:
                 msg = subprocess.check_output(
                     ['ros2', 'param', 'set', '/seg_service', 'target_label', self.target],
-                    stderr=subprocess.STDOUT, text=True
+                    stderr=subprocess.STDOUT, text=True, timeout=8.0
                 ).strip()
                 print(f"Set target_label param: {msg}")
                 _param_set_ok = True
                 break
+            except subprocess.TimeoutExpired:
+                # ros2 param set blocks forever if /seg_service is discovered but never replies
+                print(f"⚠️ param set attempt {_attempt+1}/3 timed out after 8.0s")
+                if _attempt < 2:
+                    import time; time.sleep(2.0)
             except subprocess.CalledProcessError as e:
                 # e.output contains the actual ros2 error message
                 print(f"⚠️ param set attempt {_attempt+1}/3 failed (exit {e.returncode}): {e.output.strip()}")
@@ -673,6 +690,7 @@ class ActionExecutor:
             if self.success:
                 print("✅ Grasp other things action executed successfully.")
                 self.grasped_thing = self.target
+                self.if_grasp_closed = True  # /grasp_service closes the gripper
                 break
             else:
                 print("❌ Grasp other things action failed, retrying...")
@@ -826,6 +844,7 @@ class ActionExecutor:
             if self.success:
                 print("✅ Return back action executed successfully.")
                 self.grasped_thing = ""  # Reset grasped thing after returning back
+                self.if_grasp_closed = False  # /return_back_service opens the gripper
                 break
             else:
                 print("❌ Return back action failed, retrying...")

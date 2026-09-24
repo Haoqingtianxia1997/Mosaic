@@ -11,6 +11,7 @@ from execute.actions import execute_action_sequence
 from mistral_ai.vlm import run_mistral_vlm
 from src.mistral_ai.mistral import Mistralmodel
 from src.execute.element_action import *
+from src.subscribe.switch_subscriber import start_switch_subscriber, reset_requested
 
 SPEECH_FILE = "src/transcribe/speech.txt"
 TRANS_FILE = "src/transcribe/transcription.txt"
@@ -57,16 +58,21 @@ if __name__ == "__main__":
     threading.Thread(target=stt_thread, daemon=True).start()
     # 2. start intention detection thread
     # threading.Thread(target=intention_detection_thread, daemon=True).start()
+    # 3. start reset switch subscriber
+    start_switch_subscriber(topic_name="/reset_switch")
 
     print("🟢 New task thread started.")
     last_processed_mtime_ns = None
     print("🟢 STT thread started. Waiting for new speech...")
 
-    # 3. start Mistral model
+    # 4. start Mistral model
     llm_client = Mistralmodel()
     vlm_client = Mistralmodel()
 
     while True:
+        # reset_switch received while idle or after the last action: reset now
+        if reset_requested():
+            executor.open_and_reset()
 
         # # 2. wait for new recording to complete
         # NEW_TEXT_EVENT.wait()

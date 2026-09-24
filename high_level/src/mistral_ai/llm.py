@@ -45,22 +45,36 @@ def run_mistral_llm(client):
 
 
 def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_sec=3, verbose=True):
+    subtasks = None
     for i in range(max_retries):
-        subtasks = client.chat_with_text(
-            text,
-            system_prompt=intention_system_prompt,
-            example=intention_example,
-            assistant_prompt=intention_assistant_prompt
-        )
-        if verbose:
-            print(f"Attempt {i+1}, LLM output: {subtasks}")
-        if subtasks:  # If there is content, continue with the next logic
+        try:
+            subtasks = client.chat_with_text(
+                text,
+                system_prompt=intention_system_prompt,
+                example=intention_example,
+                assistant_prompt=intention_assistant_prompt
+            )
+            if verbose:
+                print(f"Attempt {i+1}, LLM output: {subtasks}")
+
+            if not subtasks or not str(subtasks).strip():
+                if verbose:
+                    print(f"LLM returned empty content, retrying {i+1} time(s), waiting {wait_sec} seconds...")
+                time.sleep(wait_sec)
+                continue
+
+            # If we got valid content, break
             break
-        if verbose:
-            print(f"LLM did not return content, retrying {i+1} time(s), waiting {wait_sec} seconds...")
-        time.sleep(wait_sec)
-    else:
-        raise RuntimeError("LLM did not return content, exceeded maximum retry attempts")
+        except Exception as e:
+            if verbose:
+                print(f"Attempt {i+1} failed with error: {e}")
+            if i < max_retries - 1:
+                time.sleep(wait_sec)
+            else:
+                raise RuntimeError(f"LLM call failed after {max_retries} attempts: {e}")
+
+    if not subtasks or not str(subtasks).strip():
+        raise RuntimeError("LLM did not return valid content after maximum retry attempts")
 
     subtasks = re.sub(r':\s*None', ': ""', str(subtasks))
 

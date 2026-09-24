@@ -7,9 +7,12 @@ import yaml
 import cv2
 from scipy.spatial import cKDTree
 from src.VLM_agent.agent import VLM_agent
+from src.subscribe.switch_subscriber import reset_requested
 import os
 
 ROS2_SERVICE_TIMEOUT_SEC = 15
+# Services still allowed after reset_switch, needed to bring the robot back
+RESET_ALLOWED_SERVICES = {"/open_service", "/reset_service"}
 
 def filter_out_pcd_by_z(points, colors, z_threshold=0.005):
     """
@@ -319,6 +322,9 @@ def open3d_show(all_points_arr, all_colors_arr, *args):
     o3d.visualization.draw_geometries(vis_geoms)
 
 def call_ros2_service(service_name, service_type, args_dict):
+    if reset_requested() and service_name not in RESET_ALLOWED_SERVICES:
+        print(f"⏭️ reset_switch active, skipping {service_name}")
+        return False
     # Convert dictionary to a single line YAML string
     arg_str = yaml.dump(args_dict, default_flow_style=True, sort_keys=False).strip()
     cmd = [

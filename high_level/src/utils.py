@@ -41,39 +41,73 @@ def get_full_text(filepath):
 
 def safe_extract_json_and_response_for_llm(text: str) -> tuple[str, list[dict]]:
     """
-    Extract the complete JSON (including response and actions) and return the response string and action list.
-    Try to extract the first valid JSON block from the model output.
+    Extract JSON block from LLM output (which may contain mixed text and JSON).
+    Returns: response, json_blocks
     """
     try:
-        # Clean up markdown wrapping
-        text = re.sub(r"```json|```", "", text).strip()
+        if not text or not text.strip():
+            print(f"[safe_extract_json_and_response] Empty input text received")
+            return "", []
 
-        # Try to parse the entire JSON
-        parsed = json.loads(text)
+        # Extract JSON blocks from markdown code fences
+        json_pattern = r'```(?:json)?\s*([\s\S]*?)```'
+        json_matches = re.findall(json_pattern, text)
+
+        if json_matches:
+            # Try to parse the first JSON block found
+            json_text = json_matches[0].strip()
+        else:
+            # Fallback: try to parse the entire text as JSON
+            json_text = text.strip()
+
+        parsed = json.loads(json_text)
         response = parsed.get("response", "")
         actions = parsed.get("actions", [])
         return response, [parsed]  # Keep extract_json interface compatible
-    except Exception as e:
+
+    except json.JSONDecodeError as e:
         print(f"[safe_extract_json_and_response] JSON parsing failed: {e}")
+        print(f"[safe_extract_json_and_response] Raw LLM output (first 500 chars): {text[:500]}")
+        return "", []
+    except Exception as e:
+        print(f"[safe_extract_json_and_response] Unexpected error: {e}")
+        print(f"[safe_extract_json_and_response] Raw LLM output (first 500 chars): {text[:500]}")
         return "", []
 
 def safe_extract_json_and_response_for_intention_llm(text: str) -> tuple[str, list[dict]]:
     """
-    Extract the complete JSON (including response and actions) and return the response string and action list.
-    Try to extract the first valid JSON block from the model output.
+    Extract JSON block from LLM output (which may contain mixed text and JSON).
+    Returns: response, audio_response, content, json_blocks
     """
     try:
-        # Clean up markdown wrapping
-        text = re.sub(r"```json|```", "", text).strip()
+        if not text or not text.strip():
+            print(f"[safe_extract_json_and_response] Empty input text received")
+            return "", "", [], []
 
-        # Try to parse the entire JSON
-        parsed = json.loads(text)
+        # Extract JSON blocks from markdown code fences
+        json_pattern = r'```(?:json)?\s*([\s\S]*?)```'
+        json_matches = re.findall(json_pattern, text)
+
+        if json_matches:
+            # Try to parse the first JSON block found
+            json_text = json_matches[0].strip()
+        else:
+            # Fallback: try to parse the entire text as JSON
+            json_text = text.strip()
+
+        parsed = json.loads(json_text)
         response = parsed.get("response", "")
         audio_response = parsed.get("audio response", "")
         content = parsed.get("content", [])
         return response, audio_response, content, [parsed]
-    except Exception as e:
+
+    except json.JSONDecodeError as e:
         print(f"[safe_extract_json_and_response] JSON parsing failed: {e}")
+        print(f"[safe_extract_json_and_response] Raw LLM output (first 500 chars): {text[:500]}")
+        return "", "", [], []
+    except Exception as e:
+        print(f"[safe_extract_json_and_response] Unexpected error: {e}")
+        print(f"[safe_extract_json_and_response] Raw LLM output (first 500 chars): {text[:500]}")
         return "", "", [], []
 
 def safe_extract_json_and_response_for_vlm(data: Any) -> Tuple[bool, str, Dict]:

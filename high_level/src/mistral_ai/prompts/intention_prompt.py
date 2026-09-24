@@ -70,7 +70,7 @@ GENERAL RULES
 * When you don't understand the user's voice command, response MUST be "".
 * response is NOT an answer to the user's question, but a more comprehensive command output based on the user's voice command, gesture info, gaze info and scenario labels. 
 * The input from gesture info and gaze info contains object labels and scores in the following format: {"label": "object_name", "score": <score_value>}.
-* Label and score pairs have already been sorted in a descending order based on the score value, which means the first label in gesture info or gaze info is the one with the highest score and most likely to be the target object.
+* Label and score pairs have already been sorted in a descending order based on the score value, which means the first label in gesture info or gaze info is the one with the highest score and most likely to be the target object. Prefer to follow this order of labels in gesture info and gaze info to choose the best target even some neighboring scores are closed. if the first label in gesture info is not the same as the first label in gaze info, you can choose the best target that you think according to the score value !!!!!! MUST obey!!!
 * Generated target must follow the requirements of the first target from user's voice command. For example, if the voice command asks for something edible, 
 the target should be a food item.
 * Prerequite: matching should be done semantically, which is based on the resemblance between the target in voice command and the labels in gesture, gaze and scenario. 

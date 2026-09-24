@@ -281,13 +281,13 @@ ros2 run tf2_ros tf2_echo base zedr_left_camera_optical_frame
 python src/action/action/offline_intention_llm.py --participant_code P001
 
 # Use a specified JSON, disable gesture
-python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --no-gesture
+python src/action/action/offline_intention_llm.py P002_intention_data_20260610_171832_917448.json --participant_code P001 --no-gesture
 
 # Use a specified JSON, disable gaze
 python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --no-gaze
 
 # Disable both
-python src/action/action/offline_intention_llm.py --participant_code P001 --no-gesture --no-gaze
+python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --no-gesture --no-gaze
 
 # If your data folder is saved_intention_input/P001_folder or saved_intention_input/P001,
 # set participant_code to P001.
