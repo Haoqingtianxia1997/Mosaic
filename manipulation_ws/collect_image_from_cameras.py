@@ -8,46 +8,40 @@ import sys
 import time
 import termios
 import tty
-from threading import Thread
+from threading import Lock, Thread
 
 
 SAVE_DIR = './collected_images'
-SAVE_INTERVAL = 1.0  # 每路相机最多每秒保存 1 张
+CAMERAS = ('zedr', 'realsense')
 
 
 class ImageCollectorNode(Node):
     def __init__(self):
         super().__init__('image_collector_node')
         self.bridge = CvBridge()
-        self._recording = False
+        self._lock = Lock()
+        self._latest = {cam: None for cam in CAMERAS}  # 每路相机最新一帧
+        self._count = 0
 
-        for sub in ('zedl', 'zedr', 'realsense'):
+        for sub in CAMERAS:
             os.makedirs(os.path.join(SAVE_DIR, sub), exist_ok=True)
 
-        self._last_save = {'zedl': 0.0, 'zedr': 0.0, 'realsense': 0.0}
-
-        self.create_subscription(
-            CompressedImage,
-            '/zedl/zed_node/rgb/image_rect_color/compressed',
-            lambda msg: self._save_compressed(msg, 'zedl'),
-            10,
-        )
         self.create_subscription(
             CompressedImage,
             '/zedr/zed_node/rgb/image_rect_color/compressed',
-            lambda msg: self._save_compressed(msg, 'zedr'),
+            lambda msg: self._cache(msg, 'zedr'),
             10,
         )
         self.create_subscription(
             Image,
             '/camera/camera/color/image_raw',
-            lambda msg: self._save_raw(msg, 'realsense'),
+            lambda msg: self._cache(msg, 'realsense'),
             10,
         )
 
         Thread(target=self._keyboard_listener, daemon=True).start()
         self.get_logger().info(
-            f'ImageCollector ready. 按 [c] 开始/停止存图，存到 {os.path.abspath(SAVE_DIR)}'
+            f'ImageCollector ready. 每按一次 [c] 两路各存一张，存到 {os.path.abspath(SAVE_DIR)}'
         )
 
     # ------------------------------------------------------------------ #
@@ -61,9 +55,7 @@ class ImageCollectorNode(Node):
             while True:
                 ch = sys.stdin.read(1)
                 if ch == 'c':
-                    self._recording = not self._recording
-                    state = '▶ 开始存图' if self._recording else '■ 停止存图'
-                    self.get_logger().info(state)
+                    self._capture()
                 elif ch in ('\x03', 'q'):   # Ctrl-C 或 q 退出
                     rclpy.shutdown()
                     break
@@ -71,33 +63,36 @@ class ImageCollectorNode(Node):
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
     # ------------------------------------------------------------------ #
-    # 回调
+    # 回调：只缓存最新一帧
     # ------------------------------------------------------------------ #
-    def _save_compressed(self, msg: CompressedImage, camera: str):
-        if not self._recording:
-            return
-        now = time.time()
-        if now - self._last_save[camera] < SAVE_INTERVAL:
-            return
-        self._last_save[camera] = now
-        img = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
-        self._write(img, camera)
+    def _cache(self, msg, camera: str):
+        with self._lock:
+            self._latest[camera] = msg
 
-    def _save_raw(self, msg: Image, camera: str):
-        if not self._recording:
-            return
-        now = time.time()
-        if now - self._last_save[camera] < SAVE_INTERVAL:
-            return
-        self._last_save[camera] = now
-        img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
-        self._write(img, camera)
+    # ------------------------------------------------------------------ #
+    # 按键存图：两路各存一张，文件名相同便于配对
+    # ------------------------------------------------------------------ #
+    def _capture(self):
+        with self._lock:
+            snapshot = dict(self._latest)
 
-    def _write(self, img, camera: str):
+        missing = [cam for cam, msg in snapshot.items() if msg is None]
+        if missing:
+            self.get_logger().warn(f'尚未收到 {missing} 的图像，本次不保存')
+            return
+
         ts = time.strftime('%Y%m%d_%H%M%S') + f'_{int(time.time() * 1000) % 1000:03d}'
-        path = os.path.join(SAVE_DIR, camera, f'{ts}.jpg')
-        cv2.imwrite(path, img)
-        self.get_logger().info(f'[{camera}] {path}')
+        for cam, msg in snapshot.items():
+            if isinstance(msg, CompressedImage):
+                img = self.bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
+            else:
+                img = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+            path = os.path.join(SAVE_DIR, cam, f'{ts}.jpg')
+            cv2.imwrite(path, img)
+            self.get_logger().info(f'[{cam}] {path}')
+
+        self._count += 1
+        self.get_logger().info(f'已保存第 {self._count} 组')
 
 
 def main(args=None):

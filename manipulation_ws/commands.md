@@ -278,7 +278,7 @@ python src/action/action/offline_intention_llm.py P001_intention_data_20260320_1
 
 # Save Images from 3 cameras
 ```bash
-python3 collect_image_from_3_camera.py
+python3 collect_image_from_cameras.py
 ```
 
 # Camera calibration
