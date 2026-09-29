@@ -98,10 +98,10 @@ class HandDetectionWithPointCloudNode(Node):
         # self.create_subscription(Image, '/zedl/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'left', 'depth'), 10)
         # self.create_subscription(Image, '/zedr/zed_node/depth/depth_registered', lambda msg: self.buffer_callback(msg, 'right', 'depth'), 10)
 
-        # self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.836, 0.477, 0.328]), quaternion = np.array([0.212, 0.882, -0.373, -0.196]))
+        # self.T_wc_l = create_Twc_from_quaternion(translation = np.array([0.10080056895801212, -0.5010162661243986, 0.5090622333817292]), quaternion = np.array([0.8394148285130395, -0.3597763300686265, 0.1427479137059706, -0.3815321364280705]))
         # self.intrinsics_l = (1060.0899658203125, 1059.0899658203125, 958.9099731445312, 561.5670166015625)
 
-        # self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.736, 0.540, 0.351]), quaternion = np.array([0.212, 0.882, -0.373, -0.196]))
+        # self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.8236172320304684, 0.47053181877645905, 0.31217920318476455]), quaternion = np.array([0.22684167306507755, 0.8774025794508085, -0.3726009227453874, -0.19969006310628049]))
         # self.intrinsics_r = (1059.9764404296875, 1059.9764404296875, 963.07568359375, 522.3530883789062)
         
         # left_rgb = '/zedl/zed_node/rgb/image_rect_color/compressed'
@@ -111,7 +111,7 @@ class HandDetectionWithPointCloudNode(Node):
         
         self.create_subscription(Image, '/camera/camera/color/image_raw', lambda msg: self.buffer_callback(msg, 'right', 'rgb'), 10)
         self.create_subscription(Image, '/camera/camera/aligned_depth_to_color/image_raw', lambda msg: self.buffer_callback(msg, 'right', 'depth'), 10)
-        self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.939, 0.364, 0.967]), quaternion = np.array([0.305, 0.936, -0.106, -0.141]))
+        self.T_wc_r = create_Twc_from_quaternion(translation = np.array([0.9263110746419656, 0.3395260993752264, 0.9765049362126609]), quaternion = np.array([0.3014661958462643, 0.9385349695651305, -0.09584227695666801, -0.13814666703588127]))
         self.intrinsics_r = (603.6532592773438, 602.72119140625, 326.14337158203125, 242.20367431640625)
         
         left_rgb = None

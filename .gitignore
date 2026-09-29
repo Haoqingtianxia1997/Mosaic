@@ -21,3 +21,9 @@ yolov8x-oiv7.pt
 FastSAM-x.pt
 sam_vit_h_4b8939.pth
 L2CSNet_gaze360.pkl
+
+high_level/images
+high_level/yolo_model
+high_level/src/transcribe
+manipulation_ws/saved_images
+manipulation_ws/yolo_model

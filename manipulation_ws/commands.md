@@ -228,39 +228,21 @@ ros2 service call /return_back_service action_interfaces/srv/ReturnBack "{x_prep
 ```bash
 # zedr
 ros2 run tf2_ros static_transform_publisher \
---x 0.7843575813734087 \
---y 0.5117407108651009 \
---z 0.3215147718934254 \
---qx 0.24183433419868663 \
---qy 0.23581611273462044 \
---qz -0.8378607592744373 \
---qw 0.4288312766642307 \
---frame-id base \
---child-frame-id zedr_camera_link
+  --x 0.7727273219 --y 0.5065691716 --z 0.3050014600 \
+  --qx -0.2449390124 --qy -0.2284580696 --qz 0.8446543974 --qw -0.4175772259 \
+  --frame-id base --child-frame-id zedr_camera_link
 
 # zedl
 ros2 run tf2_ros static_transform_publisher \
---x 0.1356241929147693 \
---y -0.5146744888053106 \
---z 0.5462603909256427 \
---qx -0.13019385850818463 \
---qy 0.3213688636656451 \
---qz 0.2534246794592363 \
---qw 0.9030767102046126 \
---frame-id base \
---child-frame-id zedl_camera_link
+  --x 0.1409330674 --y -0.5447520778 --z 0.4886525518 \
+  --qx -0.1114101577 --qy 0.3158089588 --qz 0.3621094777 --qw 0.8699018361 \
+  --frame-id base_link --child-frame-id zedl_camera_link
 
 # realsense
 ros2 run tf2_ros static_transform_publisher \
---x 0.9273 \
---y 0.3727 \
---z 0.9698 \
---qx 0.4929 \
---qy 0.3356 \
---qz -0.7458 \
---qw 0.2976 \
---frame-id base \
---child-frame-id camera_link
+  --x 0.9145475132 --y 0.3484250069 --z 0.9797383601 \
+  --qx -0.4989051376 --qy -0.3421742952 --qz 0.7385606475 --qw -0.2975543402 \
+  --frame-id base --child-frame-id camera_link
 
 # same base
 ros2 run tf2_ros static_transform_publisher \
@@ -295,4 +277,16 @@ python src/action/action/offline_intention_llm.py P001_intention_data_20260320_1
 
 
 # Save Images from 3 cameras
+```bash
 python3 collect_image_from_3_camera.py
+```
+
+# Camera calibration
+Specify camera topic name, what kind of marker to use, aruco/apriltag marker size or charuco board config, and marker/board pose w.r.t robot base. Output is the extrinsics from robot base to camera optical link. Details in cam_calib.py header.
+```bash
+python3 cam_calib.py \
+  --topic /zedl/zed_node/rgb/image_rect_color \
+  --marker-type charuco --charuco-dict DICT_5X5_100 \
+  --charuco-squares 5 7 --charuco-square-length 0.035 --charuco-marker-length 0.025 \
+  --board-pose 0.43 0.33 0.0 180 0 0 --output zedl_extrinsic.yaml --show
+```
