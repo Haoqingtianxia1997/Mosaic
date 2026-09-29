@@ -27,3 +27,7 @@ high_level/yolo_model
 high_level/src/transcribe
 manipulation_ws/saved_images
 manipulation_ws/yolo_model
+
+manipulation_ws/data_backup/
+manipulation_ws/*_ablation_results/
+*.log
