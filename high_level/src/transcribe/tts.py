@@ -8,12 +8,13 @@ import os
 SRC_PATH = os.path.abspath(os.path.join(__file__, "../../../"))
 if SRC_PATH not in sys.path:
     sys.path.append(SRC_PATH)
-from utils import get_last_text_line , get_full_text
+from utils import get_last_text_line , get_full_text, simplify_spoken_names
 
 def play_text_to_speech(text, language='en'):
     """
     Convert text to speech and play it using gTTS and pygame.
     """
+    text = simplify_spoken_names(text)
     tts = gTTS(text=text, lang=language, slow=False)
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
         tts.save(fp.name)

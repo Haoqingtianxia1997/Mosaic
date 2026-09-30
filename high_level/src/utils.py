@@ -2,6 +2,17 @@ import json
 import re
 from typing import Any, Tuple, List, Dict
 
+# Spoken short names: "pepper bottle" -> "pepper", etc.
+SPOKEN_NAME_PATTERN = re.compile(r'\b(pepper|ketchup|salt)[\s_-]+bott?les?\b', re.IGNORECASE)
+
+
+def simplify_spoken_names(text):
+    if isinstance(text, list):
+        return [simplify_spoken_names(t) for t in text]
+    if not isinstance(text, str):
+        return text
+    return SPOKEN_NAME_PATTERN.sub(r'\1', text)
+
 def get_last_text_line(filepath):
     """
     read the last non-empty line from a text file, ignoring comments and timestamps
@@ -61,7 +72,9 @@ def safe_extract_json_and_response_for_llm(text: str) -> tuple[str, list[dict]]:
             json_text = text.strip()
 
         parsed = json.loads(json_text)
-        response = parsed.get("response", "")
+        # Only the spoken sentence is simplified; action targets keep full names
+        parsed["response"] = simplify_spoken_names(parsed.get("response", ""))
+        response = parsed["response"]
         actions = parsed.get("actions", [])
         return response, [parsed]  # Keep extract_json interface compatible
 
@@ -97,7 +110,9 @@ def safe_extract_json_and_response_for_intention_llm(text: str) -> tuple[str, li
 
         parsed = json.loads(json_text)
         response = parsed.get("response", "")
-        audio_response = parsed.get("audio response", "")
+        # "response" is fed back as a command and keeps full target names
+        parsed["audio response"] = simplify_spoken_names(parsed.get("audio response", ""))
+        audio_response = parsed["audio response"]
         content = parsed.get("content", [])
         return response, audio_response, content, [parsed]
 
@@ -130,7 +145,8 @@ def safe_extract_json_and_response_for_vlm(data: Any) -> Tuple[bool, str, Dict]:
         # ── 2. Extract keywords ───────────────────────────────
         found = bool(parsed.get("if_find", False))
 
-        raw_resp = parsed.get("response", "")
+        parsed["response"] = simplify_spoken_names(parsed.get("response", ""))
+        raw_resp = parsed["response"]
         response = " ".join(raw_resp) if isinstance(raw_resp, list) else str(raw_resp)
 
         return found, response, parsed        # ← Directly return complete dict
