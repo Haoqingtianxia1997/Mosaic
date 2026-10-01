@@ -3,7 +3,7 @@ import re, difflib,functools
 import torch, numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFont
 from transformers import OwlViTProcessor, OwlViTForObjectDetection
-from ultralytics import YOLO
+from ultralytics import YOLO, SAM
 import easyocr
 from transformers import MarianMTModel, MarianTokenizer
 import torch, gc
@@ -14,6 +14,13 @@ from segment_anything import sam_model_registry, SamPredictor
 
 # yolo_model = YOLO('yolo_model/yolo11m.pt')  # Or use your custom model path
 yolo_model = YOLO('yolo_model/mixed_zed_realsense.pt')
+
+# Local SAM variant used for box-prompted segmentation: "sam1" (SAM ViT-H) or "sam3"
+SAM_VARIANT = "sam3"
+SAM_CKPTS = {
+    "sam1": "src/VLM_agent/sam_hq/sam_vit_h_4b8939.pth",
+    "sam3": "src/VLM_agent/sam_hq/sam3.pt",
+}
 
 # Pseudo color table (customizable)
 COLOR_TABLE = [
@@ -115,16 +122,52 @@ class SAMSegmenter:
         if not multimask_output:                         # [N,1,H,W] → [N,H,W]
             masks = masks[:, 0]
 
-        return masks                   
+        return masks
+
+class SAM3Segmenter:
+    """SAM3 box-prompted segmentation via ultralytics; same interface as SAMSegmenter."""
+    def __init__(self, sam_ckpt="src/VLM_agent/sam_hq/sam3.pt", device=None):
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.sam = SAM(sam_ckpt)
+
+    def segment_with_boxes(self, image_path, boxes_xyxy, multimask_output=False):
+        """
+        image_path      : str
+        boxes_xyxy      : (x0,y0,x1,y1)  or  [(...), (...)]   pixel coordinates
+        returns         : numpy.bool_  [N,H,W]  (multimask_output is ignored)
+        """
+        img_bgr = cv2.imread(image_path)
+        if img_bgr is None:
+            raise FileNotFoundError(image_path)
+        H, W = img_bgr.shape[:2]
+
+        # --- Standardize boxes to [N,4] ---
+        if isinstance(boxes_xyxy[0], (int, float)):
+            boxes_arr = np.asarray([boxes_xyxy], dtype=np.float32)
+        else:
+            boxes_arr = np.asarray(boxes_xyxy, dtype=np.float32)
+
+        results = self.sam.predict(source=img_bgr, bboxes=boxes_arr.tolist(),
+                                   imgsz=1008, device=self.device, verbose=False)
+        if results[0].masks is None:
+            return np.zeros((len(boxes_arr), H, W), dtype=bool)
+        return results[0].masks.data.bool().cpu().numpy()   # [N,H,W]
+
+def build_sam_segmenter(variant=SAM_VARIANT):
+    if variant == "sam1":
+        return SAMSegmenter(sam_ckpt=SAM_CKPTS["sam1"])
+    if variant == "sam3":
+        return SAM3Segmenter(sam_ckpt=SAM_CKPTS["sam3"])
+    raise ValueError(f"Unknown SAM variant: {variant}")
 
 class TextDrivenSegmenter:
-    def __init__(self, fastsam_model_path='src/VLM_agent/FastSAM/FastSAM-x.pt', use_gpu=True):
+    def __init__(self, fastsam_model_path='src/VLM_agent/FastSAM/FastSAM-x.pt', use_gpu=True, sam_variant=SAM_VARIANT):
         self.owl_processor = OwlViTProcessor.from_pretrained("google/owlvit-large-patch14")
         self.owl_model     = OwlViTForObjectDetection.from_pretrained("google/owlvit-large-patch14")
-        
+
         self.fastsam       = YOLO(fastsam_model_path)
-        self.sam = SAMSegmenter(sam_ckpt="src/VLM_agent/sam_hq/sam_vit_h_4b8939.pth")
-        
+        self.sam = build_sam_segmenter(sam_variant)
+
         self.reader        = easyocr.Reader(['de'], gpu=use_gpu)
         self.device        = "cuda" if (use_gpu and torch.cuda.is_available()) else "cpu"
         self.owl_model.to(self.device)

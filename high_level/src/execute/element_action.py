@@ -48,7 +48,7 @@ class ActionExecutor:
         self.all_colors_arr = None  # all colors in world coordinates
         self.target = None  # current target, used to update the target in each action
         self.if_visualize = False  # whether to visualize the point cloud and grasp poses
-        self.bbox_only = True  # whether to use bbox-only segmentation for perception
+        self.bbox_only = False  # whether to use bbox-only segmentation for perception
         # Move parameters
         self.move_params = {
             "move_x": None, "move_y": None, "move_z": None, 
@@ -318,7 +318,8 @@ class ActionExecutor:
             all_colors = None
 
             # ---- Try remote SAM service first ----
-            remote_pts, remote_cols = self._try_remote_seg_cloud()
+            # remote_pts, remote_cols = self._try_remote_seg_cloud()
+            remote_pts, remote_cols = None, None  # Disable remote SAM for now
 
             if remote_pts is not None:
                 print("✅ Remote SAM point cloud received, skipping local SAM.")
