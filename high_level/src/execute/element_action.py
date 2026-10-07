@@ -11,6 +11,7 @@ from src.grasp.grasp_generation import GraspGeneration
 from src.execute.utils import *
 from src.VLM_agent.OwlViT_FastSAM_SAM import TextDrivenSegmenter
 from src.subscribe.switch_subscriber import reset_requested, mark_reset_done
+from src import test_mode
 
 
 class ActionExecutor:
@@ -676,7 +677,7 @@ class ActionExecutor:
                 grasp_generator.bbox_center = center
                 grasp_generator.bbox_rotation_matrix = rotation_matrix
 
-            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=self.if_visualize, grasp_type='otherthings', save_dir=self.grasp_save_dir)
+            pose1_pos, pose1_orn, pose2_pos, pose2_orn, _, _ = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=self.if_visualize, grasp_type='otherthings', save_dir=self.grasp_save_dir, file_prefix=test_mode.prefix())
 
             if pose1_pos is None or pose1_orn is None or pose2_pos is None or pose2_orn is None:
                 play_text_to_speech('Sorry, I cannot find the suitable grasp poses.', language='en')
@@ -960,7 +961,7 @@ class ActionExecutor:
 
         _, rotation_matrix, center = compute_obb(self.all_points_arr)
         grasp_generator = GraspGeneration(center, rotation_matrix)
-        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=False, grasp_type='otherthings', save_dir=self.grasp_save_dir)
+        pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, valid_grasps = grasp_generator.final_compute_poses(self.all_points_arr, self.all_colors_arr, visualize=False, grasp_type='otherthings', save_dir=self.grasp_save_dir, file_prefix=test_mode.prefix())
         best_pose = [pose1_pos, pose1_orn, pose2_pos, pose2_orn]
         print("Best grasp pose:", best_pose)
         print("Top 10 grasps:", top_10_grasps)

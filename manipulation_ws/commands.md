@@ -109,6 +109,11 @@ python3 src/action/action/intention_llm.py --participant_code P001  # P001 is a 
 #   - 否则 → 存入 saved_intention_data/unknown_folder/NN/bag/
 python3 src/action/action/bag_record.py --participant P001
 
+# 单开一个 terminal 统一切换 test 模式（作用于 1.main.py / bag_record.py / intention_llm.py）：
+#   test      → 之后保存的数据名带 test_ 前缀
+#   test_over → 恢复正常命名
+python3 src/action/action/test_mode_control.py
+
 
 
 ```

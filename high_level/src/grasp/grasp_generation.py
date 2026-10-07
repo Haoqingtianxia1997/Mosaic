@@ -664,7 +664,7 @@ class GraspGeneration:
 
         return pose1_pos, pose1_orn, ee_target_pos, pose2_orn
     
-    def final_compute_poses(self, merged_pcd, merged_color=None, visualize=False, grasp_type='other_things', save_dir=None):
+    def final_compute_poses(self, merged_pcd, merged_color=None, visualize=False, grasp_type='other_things', save_dir=None, file_prefix=""):
         """
         Calculate pre-grasp and final grasp poses based on the best grasp
         
@@ -873,14 +873,15 @@ class GraspGeneration:
         if save_dir is not None and best_grasp_mesh is not None:
             save_path = Path(save_dir)
             save_path.mkdir(parents=True, exist_ok=True)
-            existing_count = len(list(save_path.glob("*_object.ply")))
+            # Numbering is counted per prefix, so test files do not shift the normal sequence
+            existing_count = len(list(save_path.glob(f"{file_prefix}[0-9][0-9][0-9]_object.ply")))
             idx = existing_count + 1
-            o3d.io.write_triangle_mesh(str(save_path / f"{idx:03d}_object.ply"), obj_triangle_mesh)
+            o3d.io.write_triangle_mesh(str(save_path / f"{file_prefix}{idx:03d}_object.ply"), obj_triangle_mesh)
             combined_gripper = o3d.geometry.TriangleMesh()
             for m in best_grasp_mesh:
                 combined_gripper += m
-            o3d.io.write_triangle_mesh(str(save_path / f"{idx:03d}_gripper.ply"), combined_gripper)
-            print(f"Saved grasp meshes → {save_path / f'{idx:03d}_*.ply'}")
+            o3d.io.write_triangle_mesh(str(save_path / f"{file_prefix}{idx:03d}_gripper.ply"), combined_gripper)
+            print(f"Saved grasp meshes → {save_path / f'{file_prefix}{idx:03d}_*.ply'}")
 
         return pose1_pos, pose1_orn, pose2_pos, pose2_orn, top_10_grasps, self.valid_grasps_list
 

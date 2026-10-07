@@ -20,6 +20,7 @@ HIGH_LEVEL_PATH = os.path.abspath(os.path.join(__file__, "../../../../../high_le
 if HIGH_LEVEL_PATH not in sys.path:
     sys.path.append(HIGH_LEVEL_PATH)
 from transcribe.tts import play_text_to_speech
+import test_mode
 from transcribe.stt import VoiceTranscriber
 
 from mistral_ai.mistral import Mistralmodel
@@ -156,19 +157,20 @@ class IntentionLLM(Node):
         self.gaze_history = []     # Store the latest gaze_info JSON strings
         self.max_history_size = 10 # TODO: tune this size based on gaze label frequency
 
-        self.llm_call_index = 0
+        self.llm_call_index = {}  # per name prefix ("" or "test_")
 
         self.get_logger().info('Intention LLM Node has been started.')
         self.get_logger().info(f'participant_code: {self.participant_code}')
 
     def _save_images_before_llm(self):
-        self.llm_call_index += 1
-        idx = self.llm_call_index
+        prefix = test_mode.prefix()
+        self.llm_call_index[prefix] = self.llm_call_index.get(prefix, 0) + 1
+        idx = self.llm_call_index[prefix]
         sensor_data_dir = os.path.join(self.saved_intention_data_path, "sensor_data")
         os.makedirs(sensor_data_dir, exist_ok=True)
         for src_filename, dst_filename in [
-            ("rs_rgb.png", f"{idx:03d}_rs_rgb.png"),
-            ("r_scenario.png", f"{idx:03d}_r_scenario.png"),
+            ("rs_rgb.png", f"{prefix}{idx:03d}_rs_rgb.png"),
+            ("r_scenario.png", f"{prefix}{idx:03d}_r_scenario.png"),
         ]:
             src_path = os.path.join(self.copy_rgbd_path, src_filename)
             dst_path = os.path.join(sensor_data_dir, dst_filename)
@@ -219,7 +221,7 @@ class IntentionLLM(Node):
                 "json_blocks": json_blocks,
             },
         }
-        file_path = os.path.join(self.saved_intention_data_path, f"{self.participant_code}_intention_data_{ts}.json")
+        file_path = os.path.join(self.saved_intention_data_path, f"{test_mode.prefix()}{self.participant_code}_intention_data_{ts}.json")
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         self.get_logger().info(f"Saved intention data JSON: {file_path}")
@@ -370,6 +372,7 @@ def main(args=None):
 
     rclpy.init(args=remaining_args)
     node = IntentionLLM(participant_code=known_args.participant_code)
+    test_mode.attach(node)
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     executor.spin()

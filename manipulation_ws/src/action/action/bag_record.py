@@ -11,6 +11,8 @@ Bags are saved to:
   recordings/<participant>/<NN>/bag/
 NN continues from the last existing session on restart with the same ID.
 
+While test mode is on (test_mode_control.py), sessions go to test_<NN>/ (own numbering).
+
 Usage:
   python3 src/bag_record.py --participant AB12
 """
@@ -18,6 +20,7 @@ Usage:
 import argparse
 import signal
 import subprocess
+import sys
 import threading
 import open3d as o3d
 from pathlib import Path
@@ -27,6 +30,11 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Empty, String
+
+HIGH_LEVEL_PATH = str((Path(__file__).resolve().parent / "../../../../high_level/src").resolve())
+if HIGH_LEVEL_PATH not in sys.path:
+    sys.path.append(HIGH_LEVEL_PATH)
+import test_mode
 
 TOPICS_TO_RECORD = [
     "/yolo_result_image",
@@ -43,7 +51,7 @@ _lock = threading.Lock()
 _participant: str = ""
 _save_base: Path | None = None           # resolved to saved_intention_data/<participant>_folder or unknown_folder
 _current_subfolder: Path | None = None   # updated each time a new recording starts
-_session_idx: int = 0                    # resets to 0 on each script launch; increments per recording
+_session_idx: dict[str, int] = {}        # per name prefix ("" or "test_"); resets on each script launch, increments per recording
 
 
 
@@ -52,8 +60,9 @@ def start_recording() -> None:
     with _lock:
         if _proc is not None:
             return
-        _session_idx += 1
-        subfolder = _save_base / f"{_session_idx:02d}"
+        prefix = test_mode.prefix()
+        _session_idx[prefix] = _session_idx.get(prefix, 0) + 1
+        subfolder = _save_base / f"{prefix}{_session_idx[prefix]:02d}"
         subfolder.mkdir(parents=True, exist_ok=True)
         bag_path = subfolder / "bag"
         if bag_path.exists():
@@ -158,6 +167,7 @@ def main() -> None:
 
     rclpy.init()
     node = RecorderNode()
+    test_mode.attach(node)
 
     print(f"Participant: {_participant}  |  saving to {_save_base}/NN/bag/")
     print("Ready. Hold [B] in audio_record to start. Ctrl+C to quit.")
