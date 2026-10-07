@@ -103,6 +103,11 @@ ros2 topic pub /file_status action_interfaces/msg/FileStatus "{changed: true, co
 #intention_llm:
 python3 src/action/action/intention_llm.py --participant_code P001  # P001 is a participant code example.
 
+# --combined_score: 调用 LLM 前把 gesture 和 gaze 的 score 按 label 相乘（缺失的 label 记为 0.0001），
+# 再除以总和归一化，只把这组融合 score 发给 LLM（使用 intention_system_prompt_combined）。
+# 保存的 JSON 里会额外多一个 intention_llm_input.combined_label_score 字段；不加该参数时行为与原来一致。
+python3 src/action/action/intention_llm.py --participant_code P001 --combined_score
+
 # bag_record: 录制 ROS bag 并保存点云数据
 # 根据 --participant 自动选择存储路径：
 #   - 若 saved_intention_data/<participant>_folder/ 存在 → 存入该文件夹下的 NN/bag/
@@ -275,6 +280,13 @@ python src/action/action/offline_intention_llm.py P001_intention_data_20260320_1
 
 # Disable both
 python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --no-gesture --no-gaze
+
+# Combined score: fuse gesture x gaze scores (same as intention_llm.py --combined_score).
+# The combined score is recomputed from gesture_label / gaze_label in the JSON, so it also works on
+# old JSONs without combined_label_score, and can be combined with --no-gesture / --no-gaze.
+python src/action/action/offline_intention_llm.py --participant_code P001 --combined_score
+python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --combined_score
+python src/action/action/offline_intention_llm.py P001_intention_data_20260320_101010_123456.json --participant_code P001 --combined_score --no-gaze
 
 # If your data folder is saved_intention_input/P001_folder or saved_intention_input/P001,
 # set participant_code to P001.

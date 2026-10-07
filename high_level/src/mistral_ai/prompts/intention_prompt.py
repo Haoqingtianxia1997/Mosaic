@@ -741,3 +741,26 @@ intention_assistant_prompt = '''
   ]
 }
 '''.strip()
+
+
+# ---------------------------------------------------------------------
+# COMBINED-SCORE SYSTEM PROMPT  (used by intention_llm.py --combined_score)
+# ---------------------------------------------------------------------
+intention_system_prompt_combined = intention_system_prompt + """
+
+-----------------------------------------------------------------------
+COMBINED SCORE MODE (OVERRIDES THE GESTURE / GAZE RULES ABOVE)
+
+* In this mode the input does NOT contain separate "gesture info" and "gaze info". Instead it contains
+  "combined gesture and gaze info" in the format [{"label": "object_name", "score": <score_value>}, ...].
+* The combined score of each label is the product of its gesture score and its gaze score, normalized so that all
+  scores sum to 1. It already fuses both modalities, so treat it as the ONLY gesture/gaze evidence and use it wherever
+  the rules above or the examples below mention gesture info or gaze info.
+* Labels are sorted in descending order of combined score; the first label is the most likely target.
+  Prefer this order when matching the target in the voice command.
+* The combined info always lists every label, including ones with near-zero scores. Labels with very small scores
+  (e.g. below 0.01) are effectively NOT observed and must NOT be used as evidence.
+* If the combined info is "None", treat it as no gesture and no gaze evidence.
+* The examples below are written with separate gesture info and gaze info; read them as if the two were fused into
+  a single combined info and apply the same reasoning.
+"""

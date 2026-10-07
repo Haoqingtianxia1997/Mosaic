@@ -25,6 +25,8 @@ from transcribe.stt import VoiceTranscriber
 
 from mistral_ai.mistral import Mistralmodel
 from mistral_ai.llm import run_mistral_llm_direct
+from mistral_ai.prompts.intention_prompt import intention_system_prompt_combined
+from intention_utils.combined_score import combine_label_scores
 
 # def ask_label_tts(labels, transcriber):
 #     labels = list(set(labels))
@@ -82,9 +84,10 @@ from mistral_ai.llm import run_mistral_llm_direct
     # return last_query_result
 
 class IntentionLLM(Node):
-    def __init__(self, participant_code="unknown"):
+    def __init__(self, participant_code="unknown", combined_score=False):
         super().__init__('intention_llm')
         self.participant_code = participant_code
+        self.combined_score = combined_score
 
         # self.transcriber = VoiceTranscriber()
         self.client = Mistralmodel()
@@ -161,6 +164,7 @@ class IntentionLLM(Node):
 
         self.get_logger().info('Intention LLM Node has been started.')
         self.get_logger().info(f'participant_code: {self.participant_code}')
+        self.get_logger().info(f'combined_score: {self.combined_score}')
 
     def _save_images_before_llm(self):
         prefix = test_mode.prefix()
@@ -202,18 +206,21 @@ class IntentionLLM(Node):
             except OSError as e:
                 self.get_logger().error(f"Failed to copy {src_path} -> {dst_path}: {e}")
 
-    def _save_json(self, input_text, cmd_str, gesture_str, gaze_str, scenario_labels_str, response, audio_response, content, json_blocks):
+    def _save_json(self, input_text, cmd_str, gesture_str, gaze_str, scenario_labels_str, response, audio_response, content, json_blocks, combined_str=None):
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        input_payload = {
+            "timestamp": datetime.now().isoformat(timespec="milliseconds"),
+            "speech_command": cmd_str,
+            "gesture_label": gesture_str,
+            "gaze_label": gaze_str,
+            "scenario_labels": scenario_labels_str,
+            "input": input_text,
+        }
+        if combined_str is not None:
+            input_payload["combined_label_score"] = combined_str
         payload = {
             "self_id": self.participant_code,
-            "intention_llm_input": {
-                "timestamp": datetime.now().isoformat(timespec="milliseconds"),
-                "speech_command": cmd_str,
-                "gesture_label": gesture_str,
-                "gaze_label": gaze_str,
-                "scenario_labels": scenario_labels_str,
-                "input": input_text,
-            },
+            "intention_llm_input": input_payload,
             "intention_llm_output": {
                 "audio_response": audio_response,
                 "response_content": response,
@@ -284,21 +291,31 @@ class IntentionLLM(Node):
             scenario_labels =self.intention.get_scenario_yolo_labels(rs_rgb, self.scenario_img_path)
             scenario_labels_str = ", ".join(scenario_labels) if scenario_labels else "None"
             
-            input = (
-                f"I have a speech command: {cmd_str}, "
-                f"gesture info: {gesture_str} and "
-                f"gaze info: {gaze_str}."   
-                f"scenario labels: {scenario_labels_str}."
-            )
+            combined_str = None
+            if self.combined_score:
+                combined_str = combine_label_scores(gesture_str, gaze_str)
+                input = (
+                    f"I have a speech command: {cmd_str}, "
+                    f"combined gesture and gaze info: {combined_str}. "
+                    f"scenario labels: {scenario_labels_str}."
+                )
+            else:
+                input = (
+                    f"I have a speech command: {cmd_str}, "
+                    f"gesture info: {gesture_str} and "
+                    f"gaze info: {gaze_str}."
+                    f"scenario labels: {scenario_labels_str}."
+                )
             print(f"📝 Intention Input: {input}")
             input_msg = String()
             input_msg.data = input
             self.intention_llm_input_publishers.publish(input_msg)
-            
+
             self._save_images_before_llm()
             response, audio_response, content, json_blocks = run_mistral_llm_direct(
                 input,
                 self.client,
+                system_prompt=intention_system_prompt_combined if self.combined_score else None,
             )
             
             output_payload = {
@@ -311,7 +328,7 @@ class IntentionLLM(Node):
             output_msg.data = json.dumps(output_payload, ensure_ascii=False)
             self.intention_llm_output_publishers.publish(output_msg)
             
-            self._save_json(input, cmd_str, gesture_str, gaze_str, scenario_labels_str, response, audio_response, content, json_blocks)
+            self._save_json(input, cmd_str, gesture_str, gaze_str, scenario_labels_str, response, audio_response, content, json_blocks, combined_str)
             
             # Path("./src/mistral_ai/scripts/llm_script.txt").write_text(audio_response, encoding="utf-8")
             
@@ -368,10 +385,13 @@ def main(args=None):
     argv = args if args is not None else sys.argv[1:]
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--participant_code', type=str, default='unknown')
+    parser.add_argument('--combined_score', action='store_true',
+                        help='Fuse gesture and gaze scores (product + normalize) and send only the fused scores to the LLM.')
     known_args, remaining_args = parser.parse_known_args(argv)
 
     rclpy.init(args=remaining_args)
-    node = IntentionLLM(participant_code=known_args.participant_code)
+    node = IntentionLLM(participant_code=known_args.participant_code,
+                        combined_score=known_args.combined_score)
     test_mode.attach(node)
     executor = MultiThreadedExecutor()
     executor.add_node(node)

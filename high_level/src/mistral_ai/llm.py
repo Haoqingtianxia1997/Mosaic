@@ -44,13 +44,15 @@ def run_mistral_llm(client):
     return True
 
 
-def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_sec=3, verbose=True):
+def run_mistral_llm_direct(text: Union[str, Any], client, max_retries=5, wait_sec=3, verbose=True, system_prompt=None):
+    if system_prompt is None:
+        system_prompt = intention_system_prompt
     subtasks = None
     for i in range(max_retries):
         try:
             subtasks = client.chat_with_text(
                 text,
-                system_prompt=intention_system_prompt,
+                system_prompt=system_prompt,
                 example=intention_example,
                 assistant_prompt=intention_assistant_prompt
             )

@@ -18,6 +18,8 @@ from transcribe.stt import VoiceTranscriber
 
 from mistral_ai.mistral import Mistralmodel
 from mistral_ai.llm import run_mistral_llm_direct
+from mistral_ai.prompts.intention_prompt import intention_system_prompt_combined
+from intention_utils.combined_score import combine_label_scores
 
 
 class offline_intention_llm:
@@ -91,7 +93,7 @@ class offline_intention_llm:
         return cmd_str, gesture_str, gaze_str, scenario_labels_str
 
     
-    def ablation_process(self, selected_json_name=None, use_gesture_label=True, use_gaze_label=True):
+    def ablation_process(self, selected_json_name=None, use_gesture_label=True, use_gaze_label=True, combined_score=False):
             cmd_str, gesture_str, gaze_str, scenario_labels_str = self._load_selected_input_json(
                 selected_json_name
             )
@@ -101,17 +103,27 @@ class offline_intention_llm:
             if not use_gaze_label:
                 gaze_str = "None"
 
-            input = (
-                f"I have a speech command: {cmd_str}, "
-                f"gesture label: {gesture_str} and "
-                f"gaze label: {gaze_str}."
-                f"scenario labels: {scenario_labels_str}."
-            )
+            if combined_score:
+                # Recompute from the (possibly ablated) gesture/gaze labels, same as intention_llm.py --combined_score
+                combined_str = combine_label_scores(gesture_str, gaze_str)
+                input = (
+                    f"I have a speech command: {cmd_str}, "
+                    f"combined gesture and gaze info: {combined_str}. "
+                    f"scenario labels: {scenario_labels_str}."
+                )
+            else:
+                input = (
+                    f"I have a speech command: {cmd_str}, "
+                    f"gesture label: {gesture_str} and "
+                    f"gaze label: {gaze_str}."
+                    f"scenario labels: {scenario_labels_str}."
+                )
 
             response, audio_response, content, json_blocks = run_mistral_llm_direct(
                 input,
                 self.client,
                 verbose=False,
+                system_prompt=intention_system_prompt_combined if combined_score else None,
             )
 
             if audio_response:
@@ -135,6 +147,8 @@ def main(args=None):
     parser.add_argument("--participant_code", type=str, default="unknown")
     parser.add_argument("--no-gesture", action="store_true", help="Do not use gesture label")
     parser.add_argument("--no-gaze", action="store_true", help="Do not use gaze label")
+    parser.add_argument("--combined_score", action="store_true",
+                        help="Fuse gesture x gaze scores into one normalized label score for the LLM")
     cli_args = parser.parse_args(args=args)
 
     test = offline_intention_llm(participant_code=cli_args.participant_code)
@@ -142,6 +156,7 @@ def main(args=None):
         selected_json_name=cli_args.selected_json_name,
         use_gesture_label=not cli_args.no_gesture,
         use_gaze_label=not cli_args.no_gaze,
+        combined_score=cli_args.combined_score,
     )
 
 if __name__ == '__main__':
