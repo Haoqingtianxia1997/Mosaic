@@ -72,7 +72,7 @@ if __name__ == "__main__":
     while True:
         # reset_switch received while idle or after the last action: reset now
         if reset_requested():
-            executor.open_and_reset()
+            executor.handle_reset_switch()
 
         # # 2. wait for new recording to complete
         # NEW_TEXT_EVENT.wait()

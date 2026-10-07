@@ -96,10 +96,10 @@ class ActionExecutor:
         self.success = True
 
         for i, action in enumerate(actions):
-            # reset_switch received: skip remaining actions, open gripper if closed, then reset
+            # reset_switch received: skip remaining actions, hand over the object or go home
             if reset_requested():
                 print(f"🔴 reset_switch: stopping action sequence at step {i+1}/{len(actions)}.")
-                self.open_and_reset()
+                self.handle_reset_switch()
                 break
 
             # Check if the service was successful
@@ -198,6 +198,33 @@ class ActionExecutor:
         self.action_reset()
         if reset_requested():
             mark_reset_done()
+
+    def handle_reset_switch(self):
+        """Respond to reset_switch.
+        Gripper closed: hand the object to the user person, open there, then go back home.
+        Gripper open: go back home.
+        Then reset_switch state goes back to False."""
+        if self.if_grasp_closed:
+            obj = self.grasped_thing or "object"
+            self._say(f"Sorry, I'll hand you the {obj}. Could you place it back on the table? Then you can start again.")
+            self.target = "user person"
+            with allow_services_during_reset():
+                self.action_perceive(None)  # user person has a fixed pose, no VLM needed
+                self.action_move()
+            self.action_open()
+            self.action_reset()
+        else:
+            self._say("Sorry, I'll go back to my home position, then you can start again.")
+            self.action_reset()
+        mark_reset_done()
+
+    @staticmethod
+    def _say(text):
+        # TTS failure (e.g. no network for gTTS) must not block the reset motion
+        try:
+            play_text_to_speech(text, language='en')
+        except Exception as e:
+            print(f"⚠️ TTS failed: {e}")
 
     def _try_remote_seg_cloud(self):
         """Set target_label, trigger inference via segment_pcd node, return raw cloud.

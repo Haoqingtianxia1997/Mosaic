@@ -9,10 +9,24 @@ from scipy.spatial import cKDTree
 from src.VLM_agent.agent import VLM_agent
 from src.subscribe.switch_subscriber import reset_requested
 import os
+from contextlib import contextmanager
 
 ROS2_SERVICE_TIMEOUT_SEC = 15
 # Services still allowed after reset_switch, needed to bring the robot back
 RESET_ALLOWED_SERVICES = {"/open_service", "/reset_service"}
+# True while the reset_switch handover runs, so its move calls are not skipped
+_bypass_reset_filter = False
+
+
+@contextmanager
+def allow_services_during_reset():
+    """Let call_ros2_service run any service while reset_switch is active."""
+    global _bypass_reset_filter
+    _bypass_reset_filter = True
+    try:
+        yield
+    finally:
+        _bypass_reset_filter = False
 
 def filter_out_pcd_by_z(points, colors, z_threshold=0.005):
     """
@@ -322,7 +336,7 @@ def open3d_show(all_points_arr, all_colors_arr, *args):
     o3d.visualization.draw_geometries(vis_geoms)
 
 def call_ros2_service(service_name, service_type, args_dict):
-    if reset_requested() and service_name not in RESET_ALLOWED_SERVICES:
+    if reset_requested() and not _bypass_reset_filter and service_name not in RESET_ALLOWED_SERVICES:
         print(f"⏭️ reset_switch active, skipping {service_name}")
         return False
     # Convert dictionary to a single line YAML string
